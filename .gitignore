@@ -1,0 +1,10 @@
+# Local Codex/Claude capability links are environment-owned, not project source.
+.agents/
+.claude/
+.codex/
+.local/
+
+# Local beads runtime data is handled separately after `bd init`.
+.beads/*.db
+.beads/*.db-shm
+.beads/*.db-wal

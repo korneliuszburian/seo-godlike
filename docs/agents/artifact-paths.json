@@ -1,0 +1,8 @@
+{
+  "_generated_by": "setup-repository-workflow",
+  "schema_version": 1,
+  "working_runs": "docs/agents/runs",
+  "retained_reports": "docs/agents/reports",
+  "durable_research": "docs/research",
+  "architecture_decisions": "docs/adr"
+}
