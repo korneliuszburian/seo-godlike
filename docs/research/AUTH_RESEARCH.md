@@ -1,5 +1,7 @@
 # Auth research and bounded decision
 
+Document class: source research and research-derived decision.
+
 Data researchu: `2026-07-27`
 Consumer: przyszły read-only discovery i raport dla wielu klientów.
 Owner: operator repozytorium + implementacja `seo-godlike`.

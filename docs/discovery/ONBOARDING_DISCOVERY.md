@@ -80,7 +80,7 @@ Poniższe informacje pochodzą z rozmowy z operatorem i wymagają późniejszej 
 
 ## Zakres wykonanych zmian
 
-W tej fazie utworzono wyłącznie ten dokument oraz `docs/CAPABILITIES.md`. Nie zmieniano konfiguracji Codex, capability, auth, domeny ani systemów zewnętrznych.
+W tej fazie utworzono wyłącznie ten dokument oraz inventory capability. Nie zmieniano konfiguracji Codex, capability, auth, domeny ani systemów zewnętrznych.
 
 ## Evidence hashes
 
