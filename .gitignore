@@ -4,6 +4,13 @@
 .codex/
 .local/
 
+# Generated JavaScript and local dependency tree.
+node_modules/
+dist/
+
+# Product run bundles are immutable evidence outputs, not source.
+artifacts/
+
 # Local beads runtime data is handled separately after `bd init`.
 .beads/*.db
 .beads/*.db-shm

@@ -4,5 +4,7 @@
   "working_runs": "docs/agents/runs",
   "retained_reports": "docs/agents/reports",
   "durable_research": "docs/research",
-  "architecture_decisions": "docs/adr"
+  "architecture_decisions": "docs/adr",
+  "discovery": "docs/discovery",
+  "capabilities": "docs/capabilities"
 }

@@ -1,0 +1,10 @@
+{
+  "clients": [
+    {
+      "client_id": "bodymove",
+      "properties": [
+        { "property_id": "sc-domain:bodymove.pl", "provider": "google-search-console" }
+      ]
+    }
+  ]
+}

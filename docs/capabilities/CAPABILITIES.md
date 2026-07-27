@@ -1,5 +1,7 @@
 # Capability inventory
 
+Owner: capability inventory workflow.
+
 Stan epistemiczny na `2026-07-27`. To jest bezpieczny, lokalny inventory; nie zawiera sekretów i nie ustanawia uprawnień.
 
 ## Vocabulary

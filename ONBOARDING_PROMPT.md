@@ -165,8 +165,8 @@ Najpierw:
    operacje i deklarowaną read/write classification.
 6. Nie instaluj jeszcze dużego stosu zależności i nie twórz 17 modułów.
 
-Wynik zapisz jako `docs/ONBOARDING_DISCOVERY.md` oraz bezpieczny
-`docs/CAPABILITIES.md`. Każde pole niepotwierdzone lokalnie ma wartość `null`
+Wynik zapisz jako `docs/discovery/ONBOARDING_DISCOVERY.md` oraz bezpieczny
+`docs/capabilities/CAPABILITIES.md`. Każde pole niepotwierdzone lokalnie ma wartość `null`
 albo status `unknown`, nigdy fałszywe `false`.
 
 ### Faza B — decyzje i minimalny kontrakt
@@ -189,7 +189,10 @@ Minimalny kontrakt powinien objąć:
 Każdy kontrakt musi być wersjonowany. Structured output nie zastępuje lokalnej
 walidacji semantycznej i integralności referencji.
 
-Utwórz `docs/ARCHITECTURE.md` i `docs/DECISIONS.md`, zapisując co najmniej:
+Jeśli konkretna, już podjęta decyzja architektoniczna wymaga trwałego zapisu,
+utwórz osobny ADR w `docs/adr/`. Nie twórz automatycznie
+`docs/ARCHITECTURE.md` ani `docs/DECISIONS.md` jako drugiego rejestru decyzji.
+Zapisuj co najmniej:
 
 - dlaczego pierwszy przebieg jest read-only;
 - dlaczego JSON jest źródłem prawdy;
