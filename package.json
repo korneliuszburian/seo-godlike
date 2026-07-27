@@ -1,0 +1,17 @@
+{
+  "name": "seo-godlike",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.18.0 <27"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test:focused": "npm run build && node --test dist/pipeline.test.js",
+    "start": "node dist/cli.js"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "typescript": "7.0.2"
+  }
+}

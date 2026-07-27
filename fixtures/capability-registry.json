@@ -1,0 +1,11 @@
+{
+  "capabilities": [
+    {
+      "capability_id": "gsc.search_analytics.query",
+      "provider": "google-search-console",
+      "operation_id": "search_analytics.query",
+      "read_write": "read",
+      "state": "schema_verified"
+    }
+  ]
+}

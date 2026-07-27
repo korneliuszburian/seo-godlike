@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "run_id": "bodymove_fixture_001",
+  "client_id": "bodymove",
+  "property_id": "sc-domain:bodymove.pl",
+  "provider": "google-search-console",
+  "operation": "search_analytics.query",
+  "metric": "clicks",
+  "date_range": { "start": "2026-07-01", "end": "2026-07-07" },
+  "dimensions": [],
+  "credential_ref": "fixture:gsc",
+  "policy_mode": "read_only",
+  "captured_at": "2026-07-27T12:00:00.000Z"
+}
