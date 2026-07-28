@@ -71,6 +71,6 @@ test("writes the analytics bundle with raw responses and deterministic report sh
   assert.equal(report.analytics.current.clicks, 3);
   assert.equal(report.analytics.previous.clicks, 1);
   assert.equal(result.report.canonical_json_hash, report.canonical_json_hash);
-  assert.match(await readFile(join(result.outputDir, "report.md"), "utf8"), /Top queries/);
+  assert.match(await readFile(join(result.outputDir, "report.md"), "utf8"), /# SEO analytics report: bodymove/);
   await rm(directory, { recursive: true, force: true });
 });

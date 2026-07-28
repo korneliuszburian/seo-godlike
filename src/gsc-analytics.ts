@@ -24,6 +24,7 @@ import { canonicalJson, sha256 } from "./serialize.js";
 import { resolveRegisteredProperty } from "./registry.js";
 
 export interface AnalyticsReport extends Report {
+  client_display_name: string;
   analytics: {
     current_date_range: AnalyticsDateRanges["current"];
     previous_date_range: AnalyticsDateRanges["previous"];
@@ -64,7 +65,7 @@ function markdown(report: AnalyticsReport, observation: MetricObservation, claim
   const analytics = report.analytics;
   const comparison = analytics.period_over_period;
   return [
-    `# SEO analytics report: ${report.client_id}`,
+    `# SEO analytics report: ${report.client_display_name}`,
     "",
     `- Property: ${observation.property_id}`,
     `- Current period: ${analytics.current_date_range.start} to ${analytics.current_date_range.end}`,
@@ -113,6 +114,7 @@ export async function runGscAnalytics(
   outputDir: string,
 ): Promise<AnalyticsRunResult> {
   const canonicalPropertyId = assertAnalyticsRequest(request, registry, capabilities);
+  const clientDisplayName = registry.clients.find((client) => client.client_id === request.client_id)?.display_name ?? request.client_id;
   const currentRows = parseSearchAnalyticsResponse(currentRawText);
   const previousRows = previousRawText === undefined ? null : parseSearchAnalyticsResponse(previousRawText);
   const current = aggregateSearchAnalytics(currentRows);
@@ -179,6 +181,7 @@ export async function runGscAnalytics(
     schema_version: request.schema_version,
     run_id: request.run_id,
     client_id: request.client_id,
+    client_display_name: clientDisplayName,
     property_refs: [canonicalPropertyId],
     source_refs: [sourceId],
     observation_refs: [observation.observation_id],

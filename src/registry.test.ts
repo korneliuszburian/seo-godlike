@@ -66,6 +66,7 @@ test("canonical property and alias resolve to one canonical evidence property", 
   const directory = await mkdtemp(join(tmpdir(), "seo-godlike-registry-test-"));
   const result = await runGscAnalytics(request("https://bodymove.pl/"), registry, capabilities, '{"rows":[]}', undefined, join(directory, "run"));
   assert.deepEqual(result.report.property_refs, ["sc-domain:bodymove.pl"]);
+  assert.equal(result.report.client_display_name, "Bodymove");
   await rm(directory, { recursive: true, force: true });
 });
 
