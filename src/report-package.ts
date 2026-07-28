@@ -25,6 +25,7 @@ export interface ReportPackageSummary {
   package_status: "reportable" | "partial" | "empty";
   bundle_count: number;
   accepted_bundles: PackageEntry[];
+  skipped_bundles: string[];
   rejected_bundles: Array<{ bundle_path: string; reason: string }>;
   advisory: { fallow: "not_supplied" };
 }
@@ -127,12 +128,17 @@ function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
+function deduplicationKey(entry: PackageEntry): string {
+  return JSON.stringify([entry.run_id, entry.client_id, entry.property_id]);
+}
+
 function markdown(summary: ReportPackageSummary): string {
   return [
     "# SEO report package",
     "",
     `- Status: ${summary.package_status}`,
     `- Accepted bundles: ${summary.accepted_bundles.length}`,
+    `- Skipped duplicate bundles: ${summary.skipped_bundles.length}`,
     `- Rejected bundles: ${summary.rejected_bundles.length}`,
     "- Fallow advisory: not supplied",
     "",
@@ -142,14 +148,16 @@ function markdown(summary: ReportPackageSummary): string {
     "| --- | --- | --- | --- | --- | ---: | --- |",
     ...summary.accepted_bundles.map((entry) => `| ${entry.period.start} to ${entry.period.end} | ${entry.client_display_name} | ${entry.property_id} | ${entry.provider} | ${entry.metric_id} | ${entry.value} | ${entry.bundle_path} |`),
     "",
+    ...(summary.skipped_bundles.length === 0 ? [] : ["## Skipped duplicate bundles", "", ...summary.skipped_bundles.map((path) => `- ${path}`), ""]),
     ...(summary.rejected_bundles.length === 0 ? [] : ["## Rejected bundles", "", ...summary.rejected_bundles.map((entry) => `- ${entry.bundle_path}: ${entry.reason}`), ""]),
   ].join("\n");
 }
 
 function html(summary: ReportPackageSummary): string {
   const rows = summary.accepted_bundles.map((entry) => [entry.period.start, entry.period.end, entry.client_display_name, entry.property_id, entry.provider, entry.metric_id, String(entry.value), entry.bundle_path].map(escapeHtml).map((value) => `<td>${value}</td>`).join(""));
+  const skipped = summary.skipped_bundles.length === 0 ? "" : `<h2>Skipped duplicate bundles</h2><ul>${summary.skipped_bundles.map((path) => `<li><code>${escapeHtml(path)}</code></li>`).join("")}</ul>`;
   const rejected = summary.rejected_bundles.length === 0 ? "" : `<h2>Rejected bundles</h2><ul>${summary.rejected_bundles.map((entry) => `<li><code>${escapeHtml(entry.bundle_path)}</code>: ${escapeHtml(entry.reason)}</li>`).join("")}</ul>`;
-  return ["<!doctype html>", "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>SEO report package</title></head><body>", "<h1>SEO report package</h1>", `<p>Status: ${escapeHtml(summary.package_status)}; accepted: ${summary.accepted_bundles.length}; rejected: ${summary.rejected_bundles.length}</p>`, rejected, "<table><thead><tr><th>Start</th><th>End</th><th>Client</th><th>Property</th><th>Provider</th><th>Metric</th><th>Value</th><th>Bundle</th></tr></thead><tbody>", ...rows.map((row) => `<tr>${row}</tr>`), "</tbody></table>", "</body></html>", ""].join("\n");
+  return ["<!doctype html>", "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>SEO report package</title></head><body>", "<h1>SEO report package</h1>", `<p>Status: ${escapeHtml(summary.package_status)}; accepted: ${summary.accepted_bundles.length}; skipped duplicates: ${summary.skipped_bundles.length}; rejected: ${summary.rejected_bundles.length}</p>`, skipped, rejected, "<table><thead><tr><th>Start</th><th>End</th><th>Client</th><th>Property</th><th>Provider</th><th>Metric</th><th>Value</th><th>Bundle</th></tr></thead><tbody>", ...rows.map((row) => `<tr>${row}</tr>`), "</tbody></table>", "</body></html>", ""].join("\n");
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
@@ -158,16 +166,32 @@ async function writeExclusive(path: string, content: string): Promise<void> {
 
 export async function writeReportPackage(artifactsDir: string, outputDir: string): Promise<ReportPackageSummary> {
   const root = resolve(artifactsDir);
-  const accepted: PackageEntry[] = [];
+  const acceptedByIdentity = new Map<string, PackageEntry>();
+  const skipped: string[] = [];
   const rejected: Array<{ bundle_path: string; reason: string }> = [];
   for (const manifestPath of await manifestPaths(root, resolve(outputDir))) {
     const bundlePath = relative(root, dirname(manifestPath)) || ".";
-    try { accepted.push(await readVerifiedEntry(manifestPath, root)); }
+    try {
+      const entry = await readVerifiedEntry(manifestPath, root);
+      const key = deduplicationKey(entry);
+      const existing = acceptedByIdentity.get(key);
+      if (!existing) acceptedByIdentity.set(key, entry);
+      else if (entry.generated_at > existing.generated_at || (entry.generated_at === existing.generated_at && entry.bundle_path > existing.bundle_path)) {
+        process.stderr.write(`warning: duplicate run_id '${entry.run_id}'; skipping bundle '${existing.bundle_path}' (last wins: '${entry.bundle_path}')\n`);
+        skipped.push(existing.bundle_path);
+        acceptedByIdentity.set(key, entry);
+      } else {
+        process.stderr.write(`warning: duplicate run_id '${entry.run_id}'; skipping bundle '${entry.bundle_path}' (last wins: '${existing.bundle_path}')\n`);
+        skipped.push(entry.bundle_path);
+      }
+    }
     catch (error) { rejected.push({ bundle_path: bundlePath, reason: error instanceof Error ? error.message : String(error) }); }
   }
+  const accepted = [...acceptedByIdentity.values()];
   accepted.sort((a, b) => a.period.start.localeCompare(b.period.start) || a.period.end.localeCompare(b.period.end) || a.generated_at.localeCompare(b.generated_at) || a.bundle_path.localeCompare(b.bundle_path));
+  skipped.sort();
   rejected.sort((a, b) => a.bundle_path.localeCompare(b.bundle_path));
-  const summary: ReportPackageSummary = { schema_version: "1", package_status: accepted.length === 0 ? (rejected.length === 0 ? "empty" : "partial") : (rejected.length === 0 ? "reportable" : "partial"), bundle_count: accepted.length, accepted_bundles: accepted, rejected_bundles: rejected, advisory: { fallow: "not_supplied" } };
+  const summary: ReportPackageSummary = { schema_version: "1", package_status: accepted.length === 0 ? (rejected.length === 0 ? "empty" : "partial") : (rejected.length === 0 ? "reportable" : "partial"), bundle_count: accepted.length, accepted_bundles: accepted, skipped_bundles: skipped, rejected_bundles: rejected, advisory: { fallow: "not_supplied" } };
   const files = { "report-package.json": canonicalJson(summary), "report-package.md": markdown(summary), "report-package.html": html(summary) };
   await mkdir(outputDir, { recursive: false });
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);

@@ -153,6 +153,7 @@ test("report package verifies manifests, preserves rejected bundles, and writes 
   const summary = await writeReportPackage(root, output);
   assert.equal(summary.package_status, "partial");
   assert.equal(summary.bundle_count, 2);
+  assert.deepEqual(summary.skipped_bundles, []);
   assert.equal(summary.accepted_bundles[0]?.metric_id, "gsc.clicks");
   assert.equal(summary.accepted_bundles[1]?.metric_id, "ga4.sessions");
   assert.deepEqual(summary.rejected_bundles.map((entry) => entry.bundle_path), ["tampered"]);
@@ -172,6 +173,7 @@ test("report package is empty without manifests and rejects invalid reportabilit
   const emptyOutput = join(root, "empty-package");
   const empty = await writeReportPackage(root, emptyOutput);
   assert.equal(empty.package_status, "empty");
+  assert.deepEqual(empty.skipped_bundles, []);
   const invalid = join(root, "invalid");
   await mkdir(invalid);
   const report = canonicalJson({ run_id: "invalid", client_id: "bodymove", client_display_name: "Bodymove", property_refs: ["sc-domain:bodymove.pl"], generated_at: "2026-07-28T08:00:00Z", evidence_manifest_ref: "manifest.json", provider: "google-search-console", operation: "search_analytics.query", analytics: { current_date_range: { start: "2026-07-01", end: "2026-07-28" }, current: { clicks: 1, impressions: 10, ctr: 0.1, position: 2 } }, canonical_json_hash: "wrong" });
@@ -191,7 +193,26 @@ test("report package does not consume its own nested output manifest", async () 
   const summary = await writeReportPackage(root, output);
   assert.equal(summary.package_status, "reportable");
   assert.equal(summary.bundle_count, 1);
+  assert.deepEqual(summary.skipped_bundles, []);
   assert.deepEqual(summary.rejected_bundles, []);
+  await rm(root, { recursive: true, force: true });
+});
+
+test("report package deduplicates the same run identity without double counting", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-package-test-"));
+  await writeStrictBundle(root, "older", 2, "2026-07-28T08:00:00Z");
+  await writeStrictBundle(root, "newer", 9, "2026-07-29T08:00:00Z");
+  const newerReport = JSON.parse(await readFile(join(root, "newer", "report.json"), "utf8")) as Record<string, unknown>;
+  const olderReport = JSON.parse(await readFile(join(root, "older", "report.json"), "utf8")) as Record<string, unknown>;
+  const sameRun = { ...newerReport, run_id: olderReport.run_id, canonical_json_hash: "" };
+  const { canonical_json_hash: _, ...withoutHash } = sameRun;
+  const content = canonicalJson({ ...withoutHash, canonical_json_hash: sha256(canonicalJson(withoutHash)) });
+  await writeFile(join(root, "newer", "report.json"), content, "utf8");
+  await writeFile(join(root, "newer", "manifest.json"), canonicalJson({ schema_version: "1", run_id: olderReport.run_id, files: { "report.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } }), "utf8");
+  const summary = await writeReportPackage(root, join(root, "package"));
+  assert.equal(summary.bundle_count, 1);
+  assert.equal(summary.accepted_bundles[0]?.value, 9);
+  assert.deepEqual(summary.skipped_bundles, ["older"]);
   await rm(root, { recursive: true, force: true });
 });
 
