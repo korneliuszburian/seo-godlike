@@ -1,13 +1,13 @@
-export type Provider = "google-search-console";
-export type Operation = "search_analytics.query";
+export type Provider = "google-search-console" | "google-analytics";
+export type Operation = "search_analytics.query" | "properties.runReport";
 
 export interface AnalysisRequest {
   schema_version: string;
   run_id: string;
   client_id: string;
   property_id: string;
-  provider: Provider;
-  operation: Operation;
+  provider: "google-search-console";
+  operation: "search_analytics.query";
   metric: "clicks";
   date_range: { start: string; end: string };
   dimensions: [];
@@ -30,6 +30,22 @@ export interface GscAnalyticsRequest {
   comparison_date_range: { start: string; end: string };
   dimensions: SearchAnalyticsDimension[];
   row_limit: 25000;
+  credential_ref: string;
+  policy_mode: "read_only";
+  captured_at: string;
+}
+
+export interface Ga4AnalyticsRequest {
+  schema_version: string;
+  run_id: string;
+  client_id: string;
+  property_id: string;
+  provider: "google-analytics";
+  operation: "properties.runReport";
+  metric: "sessions";
+  date_range: { start: string; end: string };
+  dimensions: ["date"];
+  row_limit: 10_000;
   credential_ref: string;
   policy_mode: "read_only";
   captured_at: string;
@@ -74,7 +90,7 @@ export interface SourceRecord {
 
 export interface MetricObservation {
   observation_id: string;
-  metric_id: "gsc.clicks";
+  metric_id: "gsc.clicks" | "ga4.sessions";
   client_id: string;
   property_id: string;
   period: { start: string; end: string };
@@ -104,6 +120,8 @@ export interface Report {
   generated_at: string;
   evidence_manifest_ref: string;
   canonical_json_hash: string;
+  provider?: Provider;
+  operation?: Operation;
 }
 
 export interface CompanyLogEvent {

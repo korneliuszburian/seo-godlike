@@ -119,3 +119,17 @@ test("--add-property rejects a client id that is unsafe for shell-generated path
   );
   await rm(directory, { recursive: true, force: true });
 });
+
+test("--add-property accepts a canonical GA4 property resource", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-registry-test-"));
+  const registryPath = join(directory, "client-registry.json");
+  await writeFile(registryPath, JSON.stringify(registry), "utf8");
+  await execFileAsync(process.execPath, [
+    "dist/cli.js", "--add-property", "--registry", registryPath, "--client-id", "bodymove",
+    "--provider", "google-analytics", "--property-id", "properties/123456789",
+  ], { cwd: process.cwd() });
+  const persisted = JSON.parse(await readFile(registryPath, "utf8")) as ClientRegistry;
+  assert.equal(persisted.clients[0]?.properties[1]?.provider, "google-analytics");
+  assert.equal(persisted.clients[0]?.properties[1]?.property_id, "properties/123456789");
+  await rm(directory, { recursive: true, force: true });
+});

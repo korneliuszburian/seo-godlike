@@ -9,6 +9,7 @@ import { SearchAnalyticsDimension } from "./domain.js";
 const execFileAsync = promisify(execFile);
 const keyringArgs = ["service", "seo-godlike", "account", "google-agency-refresh-token"];
 export const GOOGLE_SEARCH_CONSOLE_API_VERSION = "v3";
+export const GOOGLE_ANALYTICS_API_VERSION = "v1beta";
 
 interface OAuthClientConfig {
   client_id: string;
@@ -51,7 +52,7 @@ async function keyringStore(secret: string): Promise<void> {
   });
 }
 
-function authorizationCode(config: OAuthClientConfig): Promise<{ code: string; redirectUri: string }> {
+function authorizationCode(config: OAuthClientConfig, scope: string): Promise<{ code: string; redirectUri: string }> {
   return new Promise((resolve, reject) => {
     const state = randomBytes(24).toString("hex");
     let redirectUri = "";
@@ -94,7 +95,7 @@ function authorizationCode(config: OAuthClientConfig): Promise<{ code: string; r
       authUrl.searchParams.set("client_id", config.client_id);
       authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", GOOGLE_GSC_READ_ONLY_SCOPE);
+      authUrl.searchParams.set("scope", scope);
       authUrl.searchParams.set("access_type", "offline");
       authUrl.searchParams.set("include_granted_scopes", "true");
       authUrl.searchParams.set("state", state);
@@ -130,11 +131,11 @@ async function refresh(config: OAuthClientConfig, refreshToken: string): Promise
   return payload;
 }
 
-export async function getGoogleAccessToken(clientJson: unknown): Promise<string> {
+export async function getGoogleAccessToken(clientJson: unknown, scope = GOOGLE_GSC_READ_ONLY_SCOPE): Promise<string> {
   const config = clientConfig(clientJson);
   let refreshToken = await keyringLookup();
   if (!refreshToken) {
-    const authorization = await authorizationCode(config);
+    const authorization = await authorizationCode(config, scope);
     const token = await exchange(config, authorization.code, authorization.redirectUri);
     refreshToken = token.refresh_token ?? null;
     if (!refreshToken) throw new Error("OAuth response did not include a refresh token; revoke prior consent and retry");
@@ -144,7 +145,7 @@ export async function getGoogleAccessToken(clientJson: unknown): Promise<string>
   return (await refresh(config, refreshToken)).access_token as string;
 }
 
-async function gscFetch(url: string, accessToken: string, init?: RequestInit): Promise<unknown> {
+async function googleFetch(url: string, accessToken: string, serviceName: string, init?: RequestInit): Promise<unknown> {
   let lastStatus = 0;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await fetch(url, {
@@ -155,11 +156,19 @@ async function gscFetch(url: string, accessToken: string, init?: RequestInit): P
     lastStatus = response.status;
     if (response.ok) return response.json();
     if (response.status < 500 && response.status !== 429) {
-      throw new Error(`GSC request failed: ${response.status} ${await response.text()}`);
+      throw new Error(`${serviceName} request failed: ${response.status} ${await response.text()}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
   }
-  throw new Error(`GSC request failed after retries: ${lastStatus}`);
+  throw new Error(`${serviceName} request failed after retries: ${lastStatus}`);
+}
+
+async function gscFetch(url: string, accessToken: string, init?: RequestInit): Promise<unknown> {
+  return googleFetch(url, accessToken, "GSC", init);
+}
+
+async function googleAnalyticsFetch(url: string, accessToken: string, init?: RequestInit): Promise<unknown> {
+  return googleFetch(url, accessToken, "GA4", init);
 }
 
 export async function querySearchAnalytics(
@@ -182,4 +191,24 @@ export async function listSearchConsoleSites(accessToken: string): Promise<strin
     siteEntry?: Array<{ siteUrl?: string }>;
   };
   return (payload.siteEntry ?? []).flatMap((entry) => entry.siteUrl ? [entry.siteUrl] : []);
+}
+
+export async function queryGa4Report(
+  accessToken: string,
+  propertyId: string,
+  startDate: string,
+  endDate: string,
+): Promise<string> {
+  const endpoint = `https://analyticsdata.googleapis.com/${GOOGLE_ANALYTICS_API_VERSION}/${propertyId}:runReport`;
+  const payload = await googleAnalyticsFetch(endpoint, accessToken, {
+    method: "POST",
+    body: JSON.stringify({
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: "date" }],
+      metrics: [{ name: "sessions" }],
+      limit: "10000",
+      returnPropertyQuota: true,
+    }),
+  });
+  return `${JSON.stringify(payload)}\n`;
 }

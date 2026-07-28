@@ -1,12 +1,15 @@
 import { lstat } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { Provider } from "./domain.js";
 
 export const GOOGLE_GSC_READ_ONLY_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
+export const GOOGLE_GA4_READ_ONLY_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 export const GOOGLE_REFRESH_TOKEN_STORE = "keyring:seo-godlike/google-agency-refresh-token";
 
 export interface OAuthPreflightInput {
   oauthClientPath: string;
   propertyId: string;
+  provider?: Provider;
   tokenStore?: string;
   repositoryRoot: string;
 }
@@ -20,7 +23,7 @@ export interface OAuthPreflightResult {
     content_read: false;
   };
   token_store: typeof GOOGLE_REFRESH_TOKEN_STORE;
-  scope: typeof GOOGLE_GSC_READ_ONLY_SCOPE;
+  scope: string;
   property_id: string;
   network_requested: false;
   consent_started: false;
@@ -55,8 +58,12 @@ function fail(message: string): never {
   throw new Error(`BLOCKED_AUTHORIZATION: ${message}`);
 }
 
-function validatePropertyId(propertyId: string): void {
+function validatePropertyId(propertyId: string, provider: Provider): void {
   if (!propertyId || /\s/.test(propertyId)) fail("property_id must be a non-empty identifier without whitespace");
+  if (provider === "google-analytics") {
+    if (!/^properties\/[1-9]\d*$/.test(propertyId)) fail("property_id must be a GA4 properties/<numeric-id> resource");
+    return;
+  }
   if (propertyId === "sc-domain:") fail("property_id must include a domain after sc-domain:");
   if (!(propertyId.startsWith("sc-domain:") || /^https?:\/\//.test(propertyId))) {
     fail("property_id must be a Search Console sc-domain or URL-prefix identifier");
@@ -67,14 +74,16 @@ export async function preflightOAuth(input: OAuthPreflightInput): Promise<OAuthP
   if (input.tokenStore && input.tokenStore !== GOOGLE_REFRESH_TOKEN_STORE) {
     fail(`unsupported token store; use ${GOOGLE_REFRESH_TOKEN_STORE}`);
   }
-  validatePropertyId(input.propertyId);
+  const provider = input.provider ?? "google-search-console";
+  const scope = provider === "google-analytics" ? GOOGLE_GA4_READ_ONLY_SCOPE : GOOGLE_GSC_READ_ONLY_SCOPE;
+  validatePropertyId(input.propertyId, provider);
   const oauthClient = await validateOAuthClientFile(input.oauthClientPath, input.repositoryRoot);
 
   return {
     status: "READY_FOR_OPERATOR_CONSENT",
     oauth_client: { path: oauthClient.path, regular_file: true, mode: oauthClient.mode, content_read: false },
     token_store: GOOGLE_REFRESH_TOKEN_STORE,
-    scope: GOOGLE_GSC_READ_ONLY_SCOPE,
+    scope,
     property_id: input.propertyId,
     network_requested: false,
     consent_started: false,

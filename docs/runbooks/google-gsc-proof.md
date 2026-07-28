@@ -187,3 +187,40 @@ by `--schedule`.
 This prints a `17 3 * * *` entry and never installs or edits crontab. When
 `--artifacts-dir` is supplied to `--analytics`, the generated Markdown also
 contains relative links to verified previous analytics bundle reports.
+
+## GA4 adapter readiness
+
+The repository includes a fixture-testable, read-only GA4 `sessions` adapter.
+It uses canonical numeric GA4 resources such as `properties/123456789`, the
+`analytics.readonly` scope, capability `google-analytics/properties.runReport`,
+and the same exclusive manifest bundle contract. The repository does not mark
+GA4 as live until the operator grants the agency identity access to a real GA4
+property and completes the new scope consent.
+
+Preflight is metadata-only and does not start consent:
+
+```bash
+node dist/cli.js \
+  --preflight \
+  --provider google-analytics \
+  --oauth-client /absolute/path/outside/repository/oauth-client.json \
+  --property-id properties/123456789
+```
+
+For local parser/evidence proof without network or consent, use a redacted
+fixture response and a temporary registry/capability file containing the GA4
+property and `v1beta` read capability:
+
+```bash
+node dist/cli.js \
+  --ga4-analytics \
+  --raw /absolute/path/ga4-response.json \
+  --client-id bodymove \
+  --property-id properties/123456789 \
+  --registry /absolute/path/client-registry.json \
+  --capabilities /absolute/path/capability-registry.json \
+  --output /absolute/path/evidence/ga4-run-001
+```
+
+Do not add a real property to the permanent fixture or run the OAuth path until
+the operator confirms the client/property ownership and authorizes the scope.

@@ -1,12 +1,13 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { preflightOAuth, validateOAuthClientReference } from "./auth-preflight.js";
+import { GOOGLE_GA4_READ_ONLY_SCOPE, preflightOAuth, validateOAuthClientReference } from "./auth-preflight.js";
 import { calculateDateRanges, GSC_ANALYTICS_DIMENSIONS } from "./analytics.js";
-import { GscAnalyticsRequest } from "./domain.js";
+import { Ga4AnalyticsRequest, GscAnalyticsRequest, Provider } from "./domain.js";
 import { runGscAnalytics } from "./gsc-analytics.js";
+import { runGa4Analytics } from "./ga4-analytics.js";
 import { runFixtureAnalysis } from "./pipeline.js";
 import { AnalysisRequest, CapabilityRegistry, ClientRegistry } from "./domain.js";
-import { getGoogleAccessToken, listSearchConsoleSites, querySearchAnalytics } from "./google.js";
+import { getGoogleAccessToken, listSearchConsoleSites, queryGa4Report, querySearchAnalytics } from "./google.js";
 import { addProperty, resolveRegisteredProperty } from "./registry.js";
 import { findPreviousBundleLinks, writeHistoryDashboard } from "./report-history.js";
 import { buildAnalyticsRunId } from "./run-id.js";
@@ -85,6 +86,47 @@ async function runSingleAnalytics(options: AnalyticsOptions): Promise<void> {
   await runGscAnalytics(request, options.registry, options.capabilities, currentRawText, previousRawText, options.outputDir, previousBundleRefs);
 }
 
+interface Ga4Options {
+  oauthClientPath?: string;
+  rawPath?: string;
+  propertyId: string;
+  clientId: string;
+  registry: ClientRegistry;
+  capabilities: CapabilityRegistry;
+  outputDir: string;
+}
+
+async function runSingleGa4Analytics(options: Ga4Options): Promise<void> {
+  const canonicalPropertyId = resolveRegisteredProperty(options.registry, options.clientId, options.propertyId, "google-analytics").canonical_property_id;
+  const ranges = calculateDateRanges();
+  const capturedAt = new Date().toISOString();
+  const rawText = options.rawPath
+    ? await readFile(resolve(options.rawPath), "utf8")
+    : await (async () => {
+        const oauthClientPath = options.oauthClientPath;
+        if (!oauthClientPath) throw new Error("missing --oauth-client or --raw");
+        await preflightOAuth({ oauthClientPath, propertyId: canonicalPropertyId, provider: "google-analytics", repositoryRoot: process.cwd() });
+        const clientJson = JSON.parse(await readFile(resolve(oauthClientPath), "utf8")) as unknown;
+        return queryGa4Report(await getGoogleAccessToken(clientJson, GOOGLE_GA4_READ_ONLY_SCOPE), canonicalPropertyId, ranges.current.start, ranges.current.end);
+      })();
+  const request: Ga4AnalyticsRequest = {
+    schema_version: "1",
+    run_id: buildAnalyticsRunId({ clientId: options.clientId, propertyId: canonicalPropertyId, provider: "google-analytics", start: ranges.current.start, end: ranges.current.end }),
+    client_id: options.clientId,
+    property_id: canonicalPropertyId,
+    provider: "google-analytics",
+    operation: "properties.runReport",
+    metric: "sessions",
+    date_range: ranges.current,
+    dimensions: ["date"],
+    row_limit: 10_000,
+    credential_ref: "keyring:seo-godlike/google-agency-refresh-token",
+    policy_mode: "read_only",
+    captured_at: capturedAt,
+  };
+  await runGa4Analytics(request, options.registry, options.capabilities, rawText, options.outputDir);
+}
+
 async function main(): Promise<void> {
   if (process.argv.includes("--schedule")) {
     if (!["--client-id", "--property-id", "--registry", "--capabilities"].every(hasArgument)) {
@@ -112,11 +154,13 @@ async function main(): Promise<void> {
   if (process.argv.includes("--add-property")) {
     const canonicalValue = optionalArgument("--canonical-property") ?? "true";
     if (canonicalValue !== "true" && canonicalValue !== "false") throw new Error("--canonical-property must be true or false");
+    const providerValue = optionalArgument("--provider") ?? "google-search-console";
+    if (providerValue !== "google-search-console" && providerValue !== "google-analytics") throw new Error("unsupported provider '" + providerValue + "'");
     const registry = await addProperty({
       registryPath: argument("--registry"),
       clientId: argument("--client-id"),
       propertyId: argument("--property-id"),
-      provider: "google-search-console",
+      provider: providerValue as Provider,
       canonicalProperty: canonicalValue === "true",
       aliases: repeatedArguments("--alias"),
     });
@@ -124,9 +168,12 @@ async function main(): Promise<void> {
     return;
   }
   if (process.argv.includes("--preflight")) {
+    const providerValue = optionalArgument("--provider") ?? "google-search-console";
+    if (providerValue !== "google-search-console" && providerValue !== "google-analytics") throw new Error("unsupported provider '" + providerValue + "'");
     const result = await preflightOAuth({
       oauthClientPath: argument("--oauth-client"),
       propertyId: argument("--property-id"),
+      provider: providerValue as Provider,
       tokenStore: process.argv.includes("--token-store") ? argument("--token-store") : undefined,
       repositoryRoot: process.cwd(),
     });
@@ -163,6 +210,17 @@ async function main(): Promise<void> {
     })));
     process.stdout.write(`${JSON.stringify({ client_id: clientId, properties_requested: propertyIds, ...result }, null, 2)}\n`);
     if (result.failed.length > 0) process.exitCode = 1;
+    return;
+  }
+  if (process.argv.includes("--ga4-analytics")) {
+    const rawPath = optionalArgument("--raw");
+    const oauthClientPath = optionalArgument("--oauth-client");
+    if (!rawPath && !oauthClientPath) throw new Error("missing --oauth-client or --raw");
+    const clientId = argument("--client-id");
+    const propertyId = argument("--property-id");
+    const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
+    await runSingleGa4Analytics({ oauthClientPath, rawPath, propertyId, clientId, registry, capabilities, outputDir: resolve(argument("--output")) });
     return;
   }
   if (process.argv.includes("--analytics")) {

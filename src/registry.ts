@@ -17,8 +17,9 @@ export interface ResolvedProperty {
   canonical_property_id: string;
 }
 
-function propertyFormat(propertyId: string): boolean {
+function propertyFormat(propertyId: string, provider: Provider): boolean {
   if (!propertyId || /\s/.test(propertyId)) return false;
+  if (provider === "google-analytics") return /^properties\/[1-9]\d*$/.test(propertyId);
   if (propertyId.startsWith("sc-domain:")) return propertyId.length > "sc-domain:".length;
   try {
     const url = new URL(propertyId);
@@ -40,13 +41,13 @@ export function validateClientRegistry(registry: ClientRegistry): void {
     if (!client.client_id || !Array.isArray(client.properties)) throw new PolicyError("schema", "schema: invalid client registry entry");
     const seen = new Set<string>();
     for (const property of client.properties) {
-      if (!propertyFormat(property.property_id)) throw new PolicyError("schema", `schema: invalid property_id '${property.property_id}'`);
+      if (!propertyFormat(property.property_id, property.provider)) throw new PolicyError("schema", `schema: invalid property_id '${property.property_id}'`);
       if (property.canonical_property === false && (property.aliases?.length ?? 0) > 0) {
         throw new PolicyError("schema", `schema: aliases require canonical property '${property.property_id}'`);
       }
       const ids = [property.property_id, ...(property.aliases ?? [])];
       for (const id of ids) {
-        if (!propertyFormat(id)) throw new PolicyError("schema", `schema: invalid property alias '${id}'`);
+        if (!propertyFormat(id, property.provider)) throw new PolicyError("schema", `schema: invalid property alias '${id}'`);
         if (seen.has(id)) throw new PolicyError("scope", `scope: duplicate property '${id}' for client '${client.client_id}'`);
         seen.add(id);
       }
@@ -80,12 +81,12 @@ export interface AddPropertyInput {
 
 export async function addProperty(input: AddPropertyInput): Promise<ClientRegistry> {
   assertShellSafeSegment(input.clientId);
-  if (!propertyFormat(input.propertyId)) throw new PolicyError("schema", `schema: invalid property_id '${input.propertyId}'`);
+  if (!propertyFormat(input.propertyId, input.provider)) throw new PolicyError("schema", `schema: invalid property_id '${input.propertyId}'`);
   if (!input.canonicalProperty && input.aliases.length > 0) {
     throw new PolicyError("schema", "schema: aliases require --canonical-property true");
   }
   for (const alias of input.aliases) {
-    if (!propertyFormat(alias)) throw new PolicyError("schema", `schema: invalid property alias '${alias}'`);
+    if (!propertyFormat(alias, input.provider)) throw new PolicyError("schema", `schema: invalid property alias '${alias}'`);
   }
   const path = resolve(input.registryPath);
   const parsed: unknown = JSON.parse(await readFile(path, "utf8"));

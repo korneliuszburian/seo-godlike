@@ -3,7 +3,7 @@ import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { GOOGLE_GSC_READ_ONLY_SCOPE, GOOGLE_REFRESH_TOKEN_STORE, preflightOAuth } from "./auth-preflight.js";
+import { GOOGLE_GA4_READ_ONLY_SCOPE, GOOGLE_GSC_READ_ONLY_SCOPE, GOOGLE_REFRESH_TOKEN_STORE, preflightOAuth } from "./auth-preflight.js";
 
 async function fixturePath(contents = "not parsed by preflight"): Promise<{ directory: string; path: string }> {
   const directory = await mkdtemp(join(tmpdir(), "seo-godlike-preflight-"));
@@ -91,6 +91,29 @@ test("preflight fails closed for an empty OAuth client file", async () => {
       repositoryRoot: process.cwd(),
     }),
     /BLOCKED_AUTHORIZATION: oauth client file must not be empty/,
+  );
+  await rm(fixture.directory, { recursive: true, force: true });
+});
+
+test("GA4 preflight selects the analytics read-only scope and numeric resource", async () => {
+  const fixture = await fixturePath();
+  const result = await preflightOAuth({
+    oauthClientPath: fixture.path,
+    propertyId: "properties/123456789",
+    provider: "google-analytics",
+    repositoryRoot: process.cwd(),
+  });
+  assert.equal(result.scope, GOOGLE_GA4_READ_ONLY_SCOPE);
+  assert.equal(result.property_id, "properties/123456789");
+  assert.equal(result.token_store, GOOGLE_REFRESH_TOKEN_STORE);
+  await rm(fixture.directory, { recursive: true, force: true });
+});
+
+test("GA4 preflight rejects a non-numeric property resource", async () => {
+  const fixture = await fixturePath();
+  await assert.rejects(
+    preflightOAuth({ oauthClientPath: fixture.path, propertyId: "properties/not-a-number", provider: "google-analytics", repositoryRoot: process.cwd() }),
+    /BLOCKED_AUTHORIZATION: property_id must be a GA4 properties/,
   );
   await rm(fixture.directory, { recursive: true, force: true });
 });

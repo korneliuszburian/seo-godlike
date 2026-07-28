@@ -34,8 +34,8 @@ Przejście do kolejnego stanu wymaga osobnego lokalnego dowodu. Wpis konfiguracy
 
 | Candidate | Local evidence | State |
 |---|---|---|
-| Google Search Console API | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
-| Google Analytics Data API | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
+| Google Search Console API | local read-only v3 adapter, agency keyring, real GSC proof | `validated_real_domain` |
+| Google Analytics Data API | local fixture-tested read-only v1beta adapter; no live scope/property proof yet | `schema_verified` (live unknown) |
 | CrUX / PageSpeed Insights | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
 | Semrush / Ahrefs / DataForSEO | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
 
@@ -43,10 +43,9 @@ The candidate names above are documented possibilities from the onboarding promp
 
 ## Verification gaps
 
-- No provider has a verified read-only operation, schema fingerprint, limits, timeout, or known-answer reconciliation.
-- No authorized domain/property is present in project files or operator input.
-- No raw response, source, metric observation, claim, or report exists yet.
-- Therefore `validated_real_domain` is not set for any capability.
+- GA4 OAuth scope and numeric property access remain operator-gated.
+- GA4 has no live non-zero runReport proof or validated-real-domain state yet.
+- Fallow has not been run against the current revision; it is not an SEO provider.
 
 ## Safe next action after Phase A approval
 
