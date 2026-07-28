@@ -51,5 +51,21 @@ Use the repository-local working and retained report paths in `docs/agents/artif
 
 Give reviewers the complete bounded decision packet defined in `docs/agents/review.md`.
 
+### External review gate
+
+The operator owns external-review handoff. Every larger vertical slice and
+every change touching security, authentication, provider boundaries, evidence
+persistence, authority, or publication must stop after local proof and produce
+a fixed-point handoff for the operator. The operator sends that handoff to the
+selected external reviewer, currently Perplexity/Grok, and returns the feedback
+to the implementation workflow.
+
+The external reviewer is advisory and read-only: it receives the bounded review
+packet, cannot edit the repository, execute tools, merge, or change tracker
+state. Findings must be classified, addressed or explicitly deferred, and
+re-tested before the slice is accepted. Small mechanical, documentation-only,
+or already-proven changes may use local review only when their risk does not
+cross these boundaries.
+
 Installed global skills own implementation, diagnosis, review, and reusable engineering procedure. Do not copy or rename them in this repository.
 <!-- krn-agent-workflow:end -->

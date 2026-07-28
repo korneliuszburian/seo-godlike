@@ -11,3 +11,33 @@ Every fixed-point reviewer receives the complete decision context, not an unboun
 6. separate Standards and Spec questions.
 
 Put a transient context manifest below the configured `working_runs` root. Persist a final review only when a named consumer needs it, below `retained_reports/code-review/`. Review remains read-only; a parent workflow performs any later persistence or repair.
+
+## External reviewer handoff
+
+For a larger vertical slice, or any change touching security, authentication,
+provider boundaries, evidence persistence, authority, or publication, local
+proof is not the terminal state. The implementation owner prepares the bounded
+handoff and gives it to the operator. The operator sends it to the selected
+external reviewer, currently Perplexity/Grok, then returns the feedback to the
+implementation owner.
+
+The handoff contains:
+
+1. fixed base and head revisions, commit list, complete changed-path ledger,
+   and generated-path disposition;
+2. requested outcome, acceptance/spec, relevant instructions, and ADRs;
+3. focused proof commands and exact results;
+4. authority/publication state, explicit non-goals, known gaps, and what the
+   evidence does not prove;
+5. separate Standards and Spec questions for the external reviewer.
+
+The external reviewer is advisory and read-only. It receives no credentials,
+secrets, unrestricted repository dump, tool authority, merge authority, or
+tracker authority. The operator remains the human coordination and merge
+authority.
+
+When feedback returns, classify every finding as `fix`, `defer` with a named
+reason, or `reject` with evidence. A `fix` requires implementation and focused
+proof; unresolved findings prevent acceptance of the slice. Produce a new
+fixed-point handoff when the diff changes materially. Only after that cycle may
+the local ticket advance or the next larger slice begin.
