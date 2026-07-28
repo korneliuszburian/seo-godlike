@@ -23,6 +23,7 @@ import {
 import { canonicalJson, sha256 } from "./serialize.js";
 import { resolveRegisteredProperty } from "./registry.js";
 import { assertCanonicalIsoDateTime } from "./timestamps.js";
+import { GOOGLE_SEARCH_CONSOLE_API_VERSION } from "./google.js";
 
 export interface AnalyticsReport extends Report {
   client_display_name: string;
@@ -48,7 +49,7 @@ function assertAnalyticsRequest(request: GscAnalyticsRequest, registry: ClientRe
   if (JSON.stringify(request.dimensions) !== JSON.stringify(GSC_ANALYTICS_DIMENSIONS) || request.row_limit !== 25_000) throw new PolicyError("schema");
   const resolved = resolveRegisteredProperty(registry, request.client_id, request.property_id, request.provider);
   const capability = capabilities.capabilities.find((item) => item.provider === request.provider && item.operation_id === request.operation);
-  if (!capability || capability.read_write !== "read") throw new PolicyError("schema");
+  if (!capability || capability.read_write !== "read" || (capability.api_version ?? GOOGLE_SEARCH_CONSOLE_API_VERSION) !== GOOGLE_SEARCH_CONSOLE_API_VERSION) throw new PolicyError("schema", `schema: unsupported Google Search Console API version '${capability?.api_version ?? "missing"}'`);
   return resolved.canonical_property_id;
 }
 

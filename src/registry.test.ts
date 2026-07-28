@@ -79,6 +79,15 @@ test("analytics writer rejects non-canonical timestamps for new bundles", async 
   await rm(directory, { recursive: true, force: true });
 });
 
+test("analytics rejects an explicitly unsupported provider API version", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-registry-test-"));
+  await assert.rejects(
+    runGscAnalytics(request("sc-domain:bodymove.pl"), registry, { capabilities: [{ ...capabilities.capabilities[0], api_version: "v2" }] }, '{"rows":[]}', undefined, join(directory, "run")),
+    (error: unknown) => error instanceof PolicyError && error.category === "schema" && /unsupported Google Search Console API version/.test(error.message),
+  );
+  await rm(directory, { recursive: true, force: true });
+});
+
 test("--add-property writes a validated property and optional alias", async () => {
   const directory = await mkdtemp(join(tmpdir(), "seo-godlike-registry-test-"));
   const registryPath = join(directory, "client-registry.json");

@@ -8,6 +8,7 @@ import { SearchAnalyticsDimension } from "./domain.js";
 
 const execFileAsync = promisify(execFile);
 const keyringArgs = ["service", "seo-godlike", "account", "google-agency-refresh-token"];
+export const GOOGLE_SEARCH_CONSOLE_API_VERSION = "v3";
 
 interface OAuthClientConfig {
   client_id: string;
@@ -168,7 +169,7 @@ export async function querySearchAnalytics(
   endDate: string,
   dimensions: readonly SearchAnalyticsDimension[] = [],
 ): Promise<string> {
-  const endpoint = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(propertyId)}/searchAnalytics/query`;
+  const endpoint = `https://www.googleapis.com/webmasters/${GOOGLE_SEARCH_CONSOLE_API_VERSION}/sites/${encodeURIComponent(propertyId)}/searchAnalytics/query`;
   const payload = await gscFetch(endpoint, accessToken, {
     method: "POST",
     body: JSON.stringify({ startDate, endDate, dimensions, rowLimit: 25_000 }),

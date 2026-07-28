@@ -43,6 +43,9 @@ path rather than inventing a second tracker.
 - [Provider adapter contract](issues/06-provider-adapter-contract.md) —
   transport/provider details stay behind adapters while policy and evidence
   remain separate owners; a shared interface waits for the second provider.
+- [Capability version gates](issues/07-capability-version-policy.md) — explicit
+  incompatible versions fail closed and legacy missing versions default to the
+  current provider version.
 
 ## Frontier tickets
 

@@ -53,6 +53,7 @@ export interface CapabilityRegistry {
     capability_id: string;
     provider: Provider;
     operation_id: Operation;
+    api_version?: string;
     read_write: "read";
     state: "schema_verified" | "validated_real_domain";
   }>;
