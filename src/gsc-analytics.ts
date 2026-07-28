@@ -25,6 +25,7 @@ import { resolveRegisteredProperty } from "./registry.js";
 
 export interface AnalyticsReport extends Report {
   client_display_name: string;
+  previous_bundle_refs: string[];
   analytics: {
     current_date_range: AnalyticsDateRanges["current"];
     previous_date_range: AnalyticsDateRanges["previous"];
@@ -100,6 +101,7 @@ function markdown(report: AnalyticsReport, observation: MetricObservation, claim
       ? `- Clicks: ${comparison.delta.clicks} (${formatPercent(comparison.change_pct.clicks)})\n- Impressions: ${comparison.delta.impressions} (${formatPercent(comparison.change_pct.impressions)})\n- CTR delta: ${formatPercent(comparison.delta.ctr)}\n- Position delta: ${comparison.delta.position.toFixed(2)}`
       : "- Not available",
     "",
+    ...(report.previous_bundle_refs.length === 0 ? [] : ["## Previous bundles", "", ...report.previous_bundle_refs.map((link) => `- [Previous report](${link})`), ""]),
     `- Canonical JSON hash: ${report.canonical_json_hash}`,
     "",
   ].join("\n");
@@ -112,6 +114,7 @@ export async function runGscAnalytics(
   currentRawText: string,
   previousRawText: string | undefined,
   outputDir: string,
+  previousBundleRefs: string[] = [],
 ): Promise<AnalyticsRunResult> {
   const canonicalPropertyId = assertAnalyticsRequest(request, registry, capabilities);
   const clientDisplayName = registry.clients.find((client) => client.client_id === request.client_id)?.display_name ?? request.client_id;
@@ -182,6 +185,7 @@ export async function runGscAnalytics(
     run_id: request.run_id,
     client_id: request.client_id,
     client_display_name: clientDisplayName,
+    previous_bundle_refs: [...previousBundleRefs].sort(),
     property_refs: [canonicalPropertyId],
     source_refs: [sourceId],
     observation_refs: [observation.observation_id],

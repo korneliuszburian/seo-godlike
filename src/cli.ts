@@ -8,6 +8,8 @@ import { runFixtureAnalysis } from "./pipeline.js";
 import { AnalysisRequest, CapabilityRegistry, ClientRegistry } from "./domain.js";
 import { getGoogleAccessToken, listSearchConsoleSites, querySearchAnalytics } from "./google.js";
 import { addProperty, resolveRegisteredProperty } from "./registry.js";
+import { findPreviousBundleLinks, writeHistoryDashboard } from "./report-history.js";
+import { buildDailyAnalyticsCron } from "./schedule.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -37,6 +39,25 @@ function repeatedArguments(name: string): string[] {
 }
 
 async function main(): Promise<void> {
+  if (process.argv.includes("--schedule")) {
+    process.stdout.write(`${buildDailyAnalyticsCron({
+      workingDirectory: process.cwd(),
+      oauthClientPath: optionalArgument("--oauth-client") ?? "/absolute/path/outside/repository/oauth-client.json",
+      clientId: optionalArgument("--client-id") ?? "bodymove",
+      propertyId: optionalArgument("--property-id") ?? "sc-domain:bodymove.pl",
+      registryPath: optionalArgument("--registry") ?? "fixtures/client-registry.json",
+      capabilitiesPath: optionalArgument("--capabilities") ?? "fixtures/capability-registry.json",
+      artifactsDir: optionalArgument("--artifacts-dir") ?? "artifacts/analysis",
+    })}\n`);
+    return;
+  }
+  if (process.argv.includes("--report-history")) {
+    const artifactsDir = argument("--report-history");
+    const outputDir = resolve(argument("--output"));
+    const summary = await writeHistoryDashboard(resolve(artifactsDir), outputDir);
+    process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+    return;
+  }
   if (process.argv.includes("--add-property")) {
     const canonicalValue = optionalArgument("--canonical-property") ?? "true";
     if (canonicalValue !== "true" && canonicalValue !== "false") throw new Error("--canonical-property must be true or false");
@@ -81,6 +102,9 @@ async function main(): Promise<void> {
     const capturedAt = new Date().toISOString();
     const clientJson = JSON.parse(await readFile(resolve(oauthClientPath), "utf8"));
     const accessToken = await getGoogleAccessToken(clientJson);
+    const outputDir = resolve(argument("--output"));
+    const artifactsDir = optionalArgument("--artifacts-dir");
+    const previousBundleRefs = artifactsDir ? await findPreviousBundleLinks(resolve(artifactsDir), outputDir) : [];
     const [currentRawText, previousRawText] = await Promise.all([
       querySearchAnalytics(accessToken, canonicalPropertyId, ranges.current.start, ranges.current.end, GSC_ANALYTICS_DIMENSIONS),
       querySearchAnalytics(accessToken, canonicalPropertyId, ranges.previous.start, ranges.previous.end, GSC_ANALYTICS_DIMENSIONS),
@@ -107,7 +131,8 @@ async function main(): Promise<void> {
       capabilities,
       currentRawText,
       previousRawText,
-      resolve(argument("--output")),
+      outputDir,
+      previousBundleRefs,
     );
     process.stdout.write(`${JSON.stringify(result.report, null, 2)}\n`);
     return;

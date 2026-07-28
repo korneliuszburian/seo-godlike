@@ -135,3 +135,30 @@ The command fails closed for unknown clients, invalid property identifiers,
 duplicate canonical IDs, duplicate aliases, or aliases attached to a
 non-canonical property. It writes the registry through an exclusive temporary
 file and replacement, and never touches OAuth credentials.
+
+## History dashboard and schedule output
+
+Verify and aggregate all nested analytics bundles without modifying them:
+
+```bash
+node dist/cli.js \
+  --report-history artifacts/analysis \
+  --output artifacts/analysis/executive-summary-20260728
+```
+
+The command verifies every manifest-listed file before parsing any report,
+skips verified non-analytics proof bundles, and writes exclusive
+`executive-summary.json` and `executive-summary.md`. An empty artifacts
+directory produces a valid zero-bundle summary.
+
+To print (only) a daily cron-compatible command for the existing analytics
+run, use:
+
+```bash
+node dist/cli.js --schedule \
+  --oauth-client /absolute/path/outside/repository/oauth-client.json
+```
+
+This prints a `17 3 * * *` entry and never installs or edits crontab. When
+`--artifacts-dir` is supplied to `--analytics`, the generated Markdown also
+contains relative links to verified previous analytics bundle reports.
