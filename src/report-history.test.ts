@@ -78,6 +78,7 @@ test("history keeps the latest generated duplicate run and warns about the skipp
     const output = join(root, "dashboard");
     await writeHistoryDashboard(root, output);
     assert.deepEqual(JSON.parse(await readFile(join(output, "executive-summary.json"), "utf8")).skipped_bundles, ["older"]);
+    assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /## Skipped bundles\n\n- older/);
   } finally {
     process.stderr.write = originalWrite;
     await rm(root, { recursive: true, force: true });
@@ -107,6 +108,7 @@ test("empty artifacts directory produces a zero-bundle dashboard", async () => {
   const summary = await writeHistoryDashboard(root, output);
   assert.equal(summary.bundle_count, 0);
   assert.deepEqual(summary.skipped_bundles, []);
+  assert.doesNotMatch(await readFile(join(output, "executive-summary.md"), "utf8"), /## Skipped bundles/);
   assert.equal(summary.totals.clicks, 0);
   await rm(root, { recursive: true, force: true });
 });

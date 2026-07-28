@@ -222,6 +222,12 @@ function markdown(summary: HistorySummary): string {
     `- Total impressions: ${summary.totals.impressions}`,
     `- Weighted CTR: ${percent(summary.totals.ctr)}`,
     `- Weighted average position: ${summary.totals.position.toFixed(2)}`,
+    ...(summary.skipped_bundles.length > 0 ? [
+      "",
+      "## Skipped bundles",
+      "",
+      ...summary.skipped_bundles.map((bundlePath) => `- ${bundlePath}`),
+    ] : []),
     "",
     "| Period | Client | Property | Clicks | Impressions | CTR | Position | Bundle |",
     "| --- | --- | --- | ---: | ---: | ---: | ---: | --- |",
