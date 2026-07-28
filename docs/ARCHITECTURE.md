@@ -8,6 +8,30 @@ This document is the navigation surface for the durable decisions in
 [`docs/adr/`](adr/). It does not claim that provider access, OAuth consent, or
 the runtime already exists.
 
+## Documentation map
+
+This is the repository's only durable documentation index. The linked surface
+owns the information described by its name; this page only provides navigation
+and stable architecture context.
+
+- [Contracts](contracts/first-proof-slice.md) — executable-facing field and
+  boundary contracts.
+- [Architecture decisions](adr/0001-local-read-only-proof-boundary.md) —
+  alternatives, consequences, and falsifiers for durable choices.
+- [Capability inventory](capabilities/CAPABILITIES.md) — evidence-backed
+  capability state and unknowns.
+- [Discovery](discovery/ONBOARDING_DISCOVERY.md) — bounded environment and
+  provider observations.
+- [Research decisions](research/AUTH_RESEARCH.md) — source-backed decisions,
+  not a transcript or a second implementation.
+- [Operator runbooks](runbooks/google-gsc-proof.md) — procedures that cannot
+  be inferred safely from the CLI and tests.
+- [Agent workflow](agents/artifacts.md) — tracker, domain, review, and artifact
+  routing. Transient runs remain under the ignored `docs/agents/runs/` path.
+
+Current queue, blockers, and claims remain in the local tracker below
+`.scratch/`; they are intentionally not copied into this architecture page.
+
 ## Runtime boundary
 
 The first proof runs as a local, single-purpose CLI. It has no hosted service,

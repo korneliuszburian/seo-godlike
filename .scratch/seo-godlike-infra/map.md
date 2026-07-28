@@ -1,5 +1,9 @@
 # SEO Godlike infrastructure wayfinder
 
+Map status: historical/closed. Retain it as first-proof decision history;
+current route and blockers live in
+`../seo-godlike-agency-control-plane/map.md` and the owning durable documents.
+
 ## Destination
 
 Decision-complete infrastructure blueprint for the first safe read-only proof

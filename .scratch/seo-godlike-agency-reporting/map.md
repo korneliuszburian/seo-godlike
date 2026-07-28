@@ -1,5 +1,9 @@
 # Agency reporting goal wayfinder:map
 
+Map status: historical/closed. Retain it as decision history; current route
+and blockers live in `../seo-godlike-agency-control-plane/map.md` and the
+owning capability/runbook documents.
+
 ## Destination
 
 Agency-grade, multi-tenant, read-only SEO reporting foundation: many clients

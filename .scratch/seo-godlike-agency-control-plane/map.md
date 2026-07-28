@@ -1,5 +1,8 @@
 # Agency control plane expansion wayfinder:map
 
+Map status: active route. Ticket status and the capability inventory are the
+current authority; this map is only the decision navigation for the route.
+
 ## Destination
 
 A decision-ready, agency-grade multi-tenant reporting control plane that can

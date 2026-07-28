@@ -35,27 +35,51 @@ second implementation. Code, tests, schemas, fixtures, and generated evidence
 are authoritative for behavior and data shape; Markdown must not restate those
 facts unless it points to the authoritative source.
 
-- Update the existing canonical document before creating a new one. One fact,
-  one owner, one durable location.
-- Do not create a durable document for a routine slice, status update, review
-  result, or code explanation when the existing owner can be updated or the
-  code and tests already make it observable.
-- Create an ADR only for an earned architectural decision with alternatives,
-  consequences, and a falsifier. Create a retained report only for a named
-  consumer. Create a runbook only for an operator action that cannot be
-  inferred safely from the CLI and tests.
-- Keep current status, queue, claims, and blockers in the configured local
-  tracker; do not mirror them in architecture pages, ADR indexes, capability
-  pages, or ad-hoc summaries.
-- Keep transient prompts, review packets, logs, and research runs under the
-  ignored `docs/agents/runs/` boundary. Never promote them to durable docs just
-  because a workflow produced them.
-- No new root-level `docs/*.md`, tracker, backlog, decision register, or
-  duplicate index without an explicit reason and an owner. Prefer links over
-  copied sections.
-- A documentation-only change must name the canonical owner it updates and
-  state why code/tests/evidence cannot carry the information alone. If it
-  cannot satisfy that test, do not create the document.
+- One fact has one owner and one durable location. Update that owner before
+  creating anything new; link to it instead of copying its content.
+- Runtime behavior, data shape, and proof belong in code, tests, schemas,
+  fixtures, and generated evidence. Do not create prose to explain a routine
+  implementation slice or repeat a test result.
+- A user or operator procedure belongs in an existing how-to/runbook. Create
+  one only when the safe procedure cannot be inferred from the CLI and tests.
+- An architectural decision belongs in an existing ADR, or in one new ADR only
+  when the decision has alternatives, consequences, and a falsifier. An ADR is
+  not a progress update, research dump, or index of other ADRs.
+- Source research is retained only when it changes a named project decision;
+  keep the mechanism, disposition, provenance, and falsifier rather than a
+  transcript or a collection of notes.
+- Current queue, claims, status, and blockers belong in the configured local
+  tracker. Closed tracker tickets are historical evidence, not a second
+  current-status surface. Do not mirror tracker state in architecture pages,
+  capability inventories, ADR indexes, or reports.
+- Review packets, prompts, logs, and research runs are transient material under
+  ignored `docs/agents/runs/`. Retain a report only when a named consumer,
+  owner, and future lookup need exist.
+- `docs/ARCHITECTURE.md` is the sole durable documentation map. It contains
+  short descriptions and links to owners; it does not duplicate their facts.
+  Do not create another README, backlog, decision register, or index.
+
+Before writing documentation, answer this decision tree:
+
+```text
+Does the change alter runtime behavior or data shape?
+  → code/tests/schema/fixtures/evidence; update docs only for a public contract.
+Does an operator need a procedure that cannot be inferred safely?
+  → update the owning how-to/runbook.
+Did a durable architectural choice change?
+  → update the owning ADR, or earn one ADR with alternatives and a falsifier.
+Is this status, a blocker, a plan, a review result, or session output?
+  → tracker or transient run artifact; do not create durable docs.
+Is there already an owner for the fact?
+  → update and link that owner; do not create a parallel representation.
+Otherwise
+  → do not write documentation.
+```
+
+When a change makes a durable page stale, update, supersede, or remove that
+page in the same slice. Do not append a new snapshot and leave the old one
+looking current. Every documentation change must name its canonical owner and
+why executable code, tests, or existing evidence cannot carry the information.
 
 <!-- krn-agent-workflow:start -->
 ## Agent workflow
