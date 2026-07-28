@@ -51,6 +51,9 @@ path rather than inventing a second tracker.
   retention remains deferred.
 - [Escaped local HTML boundary](issues/09-client-report-boundary.md) — HTML is
   a derived local export with escaped text and no hosted/link-sharing surface.
+- [Hosted runtime deferral](issues/10-hosted-credential-boundary.md) — hosted
+  credentials, deployment, and public runtime belong to a separate goal with
+  new authority and review.
 
 ## Frontier tickets
 
@@ -90,3 +93,4 @@ path rather than inventing a second tracker.
 - Production MCP server implementation.
 - Unreviewed external publication, deployment, or client messaging.
 - Multi-region infrastructure and enterprise SSO.
+- Hosted credential migration and deployment for this goal; see ADR-0014.
