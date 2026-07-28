@@ -165,8 +165,10 @@ node dist/cli.js \
 
 The command verifies every manifest-listed file before parsing any report,
 skips verified non-analytics proof bundles, and writes exclusive
-`executive-summary.json` and `executive-summary.md`. An empty artifacts
-directory produces a valid zero-bundle summary.
+`executive-summary.json`, `executive-summary.md`, and escaped local
+`executive-summary.html`. An empty artifacts directory produces a valid
+zero-bundle summary. The HTML file is a local export only; it is not hosted or
+published by the CLI.
 
 To print (only) a daily cron-compatible command for the existing analytics
 run, use:

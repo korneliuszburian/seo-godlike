@@ -49,6 +49,8 @@ path rather than inventing a second tracker.
 - [Local schedule reliability guard](issues/08-scheduling-reliability-policy.md)
   — Linux `flock`, bounded provider retries, and stdout-only schedule rendering;
   retention remains deferred.
+- [Escaped local HTML boundary](issues/09-client-report-boundary.md) — HTML is
+  a derived local export with escaped text and no hosted/link-sharing surface.
 
 ## Frontier tickets
 

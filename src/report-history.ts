@@ -236,6 +236,36 @@ function markdown(summary: HistorySummary): string {
   ].join("\n");
 }
 
+function htmlEscape(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+
+function html(summary: HistorySummary): string {
+  const rows = summary.periods.map((entry) => [
+    entry.period.start,
+    entry.period.end,
+    entry.client_display_name,
+    entry.property_id,
+    String(entry.metrics.clicks),
+    String(entry.metrics.impressions),
+    percent(entry.metrics.ctr),
+    entry.bundle_path,
+  ].map(htmlEscape).map((value) => `<td>${value}</td>`).join(""));
+  const skipped = summary.skipped_bundles.length === 0 ? "" : `<h2>Skipped bundles</h2><ul>${summary.skipped_bundles.map((path) => `<li><code>${htmlEscape(path)}</code></li>`).join("")}</ul>`;
+  return [
+    "<!doctype html>",
+    "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>SEO history executive summary</title></head><body>",
+    "<h1>SEO history executive summary</h1>",
+    `<p>Analytics bundles: ${summary.bundle_count}; clicks: ${summary.totals.clicks}; impressions: ${summary.totals.impressions}</p>`,
+    skipped,
+    "<table><thead><tr><th>Start</th><th>End</th><th>Client</th><th>Property</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Bundle</th></tr></thead><tbody>",
+    ...rows.map((row) => `<tr>${row}</tr>`),
+    "</tbody></table>",
+    "</body></html>",
+    "",
+  ].join("\n");
+}
+
 async function writeExclusive(path: string, content: string): Promise<void> {
   await writeFile(path, content, { encoding: "utf8", flag: "wx" });
 }
@@ -246,5 +276,6 @@ export async function writeHistoryDashboard(artifactsDir: string, outputDir: str
   await mkdir(outputDir, { recursive: false });
   await writeExclusive(join(outputDir, "executive-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
   await writeExclusive(join(outputDir, "executive-summary.md"), markdown(summary));
+  await writeExclusive(join(outputDir, "executive-summary.html"), html(summary));
   return summary;
 }

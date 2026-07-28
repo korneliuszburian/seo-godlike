@@ -55,6 +55,7 @@ test("history aggregates two bundles chronologically and writes deterministic da
   const output = join(root, "dashboard");
   await writeHistoryDashboard(root, output);
   assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /2026-06-01/);
+  assert.match(await readFile(join(output, "executive-summary.html"), "utf8"), /<table>/);
   assert.equal(JSON.parse(await readFile(join(output, "executive-summary.json"), "utf8")).bundle_count, 2);
   assert.deepEqual(await findPreviousBundleLinks(root, join(root, "new-run")), ["../earlier/report.md", "../later/report.md"]);
   await rm(root, { recursive: true, force: true });
@@ -99,6 +100,17 @@ test("history rejects an invalid generated_at before deduplication", async () =>
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
   await writeBundle(root, "invalid", "2026-07-01", 1, "invalid-run", "not-a-date");
   await assert.rejects(readAnalyticsHistory(root), /invalid generated_at: not-a-date/);
+  await rm(root, { recursive: true, force: true });
+});
+
+test("history HTML escapes bundle paths for local export", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
+  await writeBundle(root, "<unsafe>", "2026-07-01", 1);
+  const output = join(root, "dashboard");
+  await writeHistoryDashboard(root, output);
+  const html = await readFile(join(output, "executive-summary.html"), "utf8");
+  assert.match(html, /&lt;unsafe&gt;/);
+  assert.doesNotMatch(html, /<unsafe>/);
   await rm(root, { recursive: true, force: true });
 });
 
