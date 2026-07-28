@@ -1,7 +1,7 @@
 # Retention and legal-hold authority
 
 Labels: `wayfinder:grilling`
-Status: open
+Status: closed
 Map: `../map.md`
 
 ## Question
@@ -14,3 +14,10 @@ The answer must name the default retention window, who may authorize deletion,
 how a hold is represented, and what the system does when a bundle is missing or
 expired. It must not assume hosted storage or legal requirements that the
 operator has not confirmed.
+
+## Resolution
+
+Retention automation is explicitly deferred. The delivery slice preserves local
+bundles and never deletes or rewrites them. Any future deletion or legal hold
+requires a separate operator decision and authority boundary; absence of that
+policy is not converted into a fake default or a reportability failure.
