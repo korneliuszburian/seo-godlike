@@ -184,6 +184,17 @@ test("report package is empty without manifests and rejects invalid reportabilit
   await rm(root, { recursive: true, force: true });
 });
 
+test("report package does not consume its own nested output manifest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-package-test-"));
+  await writeStrictBundle(root, "valid", 3, "2026-07-28T08:00:00Z");
+  const output = join(root, "package");
+  const summary = await writeReportPackage(root, output);
+  assert.equal(summary.package_status, "reportable");
+  assert.equal(summary.bundle_count, 1);
+  assert.deepEqual(summary.rejected_bundles, []);
+  await rm(root, { recursive: true, force: true });
+});
+
 test("schedule only renders a daily cron entry", () => {
   const entry = buildDailyAnalyticsCron({
     workingDirectory: "/work/seo-godlike",

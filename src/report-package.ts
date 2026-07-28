@@ -53,9 +53,10 @@ function parseManifest(value: unknown): Manifest {
   return { files };
 }
 
-async function manifestPaths(root: string): Promise<string[]> {
+async function manifestPaths(root: string, excludedDirectory?: string): Promise<string[]> {
   const result: string[] = [];
   async function walk(directory: string): Promise<void> {
+    if (excludedDirectory && resolve(directory) === resolve(excludedDirectory)) return;
     let entries;
     try { entries = await readdir(directory, { withFileTypes: true }); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
@@ -159,7 +160,7 @@ export async function writeReportPackage(artifactsDir: string, outputDir: string
   const root = resolve(artifactsDir);
   const accepted: PackageEntry[] = [];
   const rejected: Array<{ bundle_path: string; reason: string }> = [];
-  for (const manifestPath of await manifestPaths(root)) {
+  for (const manifestPath of await manifestPaths(root, resolve(outputDir))) {
     const bundlePath = relative(root, dirname(manifestPath)) || ".";
     try { accepted.push(await readVerifiedEntry(manifestPath, root)); }
     catch (error) { rejected.push({ bundle_path: bundlePath, reason: error instanceof Error ? error.message : String(error) }); }
