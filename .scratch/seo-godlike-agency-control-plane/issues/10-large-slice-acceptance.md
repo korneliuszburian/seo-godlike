@@ -40,11 +40,12 @@ Implement one local operator-only report-package path over existing bundles:
   never zero-fills metrics;
 - outputs: deterministic `report-package.json`, Markdown, escaped local HTML,
   and an exclusive-write manifest for all three output files;
-- fixed point: `5388138` (implementation, nested-output exclusion,
-  compound-identity deduplication, and portable rejection paths);
+- fixed point: `8dac1bd` (implementation, nested-output exclusion,
+  compound-identity deduplication, portable rejection paths, and verified
+  read-only request metadata);
 - changed paths are limited to `src/report-package.ts`, `src/cli.ts`,
   `src/report-history.test.ts`, and this acceptance ticket;
-- proof: `npm run build`, `npm test` (48 TypeScript tests + 3 context tests),
+- proof: `npm run build`, `npm test` (49 TypeScript tests + 3 context tests),
   `git diff --check`, and CLI empty-input boundary proof passed;
 - duplicate identities use the existing `(run_id, client_id, property_id)`
   policy, keep the later normalized `generated_at`, and expose skipped paths;
