@@ -28,14 +28,19 @@ ownership, credential, and publication decisions remain explicit.
   provider-specific transport behind an adapter and avoid speculative universals.
 - [Hosted runtime deferral](../../docs/adr/0014-hosted-runtime-deferral.md) —
   hosted credentials and deployment require a separate decision and authority.
+- [GA4 second-provider route](issues/03-second-provider.md) — GA4 is the next
+  bounded read-only provider; Ahrefs is deferred for this extension.
+- [Fallow boundary](issues/04-fallow-boundary.md) — Fallow is a parallel,
+  read-only repository-quality aid, not a provider or evidence authority.
+- [Bundle-first storage](issues/01-evidence-storage-retention.md) — SQLite is
+  optional and rebuildable, not a prerequisite for the next slice.
+- [Large slice acceptance](issues/06-large-slice-acceptance.md) — implement the
+  local GA4 adapter/capability/evidence path without hosting or consent.
 
 ## Not yet specified
 
-- The durable evidence storage/index and retention contract for agency scale.
-- The operator evidence and approval boundary for onboarding a new client/property.
-- Which second provider earns priority and what its smallest read-only proof is.
-- Whether Fallow is a provider, orchestration tool, review surface, or out of scope.
-- The hosted execution model, secret manager, scheduling authority, and audit trail.
+- Retention windows and cleanup/legal-hold authority remain open human decisions.
+- The live GA4 property and OAuth scope remain operator-gated.
 - The minimum client-facing delivery surface after the local control plane is stable.
 
 ## Out of scope
