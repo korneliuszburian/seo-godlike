@@ -1,7 +1,7 @@
 # Agency delivery slice acceptance
 
 Labels: `wayfinder:grilling`
-Status: open
+Status: closed
 Map: `../map.md`
 Blocked by: `09-quality-evidence-frontier.md`
 
@@ -30,3 +30,18 @@ Implement one local operator-only report-package path over existing bundles:
   empty input, deterministic output, and all manifest hashes;
 - non-goals: retention/deletion, legal hold, client sharing, hosting, consent,
   Ads, writes, and new provider adapters.
+
+## Proof
+
+- implementation: `src/report-package.ts` plus `--report-package` in `src/cli.ts`;
+- accepted providers: existing GSC and GA4 report shapes, after manifest and
+  canonical report-hash verification;
+- rejected input remains explicit in `rejected_bundles` and sets `partial`,
+  never zero-fills metrics;
+- outputs: deterministic `report-package.json`, Markdown, escaped local HTML,
+  and an exclusive-write manifest for all three output files;
+- local evidence: `npm run build`, `npm test` (46 TypeScript tests + 3
+  context tests), focused package tests, `git diff --check`, and CLI empty-input
+  boundary proof all passed;
+- fixed point: pending commit after the operator’s mixed worktree is preserved;
+- Fallow was not invoked and remains advisory only (`not_supplied`).

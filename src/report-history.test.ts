@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { findPreviousBundleLinks, readAnalyticsHistory, summarizeHistory, writeHistoryDashboard } from "./report-history.js";
+import { writeReportPackage } from "./report-package.js";
+import { canonicalJson, sha256 } from "./serialize.js";
 import { buildDailyAnalyticsCron } from "./schedule.js";
 
 async function writeBundle(root: string, name: string, start: string, clicks: number, runId = name, generatedAt = `${start}T08:00:00.000Z`, clientId = "bodymove", propertyId = "sc-domain:bodymove.pl"): Promise<void> {
@@ -29,6 +31,20 @@ async function writeBundle(root: string, name: string, start: string, clicks: nu
     files: { "report.json": { sha256: createHash("sha256").update(content).digest("hex"), bytes: Buffer.byteLength(content) } },
   };
   await writeFile(join(directory, "manifest.json"), `${JSON.stringify(manifest)}\n`, "utf8");
+}
+
+async function writeStrictBundle(root: string, name: string, value: number, generatedAt: string, provider: "google-search-console" | "google-analytics" = "google-search-console"): Promise<void> {
+  const directory = join(root, name);
+  await mkdir(directory, { recursive: true });
+  const reportWithoutHash = provider === "google-search-console" ? {
+    schema_version: "1", run_id: `run-${name}`, client_id: "bodymove", client_display_name: "Bodymove", property_refs: ["sc-domain:bodymove.pl"], generated_at: generatedAt, evidence_manifest_ref: "manifest.json", provider, operation: "search_analytics.query", analytics: { current_date_range: { start: "2026-07-01", end: "2026-07-28" }, current: { clicks: value, impressions: value * 10, ctr: 0.1, position: 2 } },
+  } : {
+    schema_version: "1", run_id: `run-${name}`, client_id: "bodymove", client_display_name: "Bodymove", property_refs: ["properties/123"], generated_at: generatedAt, evidence_manifest_ref: "manifest.json", provider, operation: "properties.runReport", analytics: { current_date_range: { start: "2026-07-01", end: "2026-07-28" }, current: { metric_id: "ga4.sessions", sessions: value, rows_received: 1, property_quota: null } },
+  };
+  const report = { ...reportWithoutHash, canonical_json_hash: sha256(canonicalJson(reportWithoutHash)) };
+  const content = canonicalJson(report);
+  await writeFile(join(directory, "report.json"), content, "utf8");
+  await writeFile(join(directory, "manifest.json"), canonicalJson({ schema_version: "1", run_id: report.run_id, files: { "report.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } }), "utf8");
 }
 
 test("history rejects a tampered manifest before consuming report data", async () => {
@@ -122,6 +138,49 @@ test("empty artifacts directory produces a zero-bundle dashboard", async () => {
   assert.deepEqual(summary.skipped_bundles, []);
   assert.doesNotMatch(await readFile(join(output, "executive-summary.md"), "utf8"), /## Skipped bundles/);
   assert.equal(summary.totals.clicks, 0);
+  await rm(root, { recursive: true, force: true });
+});
+
+test("report package verifies manifests, preserves rejected bundles, and writes deterministic outputs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-package-test-"));
+  await writeStrictBundle(root, "valid", 12, "2026-07-28T08:00:00Z");
+  await writeStrictBundle(root, "ga4", 5, "2026-07-29T08:00:00Z", "google-analytics");
+  const tampered = join(root, "tampered");
+  await mkdir(tampered);
+  await writeFile(join(tampered, "report.json"), "{}\n", "utf8");
+  await writeFile(join(tampered, "manifest.json"), canonicalJson({ files: { "report.json": { sha256: "bad", bytes: 3 } } }), "utf8");
+  const output = join(root, "package");
+  const summary = await writeReportPackage(root, output);
+  assert.equal(summary.package_status, "partial");
+  assert.equal(summary.bundle_count, 2);
+  assert.equal(summary.accepted_bundles[0]?.metric_id, "gsc.clicks");
+  assert.equal(summary.accepted_bundles[1]?.metric_id, "ga4.sessions");
+  assert.deepEqual(summary.rejected_bundles.map((entry) => entry.bundle_path), ["tampered"]);
+  assert.match(summary.rejected_bundles[0]?.reason ?? "", /manifest hash mismatch/);
+  assert.match(await readFile(join(output, "report-package.html"), "utf8"), /<table>/);
+  const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, { sha256: string; bytes: number }> };
+  for (const [name, expected] of Object.entries(manifest.files)) {
+    const bytes = await readFile(join(output, name));
+    assert.equal(bytes.byteLength, expected.bytes);
+    assert.equal(sha256(bytes.toString("utf8")), expected.sha256);
+  }
+  await rm(root, { recursive: true, force: true });
+});
+
+test("report package is empty without manifests and rejects invalid reportability metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-package-test-"));
+  const emptyOutput = join(root, "empty-package");
+  const empty = await writeReportPackage(root, emptyOutput);
+  assert.equal(empty.package_status, "empty");
+  const invalid = join(root, "invalid");
+  await mkdir(invalid);
+  const report = canonicalJson({ run_id: "invalid", client_id: "bodymove", client_display_name: "Bodymove", property_refs: ["sc-domain:bodymove.pl"], generated_at: "2026-07-28T08:00:00Z", evidence_manifest_ref: "manifest.json", provider: "google-search-console", operation: "search_analytics.query", analytics: { current_date_range: { start: "2026-07-01", end: "2026-07-28" }, current: { clicks: 1, impressions: 10, ctr: 0.1, position: 2 } }, canonical_json_hash: "wrong" });
+  await writeFile(join(invalid, "report.json"), report, "utf8");
+  await writeFile(join(invalid, "manifest.json"), canonicalJson({ files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } }), "utf8");
+  const invalidOutput = join(root, "invalid-package");
+  const result = await writeReportPackage(invalid, invalidOutput);
+  assert.equal(result.package_status, "partial");
+  assert.match(result.rejected_bundles[0]?.reason ?? "", /canonical_json_hash mismatch/);
   await rm(root, { recursive: true, force: true });
 });
 

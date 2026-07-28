@@ -10,6 +10,7 @@ import { AnalysisRequest, CapabilityRegistry, ClientRegistry } from "./domain.js
 import { getGoogleAccessToken, listSearchConsoleSites, queryGa4Report, querySearchAnalytics } from "./google.js";
 import { addProperty, resolveRegisteredProperty } from "./registry.js";
 import { findPreviousBundleLinks, writeHistoryDashboard } from "./report-history.js";
+import { writeReportPackage } from "./report-package.js";
 import { buildAnalyticsRunId } from "./run-id.js";
 import { buildDailyAnalyticsCron } from "./schedule.js";
 import { runSequentialBatch } from "./batch.js";
@@ -148,6 +149,11 @@ async function main(): Promise<void> {
     const artifactsDir = argument("--report-history");
     const outputDir = resolve(argument("--output"));
     const summary = await writeHistoryDashboard(resolve(artifactsDir), outputDir);
+    process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--report-package")) {
+    const summary = await writeReportPackage(resolve(argument("--report-package")), resolve(argument("--output")));
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
     return;
   }
