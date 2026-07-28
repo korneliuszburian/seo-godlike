@@ -28,6 +28,35 @@ Do not create external writes, publish changes, expose secrets, use an
 official Codex SDK or local Codex app-server using the existing Codex auth
 posture. If that cannot be established safely, stop and report the blocker.
 
+## Documentation minimalism and source of truth
+
+Treat documentation as a thin layer around the executable system, not as a
+second implementation. Code, tests, schemas, fixtures, and generated evidence
+are authoritative for behavior and data shape; Markdown must not restate those
+facts unless it points to the authoritative source.
+
+- Update the existing canonical document before creating a new one. One fact,
+  one owner, one durable location.
+- Do not create a durable document for a routine slice, status update, review
+  result, or code explanation when the existing owner can be updated or the
+  code and tests already make it observable.
+- Create an ADR only for an earned architectural decision with alternatives,
+  consequences, and a falsifier. Create a retained report only for a named
+  consumer. Create a runbook only for an operator action that cannot be
+  inferred safely from the CLI and tests.
+- Keep current status, queue, claims, and blockers in the configured local
+  tracker; do not mirror them in architecture pages, ADR indexes, capability
+  pages, or ad-hoc summaries.
+- Keep transient prompts, review packets, logs, and research runs under the
+  ignored `docs/agents/runs/` boundary. Never promote them to durable docs just
+  because a workflow produced them.
+- No new root-level `docs/*.md`, tracker, backlog, decision register, or
+  duplicate index without an explicit reason and an owner. Prefer links over
+  copied sections.
+- A documentation-only change must name the canonical owner it updates and
+  state why code/tests/evidence cannot carry the information alone. If it
+  cannot satisfy that test, do not create the document.
+
 <!-- krn-agent-workflow:start -->
 ## Agent workflow
 
