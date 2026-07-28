@@ -40,8 +40,8 @@ Implement one local operator-only report-package path over existing bundles:
   never zero-fills metrics;
 - outputs: deterministic `report-package.json`, Markdown, escaped local HTML,
   and an exclusive-write manifest for all three output files;
-- fixed point: `a088e08` (implementation, nested-output exclusion, and
-  compound-identity deduplication);
+- fixed point: `5388138` (implementation, nested-output exclusion,
+  compound-identity deduplication, and portable rejection paths);
 - changed paths are limited to `src/report-package.ts`, `src/cli.ts`,
   `src/report-history.test.ts`, and this acceptance ticket;
 - proof: `npm run build`, `npm test` (48 TypeScript tests + 3 context tests),
