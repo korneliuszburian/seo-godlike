@@ -40,6 +40,9 @@ path rather than inventing a second tracker.
   status for partial batches.
 - [Registry onboarding policy](issues/05-registry-onboarding-policy.md) —
   onboarding is explicit, validated, duplicate-rejecting, and atomic.
+- [Provider adapter contract](issues/06-provider-adapter-contract.md) —
+  transport/provider details stay behind adapters while policy and evidence
+  remain separate owners; a shared interface waits for the second provider.
 
 ## Frontier tickets
 
