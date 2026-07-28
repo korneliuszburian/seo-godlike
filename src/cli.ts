@@ -26,6 +26,10 @@ function optionalArgument(name: string): string | undefined {
   return value;
 }
 
+function hasArgument(name: string): boolean {
+  return process.argv.includes(name);
+}
+
 function repeatedArguments(name: string): string[] {
   const values: string[] = [];
   for (let index = 0; index < process.argv.length; index += 1) {
@@ -40,6 +44,9 @@ function repeatedArguments(name: string): string[] {
 
 async function main(): Promise<void> {
   if (process.argv.includes("--schedule")) {
+    if (!["--client-id", "--property-id", "--registry", "--capabilities"].every(hasArgument)) {
+      process.stderr.write("warning: using default schedule values; pass explicit flags for production use\n");
+    }
     process.stdout.write(`${buildDailyAnalyticsCron({
       workingDirectory: process.cwd(),
       oauthClientPath: optionalArgument("--oauth-client") ?? "/absolute/path/outside/repository/oauth-client.json",

@@ -13,7 +13,8 @@ export interface ScheduleOptions {
 }
 
 export function buildDailyAnalyticsCron(options: ScheduleOptions): string {
-  const output = `${shellQuote(options.artifactsDir)}/bodymove-analytics-pipeline-$(date +\\%Y\\%m\\%d)`;
+  if (!/^[A-Za-z0-9._-]+$/.test(options.clientId)) throw new Error("clientId must be a shell-safe path segment");
+  const output = `${shellQuote(options.artifactsDir)}/${options.clientId}-analytics-pipeline-$(date +\\%Y\\%m\\%d)`;
   const command = [
     "node", "dist/cli.js", "--analytics",
     "--client-id", shellQuote(options.clientId),

@@ -7,15 +7,15 @@ import { test } from "node:test";
 import { findPreviousBundleLinks, readAnalyticsHistory, summarizeHistory, writeHistoryDashboard } from "./report-history.js";
 import { buildDailyAnalyticsCron } from "./schedule.js";
 
-async function writeBundle(root: string, name: string, start: string, clicks: number): Promise<void> {
+async function writeBundle(root: string, name: string, start: string, clicks: number, runId = name, generatedAt = `${start}T08:00:00.000Z`): Promise<void> {
   const directory = join(root, name);
   await mkdir(directory, { recursive: true });
   const report = {
-    run_id: name,
+    run_id: runId,
     client_id: "bodymove",
     client_display_name: "Bodymove",
     property_refs: ["sc-domain:bodymove.pl"],
-    generated_at: `${start}T08:00:00.000Z`,
+    generated_at: generatedAt,
     analytics: {
       current_date_range: { start, end: start },
       current: { clicks, impressions: clicks * 10, ctr: clicks === 0 ? 0 : 0.1, position: 2 },
@@ -25,7 +25,7 @@ async function writeBundle(root: string, name: string, start: string, clicks: nu
   await writeFile(join(directory, "report.json"), content, "utf8");
   const manifest = {
     schema_version: "1",
-    run_id: name,
+    run_id: runId,
     files: { "report.json": { sha256: createHash("sha256").update(content).digest("hex"), bytes: Buffer.byteLength(content) } },
   };
   await writeFile(join(directory, "manifest.json"), `${JSON.stringify(manifest)}\n`, "utf8");
@@ -59,6 +59,27 @@ test("history aggregates two bundles chronologically and writes deterministic da
   await rm(root, { recursive: true, force: true });
 });
 
+test("history keeps the latest generated duplicate run and warns about the skipped bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
+  await writeBundle(root, "older", "2026-07-01", 2, "same-run", "2026-07-02T08:00:00.000Z");
+  await writeBundle(root, "newer", "2026-07-01", 7, "same-run", "2026-07-03T08:00:00.000Z");
+  let stderr = "";
+  const originalWrite = process.stderr.write;
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    stderr += chunk.toString();
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const entries = await readAnalyticsHistory(root);
+    assert.deepEqual(entries.map((entry) => entry.bundle_path), ["newer"]);
+    assert.equal(entries[0]?.metrics.clicks, 7);
+    assert.match(stderr, /skipping bundle 'older'/);
+  } finally {
+    process.stderr.write = originalWrite;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("empty artifacts directory produces a zero-bundle dashboard", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
   const output = join(root, "dashboard");
@@ -84,4 +105,17 @@ test("schedule only renders a daily cron entry", () => {
   assert.match(entry, /--output 'artifacts\/analysis'\/bodymove-analytics-pipeline-\$\(date/);
   assert.doesNotMatch(entry, /--output 'artifacts\/analysis\/bodymove-analytics-pipeline/);
   assert.doesNotMatch(entry, /crontab/);
+});
+
+test("schedule uses the client id in the output path", () => {
+  const entry = buildDailyAnalyticsCron({
+    workingDirectory: "/work/seo-godlike",
+    oauthClientPath: "/secure/oauth-client.json",
+    clientId: "acme",
+    propertyId: "sc-domain:acme.example",
+    registryPath: "fixtures/client-registry.json",
+    capabilitiesPath: "fixtures/capability-registry.json",
+    artifactsDir: "artifacts/analysis",
+  });
+  assert.match(entry, /--output 'artifacts\/analysis'\/acme-analytics-pipeline-\$\(date/);
 });

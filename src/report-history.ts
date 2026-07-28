@@ -143,11 +143,23 @@ async function readVerifiedBundle(manifestPath: string, artifactsDir: string): P
 
 export async function readAnalyticsHistory(artifactsDir: string): Promise<HistoryEntry[]> {
   const root = resolve(artifactsDir);
-  const entries: HistoryEntry[] = [];
+  const entriesByRunId = new Map<string, HistoryEntry>();
   for (const manifestPath of await manifestPaths(root)) {
     const entry = await readVerifiedBundle(manifestPath, root);
-    if (entry) entries.push(entry);
+    if (!entry) continue;
+    const existing = entriesByRunId.get(entry.run_id);
+    if (!existing) {
+      entriesByRunId.set(entry.run_id, entry);
+      continue;
+    }
+    if (entry.generated_at > existing.generated_at || (entry.generated_at === existing.generated_at && entry.bundle_path > existing.bundle_path)) {
+      process.stderr.write(`warning: duplicate run_id '${entry.run_id}'; skipping bundle '${existing.bundle_path}' (last wins: '${entry.bundle_path}')\n`);
+      entriesByRunId.set(entry.run_id, entry);
+    } else {
+      process.stderr.write(`warning: duplicate run_id '${entry.run_id}'; skipping bundle '${entry.bundle_path}' (last wins: '${existing.bundle_path}')\n`);
+    }
   }
+  const entries = [...entriesByRunId.values()];
   return entries.sort((left, right) => left.period.start.localeCompare(right.period.start) || left.period.end.localeCompare(right.period.end) || left.generated_at.localeCompare(right.generated_at) || left.bundle_path.localeCompare(right.bundle_path));
 }
 
