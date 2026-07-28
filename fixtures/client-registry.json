@@ -2,8 +2,14 @@
   "clients": [
     {
       "client_id": "bodymove",
+      "display_name": "Bodymove",
       "properties": [
-        { "property_id": "sc-domain:bodymove.pl", "provider": "google-search-console" }
+        {
+          "property_id": "sc-domain:bodymove.pl",
+          "provider": "google-search-console",
+          "canonical_property": true,
+          "aliases": ["https://bodymove.pl/"]
+        }
       ]
     }
   ]

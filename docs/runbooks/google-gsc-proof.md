@@ -113,3 +113,25 @@ The output contains current and previous raw responses, exact-deduplicated
 top-query/page aggregates, device/country CTR breakdowns, period-over-period
 totals, and the same exclusive-write manifest contract. The output directory
 must not already exist.
+
+## Add a property for an existing client
+
+Onboarding is an explicit registry mutation. It never grants Google access;
+the agency identity must already be authorized for the canonical property.
+Aliases are input normalization only and are resolved to the canonical ID
+before a provider request:
+
+```bash
+node dist/cli.js \
+  --add-property \
+  --registry fixtures/client-registry.json \
+  --client-id bodymove \
+  --property-id sc-domain:newbodymove.pl \
+  --canonical-property true \
+  --alias https://newbodymove.pl/
+```
+
+The command fails closed for unknown clients, invalid property identifiers,
+duplicate canonical IDs, duplicate aliases, or aliases attached to a
+non-canonical property. It writes the registry through an exclusive temporary
+file and replacement, and never touches OAuth credentials.

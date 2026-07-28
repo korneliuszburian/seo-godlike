@@ -12,6 +12,7 @@ import {
   SourceRecord,
 } from "./domain.js";
 import { canonicalJson, sha256 } from "./serialize.js";
+import { resolveRegisteredProperty } from "./registry.js";
 
 interface SearchAnalyticsResponse {
   rows?: Array<{ clicks?: number }>;
@@ -33,11 +34,7 @@ function assertRequest(
   if (request.provider !== "google-search-console" || request.metric !== "clicks") {
     throw new PolicyError("scope");
   }
-  const client = registry.clients.find((item) => item.client_id === request.client_id);
-  const property = client?.properties.find(
-    (item) => item.property_id === request.property_id && item.provider === request.provider,
-  );
-  if (!property) throw new PolicyError("scope");
+  resolveRegisteredProperty(registry, request.client_id, request.property_id, request.provider);
   const capability = capabilities.capabilities.find(
     (item) => item.provider === request.provider && item.operation_id === request.operation,
   );

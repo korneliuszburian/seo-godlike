@@ -21,6 +21,7 @@ import {
   PeriodComparison,
 } from "./analytics.js";
 import { canonicalJson, sha256 } from "./serialize.js";
+import { resolveRegisteredProperty } from "./registry.js";
 
 export interface AnalyticsReport extends Report {
   analytics: {
@@ -37,15 +38,14 @@ export interface AnalyticsRunResult {
   report: AnalyticsReport;
 }
 
-function assertAnalyticsRequest(request: GscAnalyticsRequest, registry: ClientRegistry, capabilities: CapabilityRegistry): void {
+function assertAnalyticsRequest(request: GscAnalyticsRequest, registry: ClientRegistry, capabilities: CapabilityRegistry): string {
   if (request.policy_mode !== "read_only" || request.operation !== "search_analytics.query") throw new PolicyError("policy");
   if (request.provider !== "google-search-console" || request.metric !== "clicks") throw new PolicyError("scope");
   if (JSON.stringify(request.dimensions) !== JSON.stringify(GSC_ANALYTICS_DIMENSIONS) || request.row_limit !== 25_000) throw new PolicyError("schema");
-  const client = registry.clients.find((item) => item.client_id === request.client_id);
-  const property = client?.properties.find((item) => item.property_id === request.property_id && item.provider === request.provider);
-  if (!property) throw new PolicyError("scope");
+  const resolved = resolveRegisteredProperty(registry, request.client_id, request.property_id, request.provider);
   const capability = capabilities.capabilities.find((item) => item.provider === request.provider && item.operation_id === request.operation);
   if (!capability || capability.read_write !== "read") throw new PolicyError("schema");
+  return resolved.canonical_property_id;
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
@@ -112,7 +112,7 @@ export async function runGscAnalytics(
   previousRawText: string | undefined,
   outputDir: string,
 ): Promise<AnalyticsRunResult> {
-  assertAnalyticsRequest(request, registry, capabilities);
+  const canonicalPropertyId = assertAnalyticsRequest(request, registry, capabilities);
   const currentRows = parseSearchAnalyticsResponse(currentRawText);
   const previousRows = previousRawText === undefined ? null : parseSearchAnalyticsResponse(previousRawText);
   const current = aggregateSearchAnalytics(currentRows);
@@ -138,7 +138,7 @@ export async function runGscAnalytics(
     observation_id: `observation_${request.run_id}`,
     metric_id: "gsc.clicks",
     client_id: request.client_id,
-    property_id: request.property_id,
+    property_id: canonicalPropertyId,
     period: request.date_range,
     value: current.clicks,
     source_ref: sourceId,
@@ -146,7 +146,7 @@ export async function runGscAnalytics(
   };
   const claim: Claim = {
     claim_id: `claim_${request.run_id}`,
-    statement: `GSC clicks for ${request.property_id} from ${request.date_range.start} to ${request.date_range.end}: ${current.clicks}`,
+    statement: `GSC clicks for ${canonicalPropertyId} from ${request.date_range.start} to ${request.date_range.end}: ${current.clicks}`,
     observation_refs: [observation.observation_id],
     confidence: "observed",
     validation: "passed",
@@ -160,7 +160,7 @@ export async function runGscAnalytics(
     capability_id: capabilityId,
     operation_id: request.operation,
     client_id: request.client_id,
-    property_id: request.property_id,
+    property_id: canonicalPropertyId,
     request_hash: requestHash,
     response_hash: responseHash,
     outcome: "succeeded",
@@ -179,7 +179,7 @@ export async function runGscAnalytics(
     schema_version: request.schema_version,
     run_id: request.run_id,
     client_id: request.client_id,
-    property_refs: [request.property_id],
+    property_refs: [canonicalPropertyId],
     source_refs: [sourceId],
     observation_refs: [observation.observation_id],
     claim_refs: [claim.claim_id],

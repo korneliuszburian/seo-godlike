@@ -38,7 +38,13 @@ export interface GscAnalyticsRequest {
 export interface ClientRegistry {
   clients: Array<{
     client_id: string;
-    properties: Array<{ property_id: string; provider: Provider }>;
+    display_name?: string;
+    properties: Array<{
+      property_id: string;
+      provider: Provider;
+      canonical_property?: boolean;
+      aliases?: string[];
+    }>;
   }>;
 }
 
@@ -114,8 +120,8 @@ export interface CompanyLogEvent {
 }
 
 export class PolicyError extends Error {
-  constructor(public readonly category: "policy" | "scope" | "schema") {
-    super(`${category}: request is not allowed`);
+  constructor(public readonly category: "policy" | "scope" | "schema", message?: string) {
+    super(message ?? `${category}: request is not allowed`);
     this.name = "PolicyError";
   }
 }

@@ -7,6 +7,7 @@ import { runGscAnalytics } from "./gsc-analytics.js";
 import { runFixtureAnalysis } from "./pipeline.js";
 import { AnalysisRequest, CapabilityRegistry, ClientRegistry } from "./domain.js";
 import { getGoogleAccessToken, listSearchConsoleSites, querySearchAnalytics } from "./google.js";
+import { addProperty, resolveRegisteredProperty } from "./registry.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -15,7 +16,41 @@ function argument(name: string): string {
   return value;
 }
 
+function optionalArgument(name: string): string | undefined {
+  const index = process.argv.indexOf(name);
+  if (index < 0) return undefined;
+  const value = process.argv[index + 1];
+  if (!value || value.startsWith("--")) throw new Error(`missing ${name}`);
+  return value;
+}
+
+function repeatedArguments(name: string): string[] {
+  const values: string[] = [];
+  for (let index = 0; index < process.argv.length; index += 1) {
+    if (process.argv[index] === name) {
+      const value = process.argv[index + 1];
+      if (!value || value.startsWith("--")) throw new Error(`missing ${name}`);
+      values.push(...value.split(",").map((item) => item.trim()).filter(Boolean));
+    }
+  }
+  return values;
+}
+
 async function main(): Promise<void> {
+  if (process.argv.includes("--add-property")) {
+    const canonicalValue = optionalArgument("--canonical-property") ?? "true";
+    if (canonicalValue !== "true" && canonicalValue !== "false") throw new Error("--canonical-property must be true or false");
+    const registry = await addProperty({
+      registryPath: argument("--registry"),
+      clientId: argument("--client-id"),
+      propertyId: argument("--property-id"),
+      provider: "google-search-console",
+      canonicalProperty: canonicalValue === "true",
+      aliases: repeatedArguments("--alias"),
+    });
+    process.stdout.write(`${JSON.stringify(registry, null, 2)}\n`);
+    return;
+  }
   if (process.argv.includes("--preflight")) {
     const result = await preflightOAuth({
       oauthClientPath: argument("--oauth-client"),
@@ -40,20 +75,21 @@ async function main(): Promise<void> {
     const clientId = argument("--client-id");
     const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
     const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
-    await preflightOAuth({ oauthClientPath, propertyId, repositoryRoot: process.cwd() });
+    const canonicalPropertyId = resolveRegisteredProperty(registry, clientId, propertyId, "google-search-console").canonical_property_id;
+    await preflightOAuth({ oauthClientPath, propertyId: canonicalPropertyId, repositoryRoot: process.cwd() });
     const ranges = calculateDateRanges();
     const capturedAt = new Date().toISOString();
     const clientJson = JSON.parse(await readFile(resolve(oauthClientPath), "utf8"));
     const accessToken = await getGoogleAccessToken(clientJson);
     const [currentRawText, previousRawText] = await Promise.all([
-      querySearchAnalytics(accessToken, propertyId, ranges.current.start, ranges.current.end, GSC_ANALYTICS_DIMENSIONS),
-      querySearchAnalytics(accessToken, propertyId, ranges.previous.start, ranges.previous.end, GSC_ANALYTICS_DIMENSIONS),
+      querySearchAnalytics(accessToken, canonicalPropertyId, ranges.current.start, ranges.current.end, GSC_ANALYTICS_DIMENSIONS),
+      querySearchAnalytics(accessToken, canonicalPropertyId, ranges.previous.start, ranges.previous.end, GSC_ANALYTICS_DIMENSIONS),
     ]);
     const request: GscAnalyticsRequest = {
       schema_version: "1",
       run_id: `analytics_${clientId}_${ranges.current.start}_${ranges.current.end}`,
       client_id: clientId,
-      property_id: propertyId,
+      property_id: canonicalPropertyId,
       provider: "google-search-console",
       operation: "search_analytics.query",
       metric: "clicks",
