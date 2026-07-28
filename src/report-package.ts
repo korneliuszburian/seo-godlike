@@ -30,10 +30,6 @@ export interface ReportPackageSummary {
   advisory: { fallow: "not_supplied" };
 }
 
-interface PackageResult extends ReportPackageSummary {
-  outputDir: string;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -121,7 +117,14 @@ async function readVerifiedEntry(manifestPath: string, artifactsDir: string): Pr
   if (typeof declaredHash !== "string") throw new Error("reportability metadata is incomplete: canonical_json_hash missing");
   const { canonical_json_hash: _, ...reportWithoutHash } = report;
   if (hashText(canonicalJson(reportWithoutHash)) !== declaredHash) throw new Error("canonical_json_hash mismatch");
-  return reportEntry(report, relative(artifactsDir, bundleDir) || ".");
+  const entry = reportEntry(report, relative(artifactsDir, bundleDir) || ".");
+  const requestBytes = files.get("request.json");
+  if (!requestBytes) throw new Error("reportability metadata is incomplete: request.json missing");
+  const request = JSON.parse(requestBytes.toString("utf8")) as Record<string, unknown>;
+  if (!isRecord(request) || request.policy_mode !== "read_only" || request.provider !== entry.provider || request.operation !== entry.operation || request.client_id !== entry.client_id || request.property_id !== entry.property_id) {
+    throw new Error("read-only request metadata does not match report");
+  }
+  return entry;
 }
 
 function escapeHtml(value: string): string {

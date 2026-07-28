@@ -43,8 +43,10 @@ async function writeStrictBundle(root: string, name: string, value: number, gene
   };
   const report = { ...reportWithoutHash, canonical_json_hash: sha256(canonicalJson(reportWithoutHash)) };
   const content = canonicalJson(report);
+  const request = canonicalJson({ schema_version: "1", run_id: report.run_id, client_id: report.client_id, property_id: report.property_refs[0], provider: report.provider, operation: report.operation, policy_mode: "read_only" });
   await writeFile(join(directory, "report.json"), content, "utf8");
-  await writeFile(join(directory, "manifest.json"), canonicalJson({ schema_version: "1", run_id: report.run_id, files: { "report.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } }), "utf8");
+  await writeFile(join(directory, "request.json"), request, "utf8");
+  await writeFile(join(directory, "manifest.json"), canonicalJson({ schema_version: "1", run_id: report.run_id, files: { "report.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) }, "request.json": { sha256: sha256(request), bytes: Buffer.byteLength(request) } } }), "utf8");
 }
 
 test("history rejects a tampered manifest before consuming report data", async () => {
@@ -177,12 +179,29 @@ test("report package is empty without manifests and rejects invalid reportabilit
   const invalid = join(root, "invalid");
   await mkdir(invalid);
   const report = canonicalJson({ run_id: "invalid", client_id: "bodymove", client_display_name: "Bodymove", property_refs: ["sc-domain:bodymove.pl"], generated_at: "2026-07-28T08:00:00Z", evidence_manifest_ref: "manifest.json", provider: "google-search-console", operation: "search_analytics.query", analytics: { current_date_range: { start: "2026-07-01", end: "2026-07-28" }, current: { clicks: 1, impressions: 10, ctr: 0.1, position: 2 } }, canonical_json_hash: "wrong" });
+  const request = canonicalJson({ run_id: "invalid", client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", operation: "search_analytics.query", policy_mode: "read_only" });
   await writeFile(join(invalid, "report.json"), report, "utf8");
-  await writeFile(join(invalid, "manifest.json"), canonicalJson({ files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } }), "utf8");
+  await writeFile(join(invalid, "request.json"), request, "utf8");
+  await writeFile(join(invalid, "manifest.json"), canonicalJson({ files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) }, "request.json": { sha256: sha256(request), bytes: Buffer.byteLength(request) } } }), "utf8");
   const invalidOutput = join(root, "invalid-package");
   const result = await writeReportPackage(invalid, invalidOutput);
   assert.equal(result.package_status, "partial");
   assert.match(result.rejected_bundles[0]?.reason ?? "", /canonical_json_hash mismatch/);
+  await rm(root, { recursive: true, force: true });
+});
+
+test("report package rejects a report whose request is not read-only", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-package-test-"));
+  await writeStrictBundle(root, "write-request", 4, "2026-07-28T08:00:00Z");
+  const requestPath = join(root, "write-request", "request.json");
+  const request = canonicalJson({ policy_mode: "write", provider: "google-search-console", operation: "search_analytics.query", client_id: "bodymove", property_id: "sc-domain:bodymove.pl" });
+  await writeFile(requestPath, request, "utf8");
+  const manifestPath = join(root, "write-request", "manifest.json");
+  const reportBytes = await readFile(join(root, "write-request", "report.json"));
+  await writeFile(manifestPath, canonicalJson({ files: { "report.json": { sha256: sha256(reportBytes.toString("utf8")), bytes: reportBytes.byteLength }, "request.json": { sha256: sha256(request), bytes: Buffer.byteLength(request) } } }), "utf8");
+  const summary = await writeReportPackage(root, join(root, "package"));
+  assert.equal(summary.package_status, "partial");
+  assert.match(summary.rejected_bundles[0]?.reason ?? "", /read-only request metadata/);
   await rm(root, { recursive: true, force: true });
 });
 
@@ -207,8 +226,10 @@ test("report package deduplicates the same run identity without double counting"
   const sameRun = { ...newerReport, run_id: olderReport.run_id, canonical_json_hash: "" };
   const { canonical_json_hash: _, ...withoutHash } = sameRun;
   const content = canonicalJson({ ...withoutHash, canonical_json_hash: sha256(canonicalJson(withoutHash)) });
+  const request = canonicalJson({ schema_version: "1", run_id: olderReport.run_id, client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", operation: "search_analytics.query", policy_mode: "read_only" });
   await writeFile(join(root, "newer", "report.json"), content, "utf8");
-  await writeFile(join(root, "newer", "manifest.json"), canonicalJson({ schema_version: "1", run_id: olderReport.run_id, files: { "report.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } }), "utf8");
+  await writeFile(join(root, "newer", "request.json"), request, "utf8");
+  await writeFile(join(root, "newer", "manifest.json"), canonicalJson({ schema_version: "1", run_id: olderReport.run_id, files: { "report.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) }, "request.json": { sha256: sha256(request), bytes: Buffer.byteLength(request) } } }), "utf8");
   const summary = await writeReportPackage(root, join(root, "package"));
   assert.equal(summary.bundle_count, 1);
   assert.equal(summary.accepted_bundles[0]?.value, 9);
