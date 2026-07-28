@@ -33,3 +33,11 @@ Research synthesis: `reconciled-route-single-large-slice`.
 
 No OAuth consent, live GA4 request, property ownership, or validated-real-domain
 capability state was claimed or executed in this slice.
+
+## Follow-up fixed point
+
+At `73418e5` the three review findings were closed: GA4 capability versions are
+strictly required, GA4 Markdown escapes report-derived values, and persisted
+reports require provider/operation metadata. The local proof now passes with
+44 TypeScript tests plus 3 context tests. Live proof remains open and
+operator-gated because no real GA4 `properties/<id>` is registered yet.

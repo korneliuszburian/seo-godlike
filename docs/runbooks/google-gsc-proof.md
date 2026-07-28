@@ -224,3 +224,23 @@ node dist/cli.js \
 
 Do not add a real property to the permanent fixture or run the OAuth path until
 the operator confirms the client/property ownership and authorizes the scope.
+
+### Current fixed point
+
+The GA4 quality cleanup is recorded at commit `73418e5`. The adapter now fails
+closed when the capability omits `api_version`, escapes report-derived values
+in Markdown, and requires `provider` plus `operation` in every persisted
+`Report`. Local proof is green (`npm test`: 44 TypeScript tests plus 3 context
+tests), but this does not prove a live GA4 property.
+
+The remaining operator handoff is:
+
+1. provide the real numeric GA4 Property ID;
+2. add it for the intended client with `--add-property --provider
+   google-analytics`;
+3. add the matching read-only `v1beta` capability record;
+4. run GA4 preflight and complete the displayed `analytics.readonly` consent;
+5. run `--ga4-analytics` and verify non-zero sessions plus every manifest hash.
+
+Until those steps pass, keep GA4 at `schema_verified` and do not claim
+`validated_real_domain`.

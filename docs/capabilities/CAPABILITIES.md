@@ -2,7 +2,8 @@
 
 Owner: capability inventory workflow.
 
-Stan epistemiczny na `2026-07-27`. To jest bezpieczny, lokalny inventory; nie zawiera sekretów i nie ustanawia uprawnień.
+Stan epistemiczny na `2026-07-28`, fixed point `73418e5`. To jest bezpieczny,
+lokalny inventory; nie zawiera sekretów i nie ustanawia uprawnień.
 
 ## Vocabulary
 
@@ -35,7 +36,7 @@ Przejście do kolejnego stanu wymaga osobnego lokalnego dowodu. Wpis konfiguracy
 | Candidate | Local evidence | State |
 |---|---|---|
 | Google Search Console API | local read-only v3 adapter, agency keyring, real GSC proof | `validated_real_domain` |
-| Google Analytics Data API | local fixture-tested read-only v1beta adapter; no live scope/property proof yet | `schema_verified` (live unknown) |
+| Google Analytics Data API | local fixture-tested read-only v1beta adapter; strict version gate; no live scope/property proof yet | `schema_verified` (live unknown) |
 | CrUX / PageSpeed Insights | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
 | Semrush / Ahrefs / DataForSEO | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
 
@@ -45,8 +46,17 @@ The candidate names above are documented possibilities from the onboarding promp
 
 - GA4 OAuth scope and numeric property access remain operator-gated.
 - GA4 has no live non-zero runReport proof or validated-real-domain state yet.
+- No real `properties/<id>` is currently registered for a client in the
+  permanent fixture, and the GA4 capability record is intentionally absent
+  until a real property proof is completed.
+- Local proof at `73418e5`: `npm test` passed (44 TypeScript tests + 3 context
+  tests), including strict missing-version rejection and GA4 Markdown escaping.
 - Fallow has not been run against the current revision; it is not an SEO provider.
 
 ## Safe next action after Phase A approval
 
-Choose one provider only after the operator supplies an authorized domain/property and an existing secret reference, then run a bounded read-only capability verifier. Until then the correct outcome is `BLOCKED_MISSING_CAPABILITY` plus `BLOCKED_AUTHORIZATION`.
+Operator must supply a numeric GA4 Property ID and authorize the agency identity
+for `analytics.readonly`. Then the implementation owner can add the property
+and capability record, run metadata-only preflight, execute one bounded live
+`runReport`, verify a non-zero sessions bundle and all manifest hashes, and only
+then promote GA4 to `validated_real_domain`.
