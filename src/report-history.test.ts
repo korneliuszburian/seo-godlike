@@ -7,14 +7,14 @@ import { test } from "node:test";
 import { findPreviousBundleLinks, readAnalyticsHistory, summarizeHistory, writeHistoryDashboard } from "./report-history.js";
 import { buildDailyAnalyticsCron } from "./schedule.js";
 
-async function writeBundle(root: string, name: string, start: string, clicks: number, runId = name, generatedAt = `${start}T08:00:00.000Z`): Promise<void> {
+async function writeBundle(root: string, name: string, start: string, clicks: number, runId = name, generatedAt = `${start}T08:00:00.000Z`, clientId = "bodymove", propertyId = "sc-domain:bodymove.pl"): Promise<void> {
   const directory = join(root, name);
   await mkdir(directory, { recursive: true });
   const report = {
     run_id: runId,
-    client_id: "bodymove",
+    client_id: clientId,
     client_display_name: "Bodymove",
-    property_refs: ["sc-domain:bodymove.pl"],
+    property_refs: [propertyId],
     generated_at: generatedAt,
     analytics: {
       current_date_range: { start, end: start },
@@ -82,6 +82,16 @@ test("history keeps the latest generated duplicate run and warns about the skipp
     process.stderr.write = originalWrite;
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("history keeps equal run ids separate across canonical properties", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
+  await writeBundle(root, "bodymove", "2026-07-01", 2, "same-run", "2026-07-03T08:00:00.000Z", "bodymove", "sc-domain:bodymove.pl");
+  await writeBundle(root, "other-property", "2026-07-01", 5, "same-run", "2026-07-02T08:00:00.000Z", "bodymove", "sc-domain:other-property.pl");
+  const entries = await readAnalyticsHistory(root);
+  assert.equal(entries.length, 2);
+  assert.deepEqual(entries.map((entry) => entry.property_id).sort(), ["sc-domain:bodymove.pl", "sc-domain:other-property.pl"]);
+  await rm(root, { recursive: true, force: true });
 });
 
 test("history rejects an invalid generated_at before deduplication", async () => {

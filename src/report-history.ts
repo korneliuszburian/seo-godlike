@@ -153,28 +153,32 @@ interface HistoryReadResult {
   skippedBundles: string[];
 }
 
+function deduplicationKey(entry: HistoryEntry): string {
+  return JSON.stringify([entry.run_id, entry.client_id, entry.property_id]);
+}
+
 async function readHistory(artifactsDir: string): Promise<HistoryReadResult> {
   const root = resolve(artifactsDir);
-  const entriesByRunId = new Map<string, HistoryEntry>();
+  const entriesByIdentity = new Map<string, HistoryEntry>();
   const skippedBundles: string[] = [];
   for (const manifestPath of await manifestPaths(root)) {
     const entry = await readVerifiedBundle(manifestPath, root);
     if (!entry) continue;
-    const existing = entriesByRunId.get(entry.run_id);
+    const existing = entriesByIdentity.get(deduplicationKey(entry));
     if (!existing) {
-      entriesByRunId.set(entry.run_id, entry);
+      entriesByIdentity.set(deduplicationKey(entry), entry);
       continue;
     }
     if (entry.generated_at > existing.generated_at || (entry.generated_at === existing.generated_at && entry.bundle_path > existing.bundle_path)) {
       process.stderr.write(`warning: duplicate run_id '${entry.run_id}'; skipping bundle '${existing.bundle_path}' (last wins: '${entry.bundle_path}')\n`);
       skippedBundles.push(existing.bundle_path);
-      entriesByRunId.set(entry.run_id, entry);
+      entriesByIdentity.set(deduplicationKey(entry), entry);
     } else {
       process.stderr.write(`warning: duplicate run_id '${entry.run_id}'; skipping bundle '${entry.bundle_path}' (last wins: '${existing.bundle_path}')\n`);
       skippedBundles.push(entry.bundle_path);
     }
   }
-  const entries = [...entriesByRunId.values()];
+  const entries = [...entriesByIdentity.values()];
   return {
     entries: entries.sort((left, right) => left.period.start.localeCompare(right.period.start) || left.period.end.localeCompare(right.period.end) || left.generated_at.localeCompare(right.generated_at) || left.bundle_path.localeCompare(right.bundle_path)),
     skippedBundles: skippedBundles.sort(),
