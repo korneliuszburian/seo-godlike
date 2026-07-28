@@ -46,6 +46,9 @@ path rather than inventing a second tracker.
 - [Capability version gates](issues/07-capability-version-policy.md) — explicit
   incompatible versions fail closed and legacy missing versions default to the
   current provider version.
+- [Local schedule reliability guard](issues/08-scheduling-reliability-policy.md)
+  — Linux `flock`, bounded provider retries, and stdout-only schedule rendering;
+  retention remains deferred.
 
 ## Frontier tickets
 

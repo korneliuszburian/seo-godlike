@@ -12,13 +12,15 @@ export interface ScheduleOptions {
   registryPath: string;
   capabilitiesPath: string;
   artifactsDir: string;
+  lockPath?: string;
 }
 
 export function buildDailyAnalyticsCron(options: ScheduleOptions): string {
   assertShellSafeSegment(options.clientId);
   const output = `${shellQuote(options.artifactsDir)}/${options.clientId}-analytics-pipeline-$(date +\\%Y\\%m\\%d)`;
+  const lockPath = options.lockPath ?? `${options.artifactsDir}/.${options.clientId}-analytics.lock`;
   const command = [
-    "node", "dist/cli.js", "--analytics",
+    "flock", "-n", shellQuote(lockPath), "--", "node", "dist/cli.js", "--analytics",
     "--client-id", shellQuote(options.clientId),
     "--property-id", shellQuote(options.propertyId),
     "--registry", shellQuote(options.registryPath),

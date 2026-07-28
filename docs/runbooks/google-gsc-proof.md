@@ -176,6 +176,12 @@ node dist/cli.js --schedule \
   --oauth-client /absolute/path/outside/repository/oauth-client.json
 ```
 
+The generated Linux cron line wraps the analytics command with non-blocking
+`flock` using a per-client lock file, so overlapping runs exit without
+corrupting an evidence directory. Google transport already applies three
+bounded retries for transient 5xx/429 responses. No system crontab is modified
+by `--schedule`.
+
 This prints a `17 3 * * *` entry and never installs or edits crontab. When
 `--artifacts-dir` is supplied to `--analytics`, the generated Markdown also
 contains relative links to verified previous analytics bundle reports.

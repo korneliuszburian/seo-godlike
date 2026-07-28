@@ -98,6 +98,7 @@ async function main(): Promise<void> {
       registryPath: optionalArgument("--registry") ?? "fixtures/client-registry.json",
       capabilitiesPath: optionalArgument("--capabilities") ?? "fixtures/capability-registry.json",
       artifactsDir: optionalArgument("--artifacts-dir") ?? "artifacts/analysis",
+      lockPath: optionalArgument("--lock-file"),
     })}\n`);
     return;
   }
