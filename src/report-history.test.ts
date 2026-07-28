@@ -137,7 +137,7 @@ test("schedule only renders a daily cron entry", () => {
   });
   assert.match(entry, /^17 3 \* \* \* /);
   assert.match(entry, /--analytics/);
-  assert.match(entry, /flock -n 'artifacts\/analysis\/\.bodymove-analytics\.lock' -- node/);
+  assert.match(entry, /flock -n 'artifacts\/analysis\/\.bodymove-analytics\.lock' node/);
   assert.match(entry, /date \+\\%Y\\%m\\%d/);
   assert.match(entry, /--output 'artifacts\/analysis'\/bodymove-analytics-pipeline-\$\(date/);
   assert.doesNotMatch(entry, /--output 'artifacts\/analysis\/bodymove-analytics-pipeline/);
