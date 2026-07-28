@@ -34,6 +34,11 @@ The expected result is `READY_FOR_OPERATOR_CONSENT`. A missing path, unsafe
 file mode, repository-local path, unsupported token-store reference, or
 invalid property identifier returns `BLOCKED_AUTHORIZATION`.
 
+On Linux and macOS, use a local filesystem with effective `600` permissions
+for the client file. Some SMB/CIFS mounts report permissive modes regardless
+of the requested setting; copy the file to a local, operator-only directory
+instead of weakening this gate.
+
 Build the CLI, then run:
 
 ```bash

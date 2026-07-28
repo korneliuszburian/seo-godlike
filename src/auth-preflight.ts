@@ -1,5 +1,5 @@
 import { lstat } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 
 export const GOOGLE_GSC_READ_ONLY_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 export const GOOGLE_REFRESH_TOKEN_STORE = "keyring:seo-godlike/google-agency-refresh-token";
@@ -31,7 +31,7 @@ async function validateOAuthClientFile(oauthClientPath: string, repositoryRoot: 
   const resolvedRepositoryRoot = resolve(repositoryRoot);
   const relativePath = relative(resolvedRepositoryRoot, resolvedPath);
   if (!isAbsolute(oauthClientPath)) fail("oauth client path must be absolute");
-  if (relativePath === "" || (!relativePath.startsWith("..") && !relativePath.includes("/.."))) {
+  if (relativePath === "" || relativePath === ".." || relativePath.startsWith(`..${sep}`)) {
     fail("oauth client JSON must be outside the repository");
   }
 
@@ -57,6 +57,7 @@ function fail(message: string): never {
 
 function validatePropertyId(propertyId: string): void {
   if (!propertyId || /\s/.test(propertyId)) fail("property_id must be a non-empty identifier without whitespace");
+  if (propertyId === "sc-domain:") fail("property_id must include a domain after sc-domain:");
   if (!(propertyId.startsWith("sc-domain:") || /^https?:\/\//.test(propertyId))) {
     fail("property_id must be a Search Console sc-domain or URL-prefix identifier");
   }

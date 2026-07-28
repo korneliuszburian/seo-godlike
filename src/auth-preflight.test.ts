@@ -55,3 +55,29 @@ test("preflight fails closed for a client file exposed to other users", async ()
   );
   await rm(fixture.directory, { recursive: true, force: true });
 });
+
+test("preflight fails closed for a client path inside the repository", async () => {
+  const fixture = await fixturePath();
+  await assert.rejects(
+    preflightOAuth({
+      oauthClientPath: fixture.path,
+      propertyId: "sc-domain:bodymove.pl",
+      repositoryRoot: fixture.directory,
+    }),
+    /BLOCKED_AUTHORIZATION: oauth client JSON must be outside the repository/,
+  );
+  await rm(fixture.directory, { recursive: true, force: true });
+});
+
+test("preflight fails closed for an empty sc-domain property", async () => {
+  const fixture = await fixturePath();
+  await assert.rejects(
+    preflightOAuth({
+      oauthClientPath: fixture.path,
+      propertyId: "sc-domain:",
+      repositoryRoot: process.cwd(),
+    }),
+    /BLOCKED_AUTHORIZATION: property_id must include a domain/,
+  );
+  await rm(fixture.directory, { recursive: true, force: true });
+});
