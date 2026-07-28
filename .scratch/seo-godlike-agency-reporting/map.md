@@ -38,6 +38,8 @@ path rather than inventing a second tracker.
 - [Bounded multi-property execution](issues/03-multi-property-execution.md) —
   sequential per-property bundles continue after failures and report non-zero
   status for partial batches.
+- [Registry onboarding policy](issues/05-registry-onboarding-policy.md) —
+  onboarding is explicit, validated, duplicate-rejecting, and atomic.
 
 ## Frontier tickets
 
