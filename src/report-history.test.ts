@@ -49,6 +49,7 @@ test("history aggregates two bundles chronologically and writes deterministic da
   assert.deepEqual(entries.map((entry) => entry.bundle_path), ["earlier", "later"]);
   const summary = summarizeHistory(entries);
   assert.equal(summary.bundle_count, 2);
+  assert.deepEqual(summary.skipped_bundles, []);
   assert.equal(summary.totals.clicks, 6);
   assert.equal(summary.totals.impressions, 60);
   const output = join(root, "dashboard");
@@ -74,10 +75,20 @@ test("history keeps the latest generated duplicate run and warns about the skipp
     assert.deepEqual(entries.map((entry) => entry.bundle_path), ["newer"]);
     assert.equal(entries[0]?.metrics.clicks, 7);
     assert.match(stderr, /skipping bundle 'older'/);
+    const output = join(root, "dashboard");
+    await writeHistoryDashboard(root, output);
+    assert.deepEqual(JSON.parse(await readFile(join(output, "executive-summary.json"), "utf8")).skipped_bundles, ["older"]);
   } finally {
     process.stderr.write = originalWrite;
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("history rejects an invalid generated_at before deduplication", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
+  await writeBundle(root, "invalid", "2026-07-01", 1, "invalid-run", "not-a-date");
+  await assert.rejects(readAnalyticsHistory(root), /invalid generated_at: not-a-date/);
+  await rm(root, { recursive: true, force: true });
 });
 
 test("empty artifacts directory produces a zero-bundle dashboard", async () => {
@@ -85,6 +96,7 @@ test("empty artifacts directory produces a zero-bundle dashboard", async () => {
   const output = join(root, "dashboard");
   const summary = await writeHistoryDashboard(root, output);
   assert.equal(summary.bundle_count, 0);
+  assert.deepEqual(summary.skipped_bundles, []);
   assert.equal(summary.totals.clicks, 0);
   await rm(root, { recursive: true, force: true });
 });
@@ -118,4 +130,18 @@ test("schedule uses the client id in the output path", () => {
     artifactsDir: "artifacts/analysis",
   });
   assert.match(entry, /--output 'artifacts\/analysis'\/acme-analytics-pipeline-\$\(date/);
+});
+
+test("schedule rejects unsafe client id path segments", () => {
+  const options = {
+    workingDirectory: "/work/seo-godlike",
+    oauthClientPath: "/secure/oauth-client.json",
+    clientId: "bad/client",
+    propertyId: "sc-domain:bad.example",
+    registryPath: "fixtures/client-registry.json",
+    capabilitiesPath: "fixtures/capability-registry.json",
+    artifactsDir: "artifacts/analysis",
+  };
+  assert.throws(() => buildDailyAnalyticsCron(options), /shell-safe path segment/);
+  assert.throws(() => buildDailyAnalyticsCron({ ...options, clientId: "bad client" }), /shell-safe path segment/);
 });

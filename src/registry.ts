@@ -3,6 +3,7 @@ import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { ClientRegistry, PolicyError, Provider } from "./domain.js";
 import { canonicalJson } from "./serialize.js";
+import { assertShellSafeSegment } from "./shell.js";
 
 export interface RegisteredProperty {
   property_id: string;
@@ -78,6 +79,7 @@ export interface AddPropertyInput {
 }
 
 export async function addProperty(input: AddPropertyInput): Promise<ClientRegistry> {
+  assertShellSafeSegment(input.clientId);
   if (!propertyFormat(input.propertyId)) throw new PolicyError("schema", `schema: invalid property_id '${input.propertyId}'`);
   if (!input.canonicalProperty && input.aliases.length > 0) {
     throw new PolicyError("schema", "schema: aliases require --canonical-property true");

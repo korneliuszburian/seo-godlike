@@ -1,3 +1,5 @@
+import { assertShellSafeSegment } from "./shell.js";
+
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
@@ -13,7 +15,7 @@ export interface ScheduleOptions {
 }
 
 export function buildDailyAnalyticsCron(options: ScheduleOptions): string {
-  if (!/^[A-Za-z0-9._-]+$/.test(options.clientId)) throw new Error("clientId must be a shell-safe path segment");
+  assertShellSafeSegment(options.clientId);
   const output = `${shellQuote(options.artifactsDir)}/${options.clientId}-analytics-pipeline-$(date +\\%Y\\%m\\%d)`;
   const command = [
     "node", "dist/cli.js", "--analytics",

@@ -55,3 +55,14 @@ manifest behavior are covered by focused tests.
   last-generated-at-wins policy and warns with the skipped `bundle_path`.
 - Focused tests cover a non-bodymove client and duplicate runs with different
   `generated_at` values.
+
+## Pre-push cleanup — review gaps closed
+
+- Shared `assertShellSafeSegment` is used by both scheduler rendering and
+  property onboarding; slash and whitespace client IDs fail closed.
+- History normalizes `generated_at` to canonical ISO strings and rejects
+  invalid timestamps before duplicate comparison.
+- Executive summary JSON now records sorted `skipped_bundles`; no-duplicate
+  summaries emit an empty list.
+- Proof: `npm run build`, `npm test` (25 TypeScript + 3 context tests), and
+  `git diff --check` passed.

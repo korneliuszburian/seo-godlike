@@ -47,6 +47,7 @@ export interface HistoryEntry {
 export interface HistorySummary {
   schema_version: "1";
   bundle_count: number;
+  skipped_bundles: string[];
   periods: HistoryEntry[];
   totals: AnalyticsMetricSummary;
 }
@@ -93,6 +94,12 @@ function parseAnalyticsReport(value: unknown): AnalyticsReportShape | null {
   };
 }
 
+function normalizeGeneratedAt(value: string): string {
+  const date = new Date(value);
+  if (isNaN(date.getTime())) throw new Error(`invalid generated_at: ${value}`);
+  return date.toISOString();
+}
+
 async function manifestPaths(root: string): Promise<string[]> {
   const paths: string[] = [];
   async function walk(directory: string): Promise<void> {
@@ -135,15 +142,21 @@ async function readVerifiedBundle(manifestPath: string, artifactsDir: string): P
     client_id: report.client_id,
     client_display_name: report.client_display_name ?? report.client_id,
     property_id: report.property_refs[0],
-    generated_at: report.generated_at,
+    generated_at: normalizeGeneratedAt(report.generated_at),
     period: report.analytics.current_date_range,
     metrics: report.analytics.current,
   };
 }
 
-export async function readAnalyticsHistory(artifactsDir: string): Promise<HistoryEntry[]> {
+interface HistoryReadResult {
+  entries: HistoryEntry[];
+  skippedBundles: string[];
+}
+
+async function readHistory(artifactsDir: string): Promise<HistoryReadResult> {
   const root = resolve(artifactsDir);
   const entriesByRunId = new Map<string, HistoryEntry>();
+  const skippedBundles: string[] = [];
   for (const manifestPath of await manifestPaths(root)) {
     const entry = await readVerifiedBundle(manifestPath, root);
     if (!entry) continue;
@@ -154,13 +167,22 @@ export async function readAnalyticsHistory(artifactsDir: string): Promise<Histor
     }
     if (entry.generated_at > existing.generated_at || (entry.generated_at === existing.generated_at && entry.bundle_path > existing.bundle_path)) {
       process.stderr.write(`warning: duplicate run_id '${entry.run_id}'; skipping bundle '${existing.bundle_path}' (last wins: '${entry.bundle_path}')\n`);
+      skippedBundles.push(existing.bundle_path);
       entriesByRunId.set(entry.run_id, entry);
     } else {
       process.stderr.write(`warning: duplicate run_id '${entry.run_id}'; skipping bundle '${entry.bundle_path}' (last wins: '${existing.bundle_path}')\n`);
+      skippedBundles.push(entry.bundle_path);
     }
   }
   const entries = [...entriesByRunId.values()];
-  return entries.sort((left, right) => left.period.start.localeCompare(right.period.start) || left.period.end.localeCompare(right.period.end) || left.generated_at.localeCompare(right.generated_at) || left.bundle_path.localeCompare(right.bundle_path));
+  return {
+    entries: entries.sort((left, right) => left.period.start.localeCompare(right.period.start) || left.period.end.localeCompare(right.period.end) || left.generated_at.localeCompare(right.generated_at) || left.bundle_path.localeCompare(right.bundle_path)),
+    skippedBundles: skippedBundles.sort(),
+  };
+}
+
+export async function readAnalyticsHistory(artifactsDir: string): Promise<HistoryEntry[]> {
+  return (await readHistory(artifactsDir)).entries;
 }
 
 export async function findPreviousBundleLinks(artifactsDir: string, currentOutputDir: string): Promise<string[]> {
@@ -179,8 +201,8 @@ function aggregateTotals(entries: HistoryEntry[]): AnalyticsMetricSummary {
   return { clicks, impressions, ctr: impressions === 0 ? 0 : clicks / impressions, position: impressions === 0 ? 0 : positionWeighted / impressions };
 }
 
-export function summarizeHistory(entries: HistoryEntry[]): HistorySummary {
-  return { schema_version: "1", bundle_count: entries.length, periods: entries, totals: aggregateTotals(entries) };
+export function summarizeHistory(entries: HistoryEntry[], skippedBundles: string[] = []): HistorySummary {
+  return { schema_version: "1", bundle_count: entries.length, skipped_bundles: [...skippedBundles].sort(), periods: entries, totals: aggregateTotals(entries) };
 }
 
 function percent(value: number): string {
@@ -209,7 +231,8 @@ async function writeExclusive(path: string, content: string): Promise<void> {
 }
 
 export async function writeHistoryDashboard(artifactsDir: string, outputDir: string): Promise<HistorySummary> {
-  const summary = summarizeHistory(await readAnalyticsHistory(artifactsDir));
+  const history = await readHistory(artifactsDir);
+  const summary = summarizeHistory(history.entries, history.skippedBundles);
   await mkdir(outputDir, { recursive: false });
   await writeExclusive(join(outputDir, "executive-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
   await writeExclusive(join(outputDir, "executive-summary.md"), markdown(summary));

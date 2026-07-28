@@ -87,3 +87,17 @@ test("--add-property writes a validated property and optional alias", async () =
   });
   await rm(directory, { recursive: true, force: true });
 });
+
+test("--add-property rejects a client id that is unsafe for shell-generated paths", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-registry-test-"));
+  const registryPath = join(directory, "client-registry.json");
+  await writeFile(registryPath, JSON.stringify(registry), "utf8");
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      "dist/cli.js", "--add-property", "--registry", registryPath, "--client-id", "bad/client",
+      "--property-id", "sc-domain:newbodymove.pl",
+    ], { cwd: process.cwd() }),
+    /shell-safe path segment/,
+  );
+  await rm(directory, { recursive: true, force: true });
+});
