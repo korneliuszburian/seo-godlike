@@ -54,6 +54,9 @@ path rather than inventing a second tracker.
 - [Hosted runtime deferral](issues/10-hosted-credential-boundary.md) — hosted
   credentials, deployment, and public runtime belong to a separate goal with
   new authority and review.
+- [Known-answer live proof](issues/04-known-answer-data-window.md) — temporary
+  non-production scope proved non-zero GSC analytics and manifest integrity;
+  tenant ownership was not inferred.
 
 ## Frontier tickets
 
