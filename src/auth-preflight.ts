@@ -31,7 +31,7 @@ async function validateOAuthClientFile(oauthClientPath: string, repositoryRoot: 
   const resolvedRepositoryRoot = resolve(repositoryRoot);
   const relativePath = relative(resolvedRepositoryRoot, resolvedPath);
   if (!isAbsolute(oauthClientPath)) fail("oauth client path must be absolute");
-  if (relativePath === "" || relativePath === ".." || relativePath.startsWith(`..${sep}`)) {
+  if (relativePath === "" || (relativePath !== ".." && !relativePath.startsWith(`..${sep}`))) {
     fail("oauth client JSON must be outside the repository");
   }
 
