@@ -114,6 +114,23 @@ top-query/page aggregates, device/country CTR breakdowns, period-over-period
 totals, and the same exclusive-write manifest contract. The output directory
 must not already exist.
 
+For multiple properties of one registered client, use the bounded sequential
+batch path. Repeat `--property-id`; it writes one bundle per canonical property,
+continues after an individual failure, prints completed/failed IDs, and exits
+non-zero if any property failed:
+
+```bash
+node dist/cli.js \
+  --analytics-batch \
+  --client-id bodymove \
+  --property-id sc-domain:bodymove.pl \
+  --property-id sc-domain:another-authorized-property.pl \
+  --registry fixtures/client-registry.json \
+  --capabilities fixtures/capability-registry.json \
+  --oauth-client /absolute/path/outside/repository/oauth-client.json \
+  --output artifacts/analysis/bodymove-batch-YYYYMMDD
+```
+
 ## Add a property for an existing client
 
 Onboarding is an explicit registry mutation. It never grants Google access;

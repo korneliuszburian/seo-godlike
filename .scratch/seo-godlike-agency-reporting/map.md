@@ -35,6 +35,9 @@ path rather than inventing a second tracker.
   run IDs encode client, canonical property, provider, and date range.
 - [New bundle timestamp contract](issues/02-timestamp-contract.md) — writers
   require canonical ISO timestamps while readers accept legacy evidence.
+- [Bounded multi-property execution](issues/03-multi-property-execution.md) —
+  sequential per-property bundles continue after failures and report non-zero
+  status for partial batches.
 
 ## Frontier tickets
 
