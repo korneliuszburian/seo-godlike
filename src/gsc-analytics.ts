@@ -188,6 +188,8 @@ export async function runGscAnalytics(
     run_id: request.run_id,
     client_id: request.client_id,
     client_display_name: clientDisplayName,
+    provider: request.provider,
+    operation: request.operation,
     previous_bundle_refs: [...previousBundleRefs].sort(),
     property_refs: [canonicalPropertyId],
     source_refs: [sourceId],

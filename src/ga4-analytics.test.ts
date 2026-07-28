@@ -91,6 +91,36 @@ test("GA4 fails closed for an incompatible capability version", async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
+test("GA4 fails closed when capability version is missing", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-ga4-test-"));
+  const missingVersion = { capabilities: [{ ...capabilities.capabilities[0]!, api_version: undefined }] };
+  await assert.rejects(
+    runGa4Analytics(request, registry, missingVersion, `${raw}\n`, join(directory, "bundle")),
+    /unsupported Google Analytics API version 'missing'/,
+  );
+  await rm(directory, { recursive: true, force: true });
+});
+
+test("GA4 report Markdown escapes report-derived values", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-ga4-test-"));
+  const hostileRegistry: ClientRegistry = {
+    clients: [{
+      ...registry.clients[0]!,
+      display_name: "<Agency & Co>",
+    }],
+  };
+  const hostileRequest = {
+    ...request,
+    property_id: "properties/123456789",
+    date_range: { start: "2026-06-28", end: "2026-07-25" },
+  } satisfies Ga4AnalyticsRequest;
+  await runGa4Analytics(hostileRequest, hostileRegistry, capabilities, `${raw}\n`, join(directory, "bundle"));
+  const markdown = await readFile(join(directory, "bundle", "report.md"), "utf8");
+  assert.match(markdown, /# GA4 analytics report: &lt;Agency &amp; Co&gt;/);
+  assert.doesNotMatch(markdown, /<Agency & Co>/);
+  await rm(directory, { recursive: true, force: true });
+});
+
 test("CLI GA4 raw path reaches the evidence writer", async () => {
   const directory = await mkdtemp(join(tmpdir(), "seo-godlike-ga4-cli-test-"));
   const registryPath = join(directory, "registry.json");

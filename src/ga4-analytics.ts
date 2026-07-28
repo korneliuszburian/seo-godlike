@@ -6,6 +6,10 @@ import { resolveRegisteredProperty } from "./registry.js";
 import { assertCanonicalIsoDateTime } from "./timestamps.js";
 import { GOOGLE_ANALYTICS_API_VERSION } from "./google.js";
 
+function htmlEscape(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+
 interface Ga4QuotaBucket {
   consumed: number;
   remaining: number;
@@ -93,7 +97,7 @@ function assertGa4Request(request: Ga4AnalyticsRequest, registry: ClientRegistry
   if (request.metric !== "sessions" || JSON.stringify(request.dimensions) !== JSON.stringify(["date"]) || request.row_limit !== 10_000) throw new PolicyError("schema");
   const resolved = resolveRegisteredProperty(registry, request.client_id, request.property_id, "google-analytics");
   const capability = capabilities.capabilities.find((item) => item.provider === request.provider && item.operation_id === request.operation);
-  if (!capability || capability.read_write !== "read" || (capability.api_version ?? GOOGLE_ANALYTICS_API_VERSION) !== GOOGLE_ANALYTICS_API_VERSION) {
+  if (!capability || capability.read_write !== "read" || capability.api_version !== GOOGLE_ANALYTICS_API_VERSION) {
     throw new PolicyError("schema", `schema: unsupported Google Analytics API version '${capability?.api_version ?? "missing"}'`);
   }
   return resolved.canonical_property_id;
@@ -105,14 +109,14 @@ async function writeExclusive(path: string, content: string): Promise<void> {
 
 function markdown(report: Ga4AnalyticsReport, observation: MetricObservation, claim: Claim): string {
   return [
-    `# GA4 analytics report: ${report.client_display_name}`,
+    `# GA4 analytics report: ${htmlEscape(report.client_display_name)}`,
     "",
-    `- Property: ${observation.property_id}`,
-    `- Period: ${report.analytics.current_date_range.start} to ${report.analytics.current_date_range.end}`,
+    `- Property: ${htmlEscape(observation.property_id)}`,
+    `- Period: ${htmlEscape(report.analytics.current_date_range.start)} to ${htmlEscape(report.analytics.current_date_range.end)}`,
     `- Sessions: ${report.analytics.current.sessions}`,
     `- Rows: ${report.analytics.current.rows_received}`,
-    `- Claim: ${claim.statement}`,
-    `- Canonical JSON hash: ${report.canonical_json_hash}`,
+    `- Claim: ${htmlEscape(claim.statement)}`,
+    `- Canonical JSON hash: ${htmlEscape(report.canonical_json_hash)}`,
     "",
   ].join("\n");
 }

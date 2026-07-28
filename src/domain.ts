@@ -120,8 +120,8 @@ export interface Report {
   generated_at: string;
   evidence_manifest_ref: string;
   canonical_json_hash: string;
-  provider?: Provider;
-  operation?: Operation;
+  provider: Provider;
+  operation: Operation;
 }
 
 export interface CompanyLogEvent {

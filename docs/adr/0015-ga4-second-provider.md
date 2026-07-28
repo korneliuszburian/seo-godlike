@@ -15,6 +15,11 @@ The live GA4 property, OAuth scope consent, and validated-real-domain state are
 operator-gated. No GA4 capability is marked live in the repository fixture until
 that proof exists.
 
+The shared `Report` contract requires `provider` and `operation`. These fields
+are evidence metadata, not optional presentation fields; both provider writers
+must persist them in `report.json`. This keeps the GSC and GA4 bundles
+machine-disambiguated without introducing a second report base type.
+
 ## Rationale
 
 GA4 shares the Google identity family and keyring boundary already proven for

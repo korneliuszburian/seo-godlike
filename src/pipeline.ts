@@ -130,6 +130,8 @@ export async function runFixtureAnalysis(
     schema_version: request.schema_version,
     run_id: request.run_id,
     client_id: request.client_id,
+    provider: request.provider,
+    operation: request.operation,
     property_refs: [request.property_id],
     source_refs: [sourceId],
     observation_refs: [observation.observation_id],
