@@ -111,7 +111,7 @@ async function readVerifiedEntry(manifestPath: string, artifactsDir: string): Pr
     if (name.startsWith("/") || name.split("/").includes("..") || name.includes(`..${sep}`)) throw new Error(`unsafe manifest path '${name}'`);
     const bytes = await readFile(join(bundleDir, name));
     const expected = manifest.files[name];
-    if (bytes.byteLength !== expected.bytes || sha256(bytes) !== expected.sha256) throw new Error(`manifest hash mismatch for '${join(bundleDir, name)}'`);
+    if (bytes.byteLength !== expected.bytes || sha256(bytes) !== expected.sha256) throw new Error(`manifest hash mismatch for '${name}'`);
     files.set(name, bytes);
   }
   const reportBytes = files.get("report.json");
