@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { URL } from "node:url";
 import { promisify } from "node:util";
 import { GOOGLE_GSC_READ_ONLY_SCOPE } from "./auth-preflight.js";
+import { SearchAnalyticsDimension } from "./domain.js";
 
 const execFileAsync = promisify(execFile);
 const keyringArgs = ["service", "seo-godlike", "account", "google-agency-refresh-token"];
@@ -165,11 +166,12 @@ export async function querySearchAnalytics(
   propertyId: string,
   startDate: string,
   endDate: string,
+  dimensions: readonly SearchAnalyticsDimension[] = [],
 ): Promise<string> {
   const endpoint = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(propertyId)}/searchAnalytics/query`;
   const payload = await gscFetch(endpoint, accessToken, {
     method: "POST",
-    body: JSON.stringify({ startDate, endDate, dimensions: [], rowLimit: 25_000 }),
+    body: JSON.stringify({ startDate, endDate, dimensions, rowLimit: 25_000 }),
   });
   return `${JSON.stringify(payload)}\n`;
 }

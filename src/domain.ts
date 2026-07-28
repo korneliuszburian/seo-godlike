@@ -16,6 +16,25 @@ export interface AnalysisRequest {
   captured_at: string;
 }
 
+export type SearchAnalyticsDimension = "query" | "page" | "country" | "device";
+
+export interface GscAnalyticsRequest {
+  schema_version: string;
+  run_id: string;
+  client_id: string;
+  property_id: string;
+  provider: Provider;
+  operation: Operation;
+  metric: "clicks";
+  date_range: { start: string; end: string };
+  comparison_date_range: { start: string; end: string };
+  dimensions: SearchAnalyticsDimension[];
+  row_limit: 25000;
+  credential_ref: string;
+  policy_mode: "read_only";
+  captured_at: string;
+}
+
 export interface ClientRegistry {
   clients: Array<{
     client_id: string;
@@ -40,8 +59,10 @@ export interface SourceRecord {
   request_hash: string;
   response_hash: string;
   captured_at: string;
-  redaction_policy: "fixture_no_secrets";
+  redaction_policy: "fixture_no_secrets" | "provider_response_no_credentials";
   raw_artifact_ref: string;
+  comparison_response_hash?: string;
+  comparison_raw_artifact_ref?: string;
 }
 
 export interface MetricObservation {

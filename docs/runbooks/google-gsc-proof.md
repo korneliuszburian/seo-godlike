@@ -88,3 +88,28 @@ Stop without writing a report when the OAuth state is invalid, consent is
 denied, the refresh token is unavailable, the property is not returned by
 discovery, the property is not mapped to the requested client, or the provider
 returns an authorization/scope/schema error.
+
+## Agency analytics pipeline
+
+For the production-shaped read-only analytics run, the CLI calculates a
+current inclusive 28-day window ending three UTC days before the system date,
+plus the immediately preceding inclusive 28-day window. It sends both
+requests with dimensions `query`, `page`, `country`, and `device`, and
+`rowLimit=25000`:
+
+```bash
+mkdir -p artifacts/analysis
+node dist/cli.js \
+  --analytics \
+  --client-id bodymove \
+  --property-id sc-domain:bodymove.pl \
+  --registry fixtures/client-registry.json \
+  --capabilities fixtures/capability-registry.json \
+  --oauth-client /absolute/path/outside/repository/oauth-client.json \
+  --output artifacts/analysis/bodymove-analytics-pipeline-YYYYMMDD
+```
+
+The output contains current and previous raw responses, exact-deduplicated
+top-query/page aggregates, device/country CTR breakdowns, period-over-period
+totals, and the same exclusive-write manifest contract. The output directory
+must not already exist.
