@@ -22,6 +22,7 @@ import {
 } from "./analytics.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { resolveRegisteredProperty } from "./registry.js";
+import { assertCanonicalIsoDateTime } from "./timestamps.js";
 
 export interface AnalyticsReport extends Report {
   client_display_name: string;
@@ -41,6 +42,7 @@ export interface AnalyticsRunResult {
 }
 
 function assertAnalyticsRequest(request: GscAnalyticsRequest, registry: ClientRegistry, capabilities: CapabilityRegistry): string {
+  assertCanonicalIsoDateTime(request.captured_at);
   if (request.policy_mode !== "read_only" || request.operation !== "search_analytics.query") throw new PolicyError("policy");
   if (request.provider !== "google-search-console" || request.metric !== "clicks") throw new PolicyError("scope");
   if (JSON.stringify(request.dimensions) !== JSON.stringify(GSC_ANALYTICS_DIMENSIONS) || request.row_limit !== 25_000) throw new PolicyError("schema");

@@ -33,6 +33,8 @@ path rather than inventing a second tracker.
   durable architecture authorities for those boundaries.
 - [Canonical run identity](issues/01-canonical-run-identity.md) — new analytics
   run IDs encode client, canonical property, provider, and date range.
+- [New bundle timestamp contract](issues/02-timestamp-contract.md) — writers
+  require canonical ISO timestamps while readers accept legacy evidence.
 
 ## Frontier tickets
 

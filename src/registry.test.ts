@@ -70,6 +70,15 @@ test("canonical property and alias resolve to one canonical evidence property", 
   await rm(directory, { recursive: true, force: true });
 });
 
+test("analytics writer rejects non-canonical timestamps for new bundles", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-registry-test-"));
+  await assert.rejects(
+    runGscAnalytics({ ...request("sc-domain:bodymove.pl"), captured_at: "2026-07-28" }, registry, capabilities, '{"rows":[]}', undefined, join(directory, "run")),
+    /captured_at must be canonical ISO-8601/,
+  );
+  await rm(directory, { recursive: true, force: true });
+});
+
 test("--add-property writes a validated property and optional alias", async () => {
   const directory = await mkdtemp(join(tmpdir(), "seo-godlike-registry-test-"));
   const registryPath = join(directory, "client-registry.json");

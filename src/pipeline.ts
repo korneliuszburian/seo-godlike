@@ -13,6 +13,7 @@ import {
 } from "./domain.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { resolveRegisteredProperty } from "./registry.js";
+import { assertCanonicalIsoDateTime } from "./timestamps.js";
 
 interface SearchAnalyticsResponse {
   rows?: Array<{ clicks?: number }>;
@@ -72,6 +73,7 @@ export async function runFixtureAnalysis(
   outputDir: string,
 ): Promise<RunResult> {
   assertRequest(request, registry, capabilities);
+  assertCanonicalIsoDateTime(request.captured_at);
   const raw = JSON.parse(rawText) as SearchAnalyticsResponse;
   const requestText = canonicalJson(request);
   const requestHash = sha256(requestText);
