@@ -31,6 +31,8 @@ path rather than inventing a second tracker.
 - [ADR-0003](../../docs/adr/0003-tenant-property-isolation.md) and
   [ADR-0007](../../docs/adr/0007-history-deduplication-identity.md) are the
   durable architecture authorities for those boundaries.
+- [Canonical run identity](issues/01-canonical-run-identity.md) — new analytics
+  run IDs encode client, canonical property, provider, and date range.
 
 ## Frontier tickets
 

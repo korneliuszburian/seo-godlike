@@ -9,6 +9,7 @@ import { AnalysisRequest, CapabilityRegistry, ClientRegistry } from "./domain.js
 import { getGoogleAccessToken, listSearchConsoleSites, querySearchAnalytics } from "./google.js";
 import { addProperty, resolveRegisteredProperty } from "./registry.js";
 import { findPreviousBundleLinks, writeHistoryDashboard } from "./report-history.js";
+import { buildAnalyticsRunId } from "./run-id.js";
 import { buildDailyAnalyticsCron } from "./schedule.js";
 
 function argument(name: string): string {
@@ -118,7 +119,13 @@ async function main(): Promise<void> {
     ]);
     const request: GscAnalyticsRequest = {
       schema_version: "1",
-      run_id: `analytics_${clientId}_${ranges.current.start}_${ranges.current.end}`,
+      run_id: buildAnalyticsRunId({
+        clientId,
+        propertyId: canonicalPropertyId,
+        provider: "google-search-console",
+        start: ranges.current.start,
+        end: ranges.current.end,
+      }),
       client_id: clientId,
       property_id: canonicalPropertyId,
       provider: "google-search-console",
