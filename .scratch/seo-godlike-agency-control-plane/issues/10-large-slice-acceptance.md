@@ -40,9 +40,12 @@ Implement one local operator-only report-package path over existing bundles:
   never zero-fills metrics;
 - outputs: deterministic `report-package.json`, Markdown, escaped local HTML,
   and an exclusive-write manifest for all three output files;
-- fixed point: `e676ef0` (implementation plus nested-output scan fix);
+- fixed point: `a088e08` (implementation, nested-output exclusion, and
+  compound-identity deduplication);
 - changed paths are limited to `src/report-package.ts`, `src/cli.ts`,
   `src/report-history.test.ts`, and this acceptance ticket;
-- proof: `npm run build`, `npm test` (47 TypeScript tests + 3 context tests),
+- proof: `npm run build`, `npm test` (48 TypeScript tests + 3 context tests),
   `git diff --check`, and CLI empty-input boundary proof passed;
+- duplicate identities use the existing `(run_id, client_id, property_id)`
+  policy, keep the later normalized `generated_at`, and expose skipped paths;
 - Fallow was not invoked and remains advisory only (`not_supplied`).
