@@ -3,9 +3,9 @@ import { createServer } from "node:http";
 import { randomBytes } from "node:crypto";
 import { URL } from "node:url";
 import { promisify } from "node:util";
+import { GOOGLE_GSC_READ_ONLY_SCOPE } from "./auth-preflight.js";
 
 const execFileAsync = promisify(execFile);
-const scope = "https://www.googleapis.com/auth/webmasters.readonly";
 const keyringArgs = ["service", "seo-godlike", "account", "google-agency-refresh-token"];
 
 interface OAuthClientConfig {
@@ -92,7 +92,7 @@ function authorizationCode(config: OAuthClientConfig): Promise<{ code: string; r
       authUrl.searchParams.set("client_id", config.client_id);
       authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", scope);
+      authUrl.searchParams.set("scope", GOOGLE_GSC_READ_ONLY_SCOPE);
       authUrl.searchParams.set("access_type", "offline");
       authUrl.searchParams.set("include_granted_scopes", "true");
       authUrl.searchParams.set("state", state);

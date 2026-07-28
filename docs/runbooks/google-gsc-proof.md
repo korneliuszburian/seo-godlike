@@ -17,6 +17,23 @@ never stores credentials in the repository.
 
 ## Discovery
 
+Before any network access, run the local readiness gate. It checks only OAuth
+client path metadata, the fixed OS-keyring reference, the read-only scope, and
+the requested property identifier; it does not parse the client JSON, inspect
+the token store, open a consent URL, or call Google:
+
+```bash
+npm run build
+node dist/cli.js \
+  --preflight \
+  --oauth-client /absolute/path/outside/repository/oauth-client.json \
+  --property-id sc-domain:bodymove.pl
+```
+
+The expected result is `READY_FOR_OPERATOR_CONSENT`. A missing path, unsafe
+file mode, repository-local path, unsupported token-store reference, or
+invalid property identifier returns `BLOCKED_AUTHORIZATION`.
+
 Build the CLI, then run:
 
 ```bash
