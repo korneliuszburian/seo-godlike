@@ -81,3 +81,16 @@ test("preflight fails closed for an empty sc-domain property", async () => {
   );
   await rm(fixture.directory, { recursive: true, force: true });
 });
+
+test("preflight fails closed for an empty OAuth client file", async () => {
+  const fixture = await fixturePath("");
+  await assert.rejects(
+    preflightOAuth({
+      oauthClientPath: fixture.path,
+      propertyId: "sc-domain:bodymove.pl",
+      repositoryRoot: process.cwd(),
+    }),
+    /BLOCKED_AUTHORIZATION: oauth client file must not be empty/,
+  );
+  await rm(fixture.directory, { recursive: true, force: true });
+});
