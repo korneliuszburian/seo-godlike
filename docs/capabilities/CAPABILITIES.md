@@ -2,7 +2,8 @@
 
 Owner: capability inventory workflow.
 
-Stan epistemiczny na `2026-07-29`, lokalny fixed point po scope/agent-plan slice.
+Stan epistemiczny na `2026-07-29`, lokalny fixed point `c7e3e9b` po agency
+reporting, onboarding batch i GSC capability hardening slice.
 To jest bezpieczny,
 lokalny inventory; nie zawiera sekretów i nie ustanawia uprawnień.
 
@@ -58,7 +59,7 @@ The candidate names above are documented possibilities from the onboarding promp
 - No real `properties/<id>` is currently registered for a client in the
   permanent fixture, and the GA4 capability record is intentionally absent
   until a real property proof is completed.
-- Local proof: `npm test` passes (67 TypeScript tests + 3 context tests), and
+- Local proof: `npm test` passes (77 TypeScript tests + 3 context tests), and
   `--scope-plan`/`--agent-plan` both emit deterministic contracts.
 - Localo MCP authentication and schema discovery are proven, but no managed
   Body Move profile is available; no Localo metric is represented as zero.

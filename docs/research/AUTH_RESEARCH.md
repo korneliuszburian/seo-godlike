@@ -45,6 +45,9 @@ Ahrefs API v3 pracuje na danych workspace, wymaga kwalifikowanego płatnego plan
 
 **Implikacja:** Ahrefs może mieć jedną credential reference agencyjną, ale projekty, scope i koszt muszą być jawne w registry. Nie zakładamy, że sam klucz zapewnia dostęp do każdego klienta ani że odczyt jest darmowy.
 
+**Stan wdrożenia:** ta decyzja została wykonana dla zarejestrowanego `bodymove.pl`
+przez bounded Site Explorer profile opisany w [ADR-0016](../adr/0016-ahrefs-multi-source-reporting.md).
+
 ### Localo
 
 Oficjalny materiał Localo opisuje MCP jako kontrolowane połączenie z autoryzowanym kontem i podaje URL MCP oraz OAuth client credentials. Nie dowodzi to jeszcze lokalnej reachability ani pełnego read-only schema. Źródło: [Localo MCP integration](https://docs.localo.com/en/articles/14687216-localo-api-mcp-integration).
@@ -101,7 +104,7 @@ Wariant centralnego user OAuth zostanie odrzucony lub rozszerzony o service acco
 
 - Aktualna dokumentacja API v3 obejmuje Site Explorer, Keywords Explorer, SERP Overview, Rank Tracker, Site Audit, Brand Radar i Social Media Management oraz management/subscription endpoints.
 - API wymaga eligible paid plan; większość zapytań kosztuje API units, minimum kosztu wielu requestów to 50 units. Ahrefs zaleca bezpłatne test queries, limity kluczy i monitoring usage przed integracją.
-- W pierwszym przebiegu Ahrefs pozostaje osobnym, późniejszym adapterem; nie wykonujemy requestów bez potwierdzenia planu i budżetu units. Źródło: [Ahrefs API introduction](https://docs.ahrefs.com/en/api/docs/introduction).
+- W pierwszym przebiegu Ahrefs był osobnym, późniejszym adapterem; ten punkt został wykonany dla `bodymove.pl`, nadal z limitem requestów i bez założenia dostępu do nieonboardowanych domen. Źródło: [Ahrefs API introduction](https://docs.ahrefs.com/en/api/docs/introduction).
 
 ### Localo MCP
 

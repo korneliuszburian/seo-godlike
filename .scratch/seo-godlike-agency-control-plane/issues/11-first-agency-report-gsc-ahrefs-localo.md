@@ -44,8 +44,8 @@ auth or schema is unknown.
 
 ## Local proof
 
-- fixed point: commit `f15c7ec` on `main`, with the Ahrefs profile implementation
-  at `6bd6396`;
+- fixed point: commit `c7e3e9b` on `main`, with the Ahrefs profile implementation
+  at `6bd6396` and batch onboarding at `49a5990`;
 - Ahrefs adapter: bounded profile falsifiers, read-only bundle hash proof, and
   report-package integration pass; live profile bundle:
   `artifacts/analysis/bodymove-full-profile-20260729-v2/`;
