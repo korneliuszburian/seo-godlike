@@ -12,6 +12,7 @@ import { getGoogleAccessToken, listSearchConsoleSites, queryGa4Report, querySear
 import { addProperty, resolveRegisteredProperty } from "./registry.js";
 import { findPreviousBundleLinks, writeHistoryDashboard } from "./report-history.js";
 import { writeReportPackage } from "./report-package.js";
+import { discoverLocaloMcp, LOCALO_MCP_URL } from "./localo-mcp.js";
 import { buildAnalyticsRunId } from "./run-id.js";
 import { buildDailyAnalyticsCron } from "./schedule.js";
 import { runSequentialBatch } from "./batch.js";
@@ -184,6 +185,11 @@ async function main(): Promise<void> {
     };
     await runAhrefsAnalytics(request, registry, capabilities, rawText, resolve(argument("--output")));
     process.stdout.write(JSON.stringify({ provider: "ahrefs", property_id: canonicalPropertyId, output: resolve(argument("--output")) }, null, 2) + "\n");
+    return;
+  }
+  if (process.argv.includes("--localo-discover")) {
+    const result = await discoverLocaloMcp(optionalArgument("--localo-url") ?? LOCALO_MCP_URL);
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--add-property")) {
