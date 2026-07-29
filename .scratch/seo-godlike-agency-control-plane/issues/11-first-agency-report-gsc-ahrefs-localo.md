@@ -81,6 +81,9 @@ auth or schema is unknown.
 - Only explicitly registered properties are eligible for Ahrefs collection.
   GSC discovery results are not treated as proof of client ownership or Ahrefs
   authorization for additional domains.
+- Latest read-only GSC discovery returned 39 properties: 2 are registered for
+  Bodymove and 37 remain onboarding candidates. No candidate was assigned to a
+  client automatically.
 - Localo discovery seam: `--localo-discover` performs only MCP `initialize`
   and `tools/list`, redacts auth, and fails closed when
   `keyring:seo-godlike/localo-mcp-token` is absent; fixed point `65e117e`.
@@ -92,3 +95,6 @@ auth or schema is unknown.
 2. Confirm that the profile is the intended Body Move location; do not assume
    the Warsaw search snapshot is the canonical client profile.
 3. Confirm that `bodymove.pl` remains the Ahrefs target.
+4. For the 37 discovery candidates, provide an explicit mapping of
+   `client_id`, canonical GSC property/alias, Ahrefs target, and Ahrefs country
+   before enabling collection.
