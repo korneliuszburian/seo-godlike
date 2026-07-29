@@ -80,6 +80,10 @@ When a change makes a durable page stale, update, supersede, or remove that
 page in the same slice. Do not append a new snapshot and leave the old one
 looking current. Every documentation change must name its canonical owner and
 why executable code, tests, or existing evidence cannot carry the information.
+These rules are behavioral guidance, not mechanical enforcement: they reduce
+accidental drift but do not prove that future agents or contributors followed
+them. Do not claim documentation compliance from a passing build or from the
+presence of this file alone.
 
 <!-- krn-agent-workflow:start -->
 ## Agent workflow
