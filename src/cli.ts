@@ -21,6 +21,7 @@ import { buildAgentRunPlan } from "./agent-plan.js";
 import { executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
 import { writeAgencyReport } from "./agency-report.js";
 import { validateSourceRegistry } from "./source-registry.js";
+import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -164,6 +165,20 @@ async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  if (process.argv.includes("--codex-manager")) {
+    const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
+    const sourceRegistryPath = optionalArgument("--source-registry");
+    const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
+    validateSourceRegistry(sourceRegistry);
+    const scope = buildScopePlan(registry, capabilities);
+    const runtime = createCodexReadonlyRuntime({ workingDirectory: process.cwd() });
+    const threadId = optionalArgument("--codex-thread-id");
+    const thread = threadId ? runtime.resumeThread(threadId) : runtime.startThread();
+    const result = await thread.run(buildManagerPrompt(scope, sourceRegistry));
+    process.stdout.write(`${JSON.stringify({ policy_mode: "read_only", approval_boundary: "no_external_write_operations", thread_id: thread.id, scope_status: scope.status, response: result.finalResponse }, null, 2)}\n`);
+    return;
+  }
   if (process.argv.includes("--agency-report")) {
     const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
     const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;

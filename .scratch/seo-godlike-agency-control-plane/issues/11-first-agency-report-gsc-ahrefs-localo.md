@@ -61,7 +61,10 @@ auth or schema is unknown.
   `artifacts/analysis/bodymove-agency-report-20260729-final-v3/`, manifest
   verified and source status includes GA4 and Localo as unavailable without
   invented metrics;
-- repository suite: `npm test` passes (65 TypeScript tests + 3 context tests);
+- repository suite: `npm test` passes (67 TypeScript tests + 3 context tests);
+- Codex manager proof: `--codex-manager` returned a read-only execution
+  checklist containing GSC/Ahrefs ready sources and GA4/Localo unavailable
+  blockers, without an application API key;
 - GSC OAuth preflight: `READY_FOR_OPERATOR_CONSENT`, with the existing JSON
   readable at mode 600 and the refresh-token reference present;
 - live Ahrefs evidence is claimed for the verified `bodymove.pl` bundle; Localo

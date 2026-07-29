@@ -26,3 +26,10 @@ test("manager prompt is scope-bounded and does not invoke Codex", () => {
   assert.match(prompt, /Do not modify files/);
   assert.doesNotMatch(prompt, /refresh_token|client_secret|auth\.json/);
 });
+
+test("manager prompt carries unavailable external sources without inventing metrics", () => {
+  const prompt = buildManagerPrompt(buildScopePlan(registry, capabilities), { sources: [{ source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: "bodymove.pl", status: "unavailable", reason: "managed profile unavailable" }] });
+  assert.match(prompt, /localo\.bodymove/);
+  assert.match(prompt, /managed profile unavailable/);
+  assert.doesNotMatch(prompt, /localo\.(clicks|traffic|rankings)/i);
+});

@@ -1,5 +1,5 @@
 import { Codex, Thread, ThreadOptions } from "@openai/codex-sdk";
-import { ScopePlan } from "./domain.js";
+import { ScopePlan, SourceRegistry } from "./domain.js";
 
 export const CODEX_READ_ONLY_POLICY =
   "Use the local Codex authentication posture. Never use OPENAI_API_KEY or CODEX_API_KEY from the application environment.";
@@ -52,7 +52,7 @@ export function createCodexReadonlyRuntime(options: CodexRuntimeOptions): CodexR
   };
 }
 
-export function buildManagerPrompt(scope: ScopePlan): string {
+export function buildManagerPrompt(scope: ScopePlan, sourceRegistry: SourceRegistry = { sources: [] }): string {
   const sources = scope.entries.map((entry) => ({
     client_id: entry.client_id,
     provider: entry.provider,
@@ -67,5 +67,6 @@ export function buildManagerPrompt(scope: ScopePlan): string {
     "Do not modify files, call write operations, expose credentials, or claim a source without verified evidence.",
     "Return a concise execution checklist with ready, unavailable, and unsupported sources separated.",
     `Scope: ${JSON.stringify(sources)}`,
+    `External sources: ${JSON.stringify(sourceRegistry.sources.map((source) => ({ source_id: source.source_id, client_id: source.client_id, provider: source.provider, target: source.target, status: source.status, reason: source.reason })))}`,
   ].join("\n");
 }
