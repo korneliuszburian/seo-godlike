@@ -53,12 +53,12 @@ auth or schema is unknown.
   verified; Localo is explicitly omitted because no managed Body Move profile
   was available to query.
 - agency batch proof:
-  `artifacts/analysis/bodymove-agency-run-20260729-final-v2/`, GSC and Ahrefs
+  `artifacts/analysis/bodymove-agency-run-20260729-final-v3/`, GSC and Ahrefs
   completed sequentially, while GA4 and Localo are recorded as blocked tasks;
   its report package is `partial` with 2 accepted bundles and 2 blocked
   sources;
 - final agency report:
-  `artifacts/analysis/bodymove-agency-report-20260729-final-v2/`, manifest
+  `artifacts/analysis/bodymove-agency-report-20260729-final-v3/`, manifest
   verified and source status includes GA4 and Localo as unavailable without
   invented metrics;
 - repository suite: `npm test` passes (65 TypeScript tests + 3 context tests);
