@@ -1,4 +1,4 @@
-import { CapabilityRegistry, ClientRegistry, MetricDefinition, MetricId, Provider, ScopePlan, ScopePlanEntry } from "./domain.js";
+import { CapabilityRegistry, ClientRegistry, MetricDefinition, Provider, ScopePlan, ScopePlanEntry } from "./domain.js";
 import { validateClientRegistry } from "./registry.js";
 
 const METRIC_CATALOG: Record<Provider, MetricDefinition[]> = {

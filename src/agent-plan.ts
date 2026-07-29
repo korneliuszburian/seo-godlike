@@ -1,4 +1,4 @@
-import { ScopePlan, ScopePlanEntry, ScopeStatus } from "./domain.js";
+import { ScopePlan, ScopePlanEntry } from "./domain.js";
 
 export type AgentRole = "manager" | "gsc-specialist" | "ga4-specialist" | "ahrefs-specialist" | "localo-specialist" | "evidence-verifier" | "report-composer";
 export type AgentTaskStatus = "planned" | "blocked";
