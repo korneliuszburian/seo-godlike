@@ -82,8 +82,9 @@ auth or schema is unknown.
   GSC discovery results are not treated as proof of client ownership or Ahrefs
   authorization for additional domains.
 - Latest read-only GSC discovery returned 39 properties: 2 are registered for
-  Bodymove and 37 remain onboarding candidates. No candidate was assigned to a
-  client automatically.
+  Bodymove and 37 property entries remain onboarding candidates. After
+  collapsing URL-prefix and `sc-domain` variants, that is 34 unique domain
+  candidates. No candidate was assigned to a client automatically.
 - Localo discovery seam: `--localo-discover` performs only MCP `initialize`
   and `tools/list`, redacts auth, and fails closed when
   `keyring:seo-godlike/localo-mcp-token` is absent; fixed point `65e117e`.
