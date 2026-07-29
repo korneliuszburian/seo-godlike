@@ -1,8 +1,13 @@
 # Onboarding discovery
 
-Status: `DISCOVERY`
+Status: `HISTORICAL BASELINE`
 Data obserwacji: `2026-07-27`
 Zakres: wyłącznie Faza A z `ONBOARDING_PROMPT.md`; bez implementacji produktu i bez zewnętrznych zapisów.
+
+Ten dokument zachowuje wynik pierwotnego onboardingu. Aktualny stan capability
+i access proof jest własnością [CAPABILITIES.md](../capabilities/CAPABILITIES.md),
+a aktualny runtime i raporty są dowodzone przez `src/`, testy i immutable
+evidence. Nie używaj tego baseline'u jako bieżącego statusu projektu.
 
 ## Repozytorium i instrukcje
 
