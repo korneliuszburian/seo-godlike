@@ -27,7 +27,16 @@ export interface AgencyRunRecord {
   finished_at: string;
   policy_mode: "read_only";
   approval_boundary: "no_external_write_operations";
+  retention_mode: "operator_managed";
+  deletion_authority: "operator_only";
   result: AgencyRunResult;
+}
+
+export function assertAgencyReadOnlyPolicy(record: Pick<AgencyRunRecord, "policy_mode" | "approval_boundary" | "retention_mode" | "deletion_authority">): void {
+  if (record.policy_mode !== "read_only") throw new Error("agency policy must be read_only");
+  if (record.approval_boundary !== "no_external_write_operations") throw new Error("agency approval boundary forbids external writes");
+  if (record.retention_mode !== "operator_managed") throw new Error("agency retention must remain operator_managed");
+  if (record.deletion_authority !== "operator_only") throw new Error("agency deletion authority must remain operator_only");
 }
 
 export async function executeAgencyTasks(tasks: AgencyTask[]): Promise<AgencyRunResult> {
@@ -62,6 +71,7 @@ export async function executeAgencyTasks(tasks: AgencyTask[]): Promise<AgencyRun
 }
 
 export async function writeAgencyRunRecord(outputDir: string, record: AgencyRunRecord): Promise<void> {
+  assertAgencyReadOnlyPolicy(record);
   await writeFile(join(outputDir, "agency-run.json"), canonicalJson(record), { encoding: "utf8", flag: "wx" });
 }
 import { writeFile } from "node:fs/promises";

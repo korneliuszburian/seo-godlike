@@ -170,7 +170,7 @@ async function main(): Promise<void> {
     const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
     const sourceRegistryPath = optionalArgument("--source-registry");
     const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
-    validateSourceRegistry(sourceRegistry);
+    validateSourceRegistry(sourceRegistry, registry);
     const scope = buildScopePlan(registry, capabilities);
     const runtime = createCodexReadonlyRuntime({ workingDirectory: process.cwd() });
     const threadId = optionalArgument("--codex-thread-id");
@@ -184,7 +184,7 @@ async function main(): Promise<void> {
     const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
     const sourceRegistryPath = optionalArgument("--source-registry");
     const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
-    validateSourceRegistry(sourceRegistry);
+    validateSourceRegistry(sourceRegistry, registry);
     const scope = buildScopePlan(registry, capabilities);
     const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry);
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
@@ -195,7 +195,7 @@ async function main(): Promise<void> {
     const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
     const sourceRegistryPath = optionalArgument("--source-registry");
     const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
-    validateSourceRegistry(sourceRegistry);
+    validateSourceRegistry(sourceRegistry, registry);
     const outputRoot = resolve(argument("--output"));
     const oauthClientPath = optionalArgument("--oauth-client");
     const artifactsDir = optionalArgument("--artifacts-dir");
@@ -213,9 +213,9 @@ async function main(): Promise<void> {
       if (entry.provider === "google-analytics") return { id, status: "ready" as const, run: async () => { if (!oauthClientPath) throw new Error("missing --oauth-client for Google Analytics"); await runSingleGa4Analytics({ oauthClientPath, propertyId: entry.property_id, clientId: entry.client_id, registry, capabilities, outputDir }); } };
       return { id, status: "ready" as const, run: async () => runSingleAhrefsAnalytics({ clientId: entry.client_id, propertyId: entry.property_id, date: ahrefsDate, registry, capabilities, outputDir }) };
     });
-    const sourceTasks = sourceRegistry.sources.map((source) => ({ id: `${source.client_id}:${source.provider}:${source.target}`, status: source.status === "ready" ? "ready" as const : "blocked" as const, reason: source.reason ?? "external source is unavailable" }));
+    const sourceTasks = sourceRegistry.sources.map((source) => ({ id: `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}`, status: source.status === "ready" ? "ready" as const : "blocked" as const, reason: source.reason ?? "external source is unavailable" }));
     const result = await executeAgencyTasks([...propertyTasks, ...sourceTasks]);
-    await writeAgencyRunRecord(outputRoot, { schema_version: "1", run_id: runId, started_at: startedAt, finished_at: new Date().toISOString(), policy_mode: "read_only", approval_boundary: "no_external_write_operations", result });
+    await writeAgencyRunRecord(outputRoot, { schema_version: "1", run_id: runId, started_at: startedAt, finished_at: new Date().toISOString(), policy_mode: "read_only", approval_boundary: "no_external_write_operations", retention_mode: "operator_managed", deletion_authority: "operator_only", result });
     process.stdout.write(`${JSON.stringify({ scope_status: scope.status, ...result }, null, 2)}\n`);
     if (result.failed.length > 0) process.exitCode = 1;
     return;

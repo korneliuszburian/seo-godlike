@@ -24,8 +24,10 @@ quota or authorization failures.
 ## Consequences
 
 Evidence retention and storage location are explicit run configuration, never
-an accidental log side effect. The first proof does not require a database;
-later indexing may consume the immutable bundles.
+an accidental log side effect. Agency run ledgers record
+`retention_mode: operator_managed` and `deletion_authority: operator_only`;
+the runner never deletes or rewrites evidence. The first proof does not
+require a database; later indexing may consume the immutable bundles.
 
 ## Falsifier
 

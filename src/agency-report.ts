@@ -83,7 +83,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
     if (accepted) return { ...source, status: "ready" as const, reason: null, bundle_path: accepted.bundle_path };
     return source;
   });
-  const externalStatus = sourceRegistry.sources.map((source) => ({ source_id: source.source_id, client_id: source.client_id, property_id: source.target, provider: source.provider, status: source.status, reason: source.reason, bundle_path: null } satisfies AgencyReportSourceStatus));
+  const externalStatus = sourceRegistry.sources.map((source) => ({ source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: null } satisfies AgencyReportSourceStatus));
   const sourceStatus = [...propertyStatus, ...externalStatus];
   const summary: AgencyReportSummary = { schema_version: "1", report_status: packageSummary.accepted_bundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: packageSummary.accepted_bundles, blocked_sources: sourceStatus.filter((source) => source.status !== "ready") };
   const details: string[] = [];

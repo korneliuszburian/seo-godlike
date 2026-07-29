@@ -85,7 +85,7 @@ export interface SourceRegistry {
     source_id: string;
     client_id: string;
     provider: ExternalProvider;
-    target: string;
+    target: string | null;
     status: "ready" | "unavailable";
     reason: string | null;
   }>;
