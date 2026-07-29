@@ -12,10 +12,10 @@ bounded proof, and what adapter boundary does its real API require?
 
 ## Resolution
 
-GA4 Data API is the recommended second-provider candidate. It shares the Google
-identity family but needs a distinct read-only scope, numeric property ID,
-capability row, quota-aware request, and live proof. Ahrefs is deferred because
-its paid-plan/unit and credential friction is higher for this first extension.
+GA4 Data API was the recommended second-provider candidate and is now
+implemented as a local read-only adapter. Ahrefs is delivered separately under
+ADR-0016 as a bounded Site Explorer profile provider; this ticket remains the
+historical decision for the GA4 route.
 
 Research dispositions: `reconciled-route-single-large-slice`,
 `ga4-large-slice-advances-three-ledgers`.
