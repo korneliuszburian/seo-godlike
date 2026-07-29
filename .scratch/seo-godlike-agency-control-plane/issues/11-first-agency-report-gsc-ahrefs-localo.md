@@ -44,7 +44,7 @@ auth or schema is unknown.
 
 ## Local proof
 
-- fixed point: commit `c7e3e9b` on `main`, with the Ahrefs profile implementation
+- fixed point: commit `8d29da1` on `main`, with the Ahrefs profile implementation
   at `6bd6396` and batch onboarding at `49a5990`;
 - Ahrefs adapter: bounded profile falsifiers, read-only bundle hash proof, and
   report-package integration pass; live profile bundle:
@@ -62,7 +62,7 @@ auth or schema is unknown.
   its report package is `partial` with 2 accepted bundles and 2 blocked
   sources;
 - final agency report:
-  `artifacts/analysis/bodymove-full-seo-report-20260729-v3/`, manifest
+  `artifacts/analysis/bodymove-full-seo-report-20260729-v4/`, manifest
   verified, HTML/Markdown/JSON cross-source context present, and source status
   includes GA4 and Localo as unavailable without invented metrics;
 - report findings layer: deterministic low-CTR, striking-distance, and Ahrefs

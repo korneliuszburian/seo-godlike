@@ -2,7 +2,7 @@
 
 Owner: capability inventory workflow.
 
-Stan epistemiczny na `2026-07-29`, lokalny fixed point `c7e3e9b` po agency
+Stan epistemiczny na `2026-07-29`, lokalny fixed point `8d29da1` po agency
 reporting, onboarding batch i GSC capability hardening slice.
 To jest bezpieczny,
 lokalny inventory; nie zawiera sekretów i nie ustanawia uprawnień.
