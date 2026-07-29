@@ -1,0 +1,12 @@
+{
+  "sources": [
+    {
+      "source_id": "localo.bodymove",
+      "client_id": "bodymove",
+      "provider": "localo",
+      "target": "bodymove.pl",
+      "status": "unavailable",
+      "reason": "managed Localo profile unavailable; discovery snapshot is not a canonical profile"
+    }
+  ]
+}

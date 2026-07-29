@@ -5,10 +5,17 @@
       "display_name": "Bodymove",
       "properties": [
         {
-          "property_id": "sc-domain:bodymove.pl",
-          "provider": "google-search-console",
+          "aliases": [
+            "https://bodymove.pl/"
+          ],
           "canonical_property": true,
-          "aliases": ["https://bodymove.pl/"]
+          "property_id": "sc-domain:bodymove.pl",
+          "provider": "google-search-console"
+        },
+        {
+          "canonical_property": true,
+          "property_id": "bodymove.pl",
+          "provider": "ahrefs"
         }
       ]
     }

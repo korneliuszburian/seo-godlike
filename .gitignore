@@ -8,6 +8,11 @@
 node_modules/
 dist/
 
+# Operator-local credentials and environment configuration.
+.env
+.env.*
+!.env.example
+
 # Product run bundles are immutable evidence outputs, not source.
 artifacts/
 

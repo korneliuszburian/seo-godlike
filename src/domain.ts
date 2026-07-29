@@ -1,5 +1,7 @@
 export type Provider = "google-search-console" | "google-analytics" | "ahrefs";
+export type ExternalProvider = "localo";
 export type Operation = "search_analytics.query" | "properties.runReport" | "site-explorer.metrics";
+export type MetricId = "gsc.clicks" | "gsc.impressions" | "gsc.ctr" | "gsc.position" | "ga4.sessions" | "ahrefs.org_traffic" | "ahrefs.org_keywords" | "ahrefs.org_keywords_top_3";
 
 export interface AnalysisRequest {
   schema_version: string;
@@ -78,12 +80,26 @@ export interface ClientRegistry {
   }>;
 }
 
+export interface SourceRegistry {
+  sources: Array<{
+    source_id: string;
+    client_id: string;
+    provider: ExternalProvider;
+    target: string;
+    status: "ready" | "unavailable";
+    reason: string | null;
+  }>;
+}
+
 export interface CapabilityRegistry {
   capabilities: Array<{
     capability_id: string;
     provider: Provider;
     operation_id: Operation;
     api_version?: string;
+    metric_ids?: MetricId[];
+    dimensions?: string[];
+    discovery?: "fixture_declared" | "live_discovered" | "operator_declared";
     read_write: "read";
     state: "schema_verified" | "validated_real_domain";
   }>;
@@ -104,13 +120,42 @@ export interface SourceRecord {
 
 export interface MetricObservation {
   observation_id: string;
-  metric_id: "gsc.clicks" | "ga4.sessions" | "ahrefs.org_traffic";
+  metric_id: MetricId;
   client_id: string;
   property_id: string;
   period: { start: string; end: string };
   value: number;
   source_ref: string;
   normalized_at: string;
+}
+
+export interface MetricDefinition {
+  metric_id: MetricId;
+  provider: Provider;
+  operation: Operation;
+  label: string;
+  unit: "count" | "ratio" | "position";
+  dimensions: string[];
+  read_only: true;
+}
+
+export type ScopeStatus = "ready" | "unavailable" | "unsupported";
+
+export interface ScopePlanEntry {
+  client_id: string;
+  client_display_name: string;
+  property_id: string;
+  provider: Provider;
+  status: ScopeStatus;
+  reason: string | null;
+  metrics: MetricDefinition[];
+}
+
+export interface ScopePlan {
+  schema_version: "1";
+  generated_at: string;
+  status: "ready" | "partial" | "empty";
+  entries: ScopePlanEntry[];
 }
 
 export interface Claim {

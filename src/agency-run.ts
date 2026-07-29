@@ -1,0 +1,69 @@
+export interface AgencyTask {
+  id: string;
+  status: "ready" | "blocked";
+  reason?: string | null;
+  run?: () => Promise<void>;
+}
+
+export interface AgencyRunResult {
+  status: "ready" | "partial" | "blocked";
+  completed: string[];
+  blocked: Array<{ id: string; reason: string }>;
+  failed: Array<{ id: string; error: string }>;
+  trace: AgencyTraceEvent[];
+}
+
+export interface AgencyTraceEvent {
+  event: "task_blocked" | "task_succeeded" | "task_failed";
+  task_id: string;
+  occurred_at: string;
+  detail: string;
+}
+
+export interface AgencyRunRecord {
+  schema_version: "1";
+  run_id: string;
+  started_at: string;
+  finished_at: string;
+  policy_mode: "read_only";
+  approval_boundary: "no_external_write_operations";
+  result: AgencyRunResult;
+}
+
+export async function executeAgencyTasks(tasks: AgencyTask[]): Promise<AgencyRunResult> {
+  const completed: string[] = [];
+  const blocked: Array<{ id: string; reason: string }> = [];
+  const failed: Array<{ id: string; error: string }> = [];
+  const trace: AgencyTraceEvent[] = [];
+  for (const task of tasks) {
+    if (task.status === "blocked") {
+      const reason = task.reason ?? "task is blocked";
+      blocked.push({ id: task.id, reason });
+      trace.push({ event: "task_blocked", task_id: task.id, occurred_at: new Date().toISOString(), detail: reason });
+      continue;
+    }
+    if (!task.run) {
+      const error = "ready task has no executor";
+      failed.push({ id: task.id, error });
+      trace.push({ event: "task_failed", task_id: task.id, occurred_at: new Date().toISOString(), detail: error });
+      continue;
+    }
+    try {
+      await task.run();
+      completed.push(task.id);
+      trace.push({ event: "task_succeeded", task_id: task.id, occurred_at: new Date().toISOString(), detail: "completed" });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      failed.push({ id: task.id, error: message });
+      trace.push({ event: "task_failed", task_id: task.id, occurred_at: new Date().toISOString(), detail: message });
+    }
+  }
+  return { status: completed.length === 0 ? "blocked" : blocked.length > 0 || failed.length > 0 ? "partial" : "ready", completed, blocked, failed, trace };
+}
+
+export async function writeAgencyRunRecord(outputDir: string, record: AgencyRunRecord): Promise<void> {
+  await writeFile(join(outputDir, "agency-run.json"), canonicalJson(record), { encoding: "utf8", flag: "wx" });
+}
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { canonicalJson } from "./serialize.js";

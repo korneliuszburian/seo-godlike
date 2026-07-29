@@ -7,7 +7,7 @@ import { AHREFS_METRICS_OPERATION, getAhrefsApiKey, queryAhrefsMetrics, runAhref
 import { runGscAnalytics } from "./gsc-analytics.js";
 import { runGa4Analytics } from "./ga4-analytics.js";
 import { runFixtureAnalysis } from "./pipeline.js";
-import { AnalysisRequest, CapabilityRegistry, ClientRegistry } from "./domain.js";
+import { AnalysisRequest, CapabilityRegistry, ClientRegistry, SourceRegistry } from "./domain.js";
 import { getGoogleAccessToken, listSearchConsoleSites, queryGa4Report, querySearchAnalytics } from "./google.js";
 import { addProperty, resolveRegisteredProperty } from "./registry.js";
 import { findPreviousBundleLinks, writeHistoryDashboard } from "./report-history.js";
@@ -16,6 +16,11 @@ import { discoverLocaloMcp, LOCALO_MCP_URL } from "./localo-mcp.js";
 import { buildAnalyticsRunId } from "./run-id.js";
 import { buildDailyAnalyticsCron } from "./schedule.js";
 import { runSequentialBatch } from "./batch.js";
+import { buildScopePlan } from "./scope-plan.js";
+import { buildAgentRunPlan } from "./agent-plan.js";
+import { executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
+import { writeAgencyReport } from "./agency-report.js";
+import { validateSourceRegistry } from "./source-registry.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -130,7 +135,90 @@ async function runSingleGa4Analytics(options: Ga4Options): Promise<void> {
   await runGa4Analytics(request, options.registry, options.capabilities, rawText, options.outputDir);
 }
 
+interface AhrefsOptions {
+  clientId: string;
+  propertyId: string;
+  date: string;
+  registry: ClientRegistry;
+  capabilities: CapabilityRegistry;
+  outputDir: string;
+}
+
+async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
+  const canonicalPropertyId = resolveRegisteredProperty(options.registry, options.clientId, options.propertyId, "ahrefs").canonical_property_id;
+  const rawText = await queryAhrefsMetrics(await getAhrefsApiKey(), canonicalPropertyId, options.date);
+  const request: AhrefsAnalyticsRequest = {
+    schema_version: "1",
+    run_id: buildAnalyticsRunId({ clientId: options.clientId, propertyId: canonicalPropertyId, provider: "ahrefs", start: options.date, end: options.date }),
+    client_id: options.clientId,
+    property_id: canonicalPropertyId,
+    provider: "ahrefs",
+    operation: AHREFS_METRICS_OPERATION,
+    metric: "org_traffic",
+    date_range: { start: options.date, end: options.date },
+    credential_ref: "keyring:seo-godlike/ahrefs-api-key",
+    policy_mode: "read_only",
+    captured_at: new Date().toISOString(),
+  };
+  await runAhrefsAnalytics(request, options.registry, options.capabilities, rawText, options.outputDir);
+}
+
 async function main(): Promise<void> {
+  if (process.argv.includes("--agency-report")) {
+    const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
+    const sourceRegistryPath = optionalArgument("--source-registry");
+    const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
+    validateSourceRegistry(sourceRegistry);
+    const scope = buildScopePlan(registry, capabilities);
+    const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry);
+    process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--agency-run")) {
+    const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
+    const sourceRegistryPath = optionalArgument("--source-registry");
+    const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
+    validateSourceRegistry(sourceRegistry);
+    const outputRoot = resolve(argument("--output"));
+    const oauthClientPath = optionalArgument("--oauth-client");
+    const artifactsDir = optionalArgument("--artifacts-dir");
+    const ahrefsDate = optionalArgument("--ahrefs-date") ?? new Date().toISOString().slice(0, 10);
+    const runId = optionalArgument("--run-id") ?? `agency-run-${new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14)}`;
+    const startedAt = new Date().toISOString();
+    const scope = buildScopePlan(registry, capabilities);
+    const ranges = calculateDateRanges();
+    await mkdir(outputRoot, { recursive: false });
+    const propertyTasks = scope.entries.map((entry) => {
+      const id = `${entry.client_id}:${entry.provider}:${entry.property_id}`;
+      if (entry.status !== "ready") return { id, status: "blocked" as const, reason: entry.reason };
+      const outputDir = join(outputRoot, buildAnalyticsRunId({ clientId: entry.client_id, propertyId: entry.property_id, provider: entry.provider, start: entry.provider === "ahrefs" ? ahrefsDate : ranges.current.start, end: entry.provider === "ahrefs" ? ahrefsDate : ranges.current.end }));
+      if (entry.provider === "google-search-console") return { id, status: "ready" as const, run: async () => { if (!oauthClientPath) throw new Error("missing --oauth-client for Google Search Console"); await runSingleAnalytics({ oauthClientPath, propertyId: entry.property_id, clientId: entry.client_id, registry, capabilities, outputDir, artifactsDir }); } };
+      if (entry.provider === "google-analytics") return { id, status: "ready" as const, run: async () => { if (!oauthClientPath) throw new Error("missing --oauth-client for Google Analytics"); await runSingleGa4Analytics({ oauthClientPath, propertyId: entry.property_id, clientId: entry.client_id, registry, capabilities, outputDir }); } };
+      return { id, status: "ready" as const, run: async () => runSingleAhrefsAnalytics({ clientId: entry.client_id, propertyId: entry.property_id, date: ahrefsDate, registry, capabilities, outputDir }) };
+    });
+    const sourceTasks = sourceRegistry.sources.map((source) => ({ id: `${source.client_id}:${source.provider}:${source.target}`, status: source.status === "ready" ? "ready" as const : "blocked" as const, reason: source.reason ?? "external source is unavailable" }));
+    const result = await executeAgencyTasks([...propertyTasks, ...sourceTasks]);
+    await writeAgencyRunRecord(outputRoot, { schema_version: "1", run_id: runId, started_at: startedAt, finished_at: new Date().toISOString(), policy_mode: "read_only", approval_boundary: "no_external_write_operations", result });
+    process.stdout.write(`${JSON.stringify({ scope_status: scope.status, ...result }, null, 2)}\n`);
+    if (result.failed.length > 0) process.exitCode = 1;
+    return;
+  }
+  if (process.argv.includes("--agent-plan")) {
+    const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
+    const scope = buildScopePlan(registry, capabilities);
+    const runId = optionalArgument("--run-id") ?? `agent-run-${scope.generated_at.replace(/[^0-9]/g, "").slice(0, 14)}`;
+    process.stdout.write(`${JSON.stringify(buildAgentRunPlan(scope, runId), null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--scope-plan")) {
+    const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
+    process.stdout.write(`${JSON.stringify(buildScopePlan(registry, capabilities), null, 2)}\n`);
+    return;
+  }
   if (process.argv.includes("--schedule")) {
     if (!["--client-id", "--property-id", "--registry", "--capabilities"].every(hasArgument)) {
       process.stderr.write("warning: using default schedule values; pass explicit flags for production use\n");

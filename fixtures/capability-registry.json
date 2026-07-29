@@ -5,6 +5,19 @@
       "provider": "google-search-console",
       "operation_id": "search_analytics.query",
       "api_version": "v3",
+      "metric_ids": ["gsc.clicks", "gsc.impressions", "gsc.ctr", "gsc.position"],
+      "dimensions": ["query", "page", "country", "device"],
+      "discovery": "fixture_declared",
+      "read_write": "read",
+      "state": "schema_verified"
+    },
+    {
+      "capability_id": "ahrefs.site-explorer.metrics",
+      "provider": "ahrefs",
+      "operation_id": "site-explorer.metrics",
+      "api_version": "v3",
+      "metric_ids": ["ahrefs.org_traffic", "ahrefs.org_keywords", "ahrefs.org_keywords_top_3"],
+      "discovery": "fixture_declared",
       "read_write": "read",
       "state": "schema_verified"
     }

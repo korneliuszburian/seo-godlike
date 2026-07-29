@@ -2,7 +2,8 @@
 
 Owner: capability inventory workflow.
 
-Stan epistemiczny na `2026-07-28`, fixed point `73418e5`. To jest bezpieczny,
+Stan epistemiczny na `2026-07-29`, lokalny fixed point po scope/agent-plan slice.
+To jest bezpieczny,
 lokalny inventory; nie zawiera sekretów i nie ustanawia uprawnień.
 
 ## Vocabulary
@@ -13,11 +14,17 @@ Przejście do kolejnego stanu wymaga osobnego lokalnego dowodu. Wpis konfiguracy
 
 ## Codex capability
 
+The repository-side agent runtime uses `@openai/codex-sdk` with the local Codex
+authentication posture. It passes only an allowlisted process environment,
+removes API-key variables, and starts read-only, approval-free, network-disabled
+threads. This is a control-plane capability proof; it does not claim provider
+metrics or replace the evidence adapters.
+
 | ID | Provider | Transport | States proven | States unknown | Read/write |
 |---|---|---|---|---|---|
 | `codex-cli` | OpenAI Codex | local CLI | `installed`, `authenticated`, `reachable` (doctor websocket) | SDK installed, schema verified, real-domain validation | local command surface; product read/write `unknown` |
 | `codex-app-server` | OpenAI Codex | local app-server | `documented`, `installed` (CLI help) | running, authenticated session, schema verified | `unknown` |
-| `@openai/codex-sdk` | OpenAI | TypeScript package | `not_discovered` locally | all later states | `unknown` |
+| `@openai/codex-sdk` | OpenAI Codex | TypeScript package | `installed`, read-only SDK smoke passed | live thread continuation and hosted validation | local read-only control-plane only |
 | `openai-codex` | OpenAI | Python package | `not_discovered` locally | all later states | `unknown` |
 
 ## MCP capability
@@ -30,6 +37,7 @@ Przejście do kolejnego stanu wymaga osobnego lokalnego dowodu. Wpis konfiguracy
 | `agent_browser` | local | stdio | disabled | Unsupported | `not_discovered` | `codex mcp list` |
 | `context7` | Context7 | stdio | disabled | Unsupported | `not_discovered` | `codex mcp list` |
 | `github` | GitHub | stdio | disabled | Unsupported | `not_discovered` | `codex mcp list` |
+| `localo-mcp` | Localo | streamable HTTP | reachable | Bearer keyring | `schema_verified`; managed Body Move profile unavailable | `--localo-discover`, read-only `docs`/`query` probes |
 
 ## SEO providers
 
@@ -38,7 +46,8 @@ Przejście do kolejnego stanu wymaga osobnego lokalnego dowodu. Wpis konfiguracy
 | Google Search Console API | local read-only v3 adapter, agency keyring, real GSC proof | `validated_real_domain` |
 | Google Analytics Data API | local fixture-tested read-only v1beta adapter; strict version gate; no live scope/property proof yet | `schema_verified` (live unknown) |
 | CrUX / PageSpeed Insights | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
-| Semrush / Ahrefs / DataForSEO | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
+| Ahrefs Site Explorer API v3 | local read-only adapter, keyring API key, live metrics bundle | `validated_real_domain` for `bodymove.pl` |
+| Semrush / DataForSEO | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
 
 The candidate names above are documented possibilities from the onboarding prompt, not discovered capabilities.
 
@@ -49,8 +58,12 @@ The candidate names above are documented possibilities from the onboarding promp
 - No real `properties/<id>` is currently registered for a client in the
   permanent fixture, and the GA4 capability record is intentionally absent
   until a real property proof is completed.
-- Local proof at `73418e5`: `npm test` passed (44 TypeScript tests + 3 context
-  tests), including strict missing-version rejection and GA4 Markdown escaping.
+- Local proof: `npm test` passes (65 TypeScript tests + 3 context tests), and
+  `--scope-plan`/`--agent-plan` both emit deterministic contracts.
+- Localo MCP authentication and schema discovery are proven, but no managed
+  Body Move profile is available; no Localo metric is represented as zero.
+- The scope planner is the executable owner of client/property/provider/metric
+  readiness; see `src/scope-plan.ts` and `--scope-plan`.
 - Fallow has not been run against the current revision; it is not an SEO provider.
 
 ## Safe next action after Phase A approval
