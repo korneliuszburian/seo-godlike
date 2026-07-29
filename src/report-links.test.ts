@@ -8,7 +8,7 @@ import { CapabilityRegistry, ClientRegistry, GscAnalyticsRequest } from "./domai
 import { runGscAnalytics } from "./gsc-analytics.js";
 
 const registry: ClientRegistry = { clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }] }] };
-const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "gsc.search_analytics.query", provider: "google-search-console", operation_id: "search_analytics.query", read_write: "read", state: "schema_verified" }] };
+const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "gsc.search_analytics.query", provider: "google-search-console", operation_id: "search_analytics.query", api_version: "v3", read_write: "read", state: "schema_verified" }] };
 const request: GscAnalyticsRequest = {
   schema_version: "1",
   run_id: "links_test_001",

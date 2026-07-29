@@ -11,7 +11,7 @@ const registry: ClientRegistry = {
   clients: [{ client_id: "bodymove", properties: [{ property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }] }],
 };
 const capabilities: CapabilityRegistry = {
-  capabilities: [{ capability_id: "gsc.search_analytics.query", provider: "google-search-console", operation_id: "search_analytics.query", read_write: "read", state: "schema_verified" }],
+  capabilities: [{ capability_id: "gsc.search_analytics.query", provider: "google-search-console", operation_id: "search_analytics.query", api_version: "v3", read_write: "read", state: "schema_verified" }],
 };
 
 test("calculates lagged inclusive current and previous 28-day ranges", () => {
@@ -72,5 +72,18 @@ test("writes the analytics bundle with raw responses and deterministic report sh
   assert.equal(report.analytics.previous.clicks, 1);
   assert.equal(result.report.canonical_json_hash, report.canonical_json_hash);
   assert.match(await readFile(join(result.outputDir, "report.md"), "utf8"), /# SEO analytics report: bodymove/);
+  await rm(directory, { recursive: true, force: true });
+});
+
+test("GSC fails closed when capability version is missing", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-gsc-version-test-"));
+  const request: GscAnalyticsRequest = {
+    schema_version: "1", run_id: "analytics_test_missing_version", client_id: "bodymove", property_id: "sc-domain:bodymove.pl",
+    provider: "google-search-console", operation: "search_analytics.query", metric: "clicks",
+    date_range: { start: "2026-06-28", end: "2026-07-25" }, comparison_date_range: { start: "2026-05-31", end: "2026-06-27" },
+    dimensions: GSC_ANALYTICS_DIMENSIONS, row_limit: 25_000, credential_ref: "keyring:seo-godlike/google-agency-refresh-token",
+    policy_mode: "read_only", captured_at: "2026-07-28T08:27:00.000Z",
+  };
+  await assert.rejects(runGscAnalytics(request, registry, { capabilities: [{ ...capabilities.capabilities[0]!, api_version: undefined }] }, '{"rows":[]}', undefined, join(directory, "run")), /unsupported Google Search Console API version 'missing'/);
   await rm(directory, { recursive: true, force: true });
 });

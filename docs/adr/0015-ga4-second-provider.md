@@ -24,9 +24,10 @@ machine-disambiguated without introducing a second report base type.
 
 GA4 shares the Google identity family and keyring boundary already proven for
 GSC, while exercising real provider variation: a different scope, resource
-identity, endpoint, response shape, metric, and quota model. Ahrefs is deferred
-because its first proof has higher plan/unit and credential friction. Fallow is
-a repository-quality aid, not a reporting provider.
+identity, endpoint, response shape, metric, and quota model. Ahrefs is now a
+separate accepted read-only provider under ADR-0016; this ADR does not own its
+request or report contract. Fallow is a repository-quality aid, not a
+reporting provider.
 
 ## Consequences
 

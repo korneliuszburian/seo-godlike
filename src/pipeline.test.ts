@@ -24,7 +24,7 @@ const registry: ClientRegistry = {
   clients: [{ client_id: "bodymove", properties: [{ property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }] }],
 };
 const capabilities: CapabilityRegistry = {
-  capabilities: [{ capability_id: "gsc.search_analytics.query", provider: "google-search-console", operation_id: "search_analytics.query", read_write: "read", state: "schema_verified" }],
+  capabilities: [{ capability_id: "gsc.search_analytics.query", provider: "google-search-console", operation_id: "search_analytics.query", api_version: "v3", read_write: "read", state: "schema_verified" }],
 };
 
 test("fails closed for a property mapped to another client", async () => {

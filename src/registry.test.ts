@@ -12,7 +12,7 @@ import { resolveRegisteredProperty } from "./registry.js";
 
 const execFileAsync = promisify(execFile);
 const capabilities: CapabilityRegistry = {
-  capabilities: [{ capability_id: "gsc.search_analytics.query", provider: "google-search-console", operation_id: "search_analytics.query", read_write: "read", state: "schema_verified" }],
+  capabilities: [{ capability_id: "gsc.search_analytics.query", provider: "google-search-console", operation_id: "search_analytics.query", api_version: "v3", read_write: "read", state: "schema_verified" }],
 };
 const registry: ClientRegistry = {
   clients: [{
