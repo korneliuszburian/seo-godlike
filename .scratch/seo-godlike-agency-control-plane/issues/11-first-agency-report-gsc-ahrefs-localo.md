@@ -62,9 +62,13 @@ auth or schema is unknown.
   its report package is `partial` with 2 accepted bundles and 2 blocked
   sources;
 - final agency report:
-  `artifacts/analysis/bodymove-full-seo-report-20260729-v2/`, manifest
+  `artifacts/analysis/bodymove-full-seo-report-20260729-v3/`, manifest
   verified, HTML/Markdown/JSON cross-source context present, and source status
   includes GA4 and Localo as unavailable without invented metrics;
+- report findings layer: deterministic low-CTR, striking-distance, and Ahrefs
+  opportunity signals are present in the regenerated report; 29 signals were
+  emitted for Bodymove and are explicitly labeled as evidence-derived, not
+  automated recommendations;
 - repository suite: `npm test` passes (74 TypeScript tests + 3 context tests);
 - Codex manager proof: `--codex-manager` returned a read-only execution
   checklist containing GSC/Ahrefs ready sources and GA4/Localo unavailable

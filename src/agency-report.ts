@@ -4,6 +4,7 @@ import { ClientRegistry, ScopePlan, SourceRegistry } from "./domain.js";
 import { ReportPackageSummary, writeReportPackage } from "./report-package.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { validateSourceRegistry } from "./source-registry.js";
+import { composeReportInsights, ReportInsight } from "./report-insights.js";
 
 interface AgencyReportSourceStatus {
   source_id?: string;
@@ -32,6 +33,7 @@ export interface AgencyReportSummary {
   accepted_bundles: ReportPackageSummary["accepted_bundles"];
   blocked_sources: AgencyReportSourceStatus[];
   cross_source_context: CrossSourceContextEntry[];
+  insights: ReportInsight[];
 }
 
 function normalizedUrl(value: unknown): string | null {
@@ -117,6 +119,14 @@ function markdown(summary: AgencyReportSummary, details: string[]): string {
     "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
     ...summary.cross_source_context.slice(0, 100).map((entry) => `| ${entry.client_id} | ${entry.key_type} | ${entry.key} | ${entry.gsc.clicks} | ${entry.gsc.impressions} | ${entry.gsc.position.toFixed(2)} | ${entry.ahrefs.estimated_traffic ?? "—"} | ${entry.ahrefs.position ?? "—"} |`),
     "",
+    "## Deterministic findings",
+    "",
+    "These are evidence-derived signals, not automated recommendations or causal conclusions.",
+    "",
+    "| Client | Type | Key | Evidence | Severity |",
+    "| --- | --- | --- | --- | --- |",
+    ...summary.insights.slice(0, 200).map((insight) => `| ${insight.client_id} | ${insight.kind} | ${insight.key} | ${insight.evidence} | ${insight.severity} |`),
+    "",
     "## Limitations",
     "",
     "- Only read-only provider operations are included.",
@@ -130,7 +140,9 @@ function html(summary: AgencyReportSummary, details: string[]): string {
   const rows = summary.source_status.map((source) => `<tr>${[source.client_id, source.property_id, source.provider, source.status, source.bundle_path ?? "—", source.reason ?? "—"].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("\n");
   const contextRows = summary.cross_source_context.slice(0, 100).map((entry) => `<tr>${[entry.client_id, entry.key_type, entry.key, entry.gsc.clicks, entry.gsc.impressions, entry.gsc.position.toFixed(2), entry.ahrefs.estimated_traffic ?? "—", entry.ahrefs.position ?? "—"].map((value) => `<td>${escapeHtml(String(value))}</td>`).join("")}</tr>`).join("\n");
   const contextSection = `<h2>Cross-source context</h2><p>GSC values are observed Search Console metrics; Ahrefs values are estimated ranking/traffic context. They are not added together.</p><table><thead><tr><th>Client</th><th>Type</th><th>Key</th><th>GSC clicks</th><th>GSC impressions</th><th>GSC position</th><th>Ahrefs traffic</th><th>Ahrefs position</th></tr></thead><tbody>${contextRows}</tbody></table>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Agency SEO report</title></head><body><h1>Agency SEO report</h1><p>Status: ${escapeHtml(summary.report_status)}; accepted evidence: ${summary.accepted_bundles.length}; blocked sources: ${summary.blocked_sources.length}</p><h2>Source status</h2><table><thead><tr><th>Client</th><th>Property</th><th>Provider</th><th>Status</th><th>Bundle</th><th>Reason</th></tr></thead><tbody>${rows}</tbody></table>${contextSection}<h2>Evidence reports</h2>${details.map(escapeHtml).map((detail) => `<pre>${detail}</pre>`).join("")}<h2>Limitations</h2><p>Read-only evidence only. Missing access is reported as unavailable, never as zero.</p></body></html>\n`;
+  const insightRows = summary.insights.slice(0, 200).map((insight) => `<tr>${[insight.client_id, insight.kind, insight.key, insight.evidence, insight.severity].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("\n");
+  const insightSection = `<h2>Deterministic findings</h2><p>Evidence-derived signals only; no automated recommendations or causal conclusions.</p><table><thead><tr><th>Client</th><th>Type</th><th>Key</th><th>Evidence</th><th>Severity</th></tr></thead><tbody>${insightRows}</tbody></table>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Agency SEO report</title></head><body><h1>Agency SEO report</h1><p>Status: ${escapeHtml(summary.report_status)}; accepted evidence: ${summary.accepted_bundles.length}; blocked sources: ${summary.blocked_sources.length}</p><h2>Source status</h2><table><thead><tr><th>Client</th><th>Property</th><th>Provider</th><th>Status</th><th>Bundle</th><th>Reason</th></tr></thead><tbody>${rows}</tbody></table>${contextSection}${insightSection}<h2>Evidence reports</h2>${details.map(escapeHtml).map((detail) => `<pre>${detail}</pre>`).join("")}<h2>Limitations</h2><p>Read-only evidence only. Missing access is reported as unavailable, never as zero.</p></body></html>\n`;
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
@@ -153,7 +165,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const externalStatus = sourceRegistry.sources.map((source) => ({ source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: null } satisfies AgencyReportSourceStatus));
   const sourceStatus = [...propertyStatus, ...externalStatus];
   const reports = await Promise.all(packageSummary.accepted_bundles.map(async (accepted) => JSON.parse(await readFile(join(resolvedArtifacts, accepted.bundle_path, "report.json"), "utf8")) as { client_id: string; provider: string; analytics: Record<string, unknown> }));
-  const summary: AgencyReportSummary = { schema_version: "1", report_status: packageSummary.accepted_bundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: packageSummary.accepted_bundles, blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: composeCrossSourceContext(reports) };
+  const summary: AgencyReportSummary = { schema_version: "1", report_status: packageSummary.accepted_bundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: packageSummary.accepted_bundles, blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: composeCrossSourceContext(reports), insights: composeReportInsights(reports) };
   const details: string[] = [];
   for (const accepted of packageSummary.accepted_bundles) {
     const path = join(resolvedArtifacts, accepted.bundle_path, "report.md");
