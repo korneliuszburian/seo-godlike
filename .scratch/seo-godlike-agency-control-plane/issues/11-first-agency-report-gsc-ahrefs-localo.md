@@ -42,6 +42,9 @@ auth or schema is unknown.
 - repository suite: `npm test` passes (52 TypeScript tests + 3 context tests);
 - live Ahrefs and Localo evidence is not claimed until operator auth and scope
   are present.
+- Localo discovery seam: `--localo-discover` performs only MCP `initialize`
+  and `tools/list`, redacts auth, and fails closed when
+  `keyring:seo-godlike/localo-mcp-token` is absent; fixed point `65e117e`.
 
 ## Operator handoff
 
