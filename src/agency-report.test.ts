@@ -15,10 +15,13 @@ test("agency report preserves unavailable sources instead of inventing metrics",
     entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "properties/123", provider: "google-analytics", status: "unavailable", reason: "no live capability", metrics: [] }],
   };
   const output = join(root, "report");
-  const sources: SourceRegistry = { sources: [{ source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: "bodymove.pl", status: "unavailable", reason: "managed profile unavailable" }] };
+  const sources: SourceRegistry = { sources: [
+    { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "not-registered", status: "unavailable", reason: "numeric GA4 property ID and analytics.readonly proof are not registered" },
+    { source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: "bodymove.pl", status: "unavailable", reason: "managed profile unavailable" },
+  ] };
   const summary = await writeAgencyReport(root, output, scope, "2026-07-29T00:00:00.000Z", sources);
   assert.equal(summary.report_status, "blocked");
-  assert.deepEqual(summary.blocked_sources.map((source) => source.reason), ["no live capability", "managed profile unavailable"]);
+  assert.deepEqual(summary.blocked_sources.map((source) => source.reason), ["no live capability", "numeric GA4 property ID and analytics.readonly proof are not registered", "managed profile unavailable"]);
   assert.equal(summary.source_status.at(-1)?.provider, "localo");
   assert.match(await readFile(join(output, "agency-report.md"), "utf8"), /unavailable/);
   assert.match(await readFile(join(output, "agency-report.html"), "utf8"), /no live capability/);

@@ -1,6 +1,14 @@
 {
   "sources": [
     {
+      "source_id": "ga4.bodymove",
+      "client_id": "bodymove",
+      "provider": "google-analytics",
+      "target": "not-registered",
+      "status": "unavailable",
+      "reason": "numeric GA4 property ID and analytics.readonly proof are not registered"
+    },
+    {
       "source_id": "localo.bodymove",
       "client_id": "bodymove",
       "provider": "localo",

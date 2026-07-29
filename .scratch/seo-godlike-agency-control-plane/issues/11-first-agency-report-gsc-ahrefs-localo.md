@@ -54,12 +54,13 @@ auth or schema is unknown.
   was available to query.
 - agency batch proof:
   `artifacts/analysis/bodymove-agency-run-20260729-final-v2/`, GSC and Ahrefs
-  completed sequentially, while Localo is recorded as a blocked task; its
-  report package is `partial` with 2 accepted bundles and 1 blocked source;
+  completed sequentially, while GA4 and Localo are recorded as blocked tasks;
+  its report package is `partial` with 2 accepted bundles and 2 blocked
+  sources;
 - final agency report:
   `artifacts/analysis/bodymove-agency-report-20260729-final-v2/`, manifest
-  verified and source status includes Localo as unavailable without invented
-  metrics;
+  verified and source status includes GA4 and Localo as unavailable without
+  invented metrics;
 - repository suite: `npm test` passes (65 TypeScript tests + 3 context tests);
 - GSC OAuth preflight: `READY_FOR_OPERATOR_CONSENT`, with the existing JSON
   readable at mode 600 and the refresh-token reference present;

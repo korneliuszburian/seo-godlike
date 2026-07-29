@@ -28,6 +28,29 @@ test("scope plan maps every registered property and fails closed per capability"
   assert.match(plan.entries[1].reason ?? "", /no read-only capability/);
 });
 
+test("scope plan preserves multiple clients and properties without collapsing identity", () => {
+  const multiClientRegistry: ClientRegistry = {
+    clients: [
+      { client_id: "bodymove", properties: [{ property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }, { property_id: "bodymove.pl", provider: "ahrefs" }] },
+      { client_id: "acme", properties: [{ property_id: "sc-domain:acme.example", provider: "google-search-console" }] },
+    ],
+  };
+  const multiProviderCapabilities: CapabilityRegistry = {
+    capabilities: [
+      capabilities.capabilities[0]!,
+      { capability_id: "ahrefs", provider: "ahrefs", operation_id: "site-explorer.metrics", api_version: "v3", metric_ids: ["ahrefs.org_traffic"], read_write: "read", state: "schema_verified" },
+    ],
+  };
+  const plan = buildScopePlan(multiClientRegistry, multiProviderCapabilities, "2026-07-29T00:00:00.000Z");
+  assert.equal(plan.entries.length, 3);
+  assert.deepEqual(plan.entries.map((entry) => `${entry.client_id}:${entry.property_id}:${entry.provider}`), [
+    "bodymove:sc-domain:bodymove.pl:google-search-console",
+    "bodymove:bodymove.pl:ahrefs",
+    "acme:sc-domain:acme.example:google-search-console",
+  ]);
+  assert.ok(plan.entries.every((entry) => entry.status === "ready"));
+});
+
 test("capability validation fails closed for an unknown metric declaration", () => {
   assert.throws(() => validateCapabilityRegistry({ capabilities: [{ capability_id: "bad", provider: "google-search-console", operation_id: "search_analytics.query", metric_ids: ["ga4.sessions"], read_write: "read", state: "schema_verified" }] }), /outside its provider operation/);
 });
