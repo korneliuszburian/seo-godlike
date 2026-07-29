@@ -1,7 +1,12 @@
 # Agency control plane expansion wayfinder:map
 
-Map status: active route. Ticket status and the capability inventory are the
-current authority; this map is only the decision navigation for the route.
+Map status: active route, explicitly confirmed for the current goal at fixed
+point `cc0864b`. Ticket status and the capability inventory are the current
+authority; this map is only the decision navigation for the route.
+
+Freshness rule: when the route, blocker, or next decision changes, update the
+owning ticket and this map in the same slice. Do not create a status snapshot
+or mirror the update in `docs/ARCHITECTURE.md`.
 
 ## Destination
 
@@ -39,12 +44,26 @@ ownership, credential, and publication decisions remain explicit.
   optional and rebuildable, not a prerequisite for the next slice.
 - [Large slice acceptance](issues/06-large-slice-acceptance.md) — implement the
   local GA4 adapter/capability/evidence path without hosting or consent.
+- [Evidence quality frontier](issues/09-quality-evidence-frontier.md) — hard
+  reportability gates remain evidence/policy based; Fallow stays advisory.
+- [Retention and legal-hold authority](issues/07-retention-and-legal-hold.md) —
+  deletion and legal hold are deferred; the local slice preserves bundles.
+- [Client delivery surface boundary](issues/08-client-delivery-surface.md) —
+  output is operator-only local JSON/Markdown/escaped HTML; no sharing or host.
+- [Agency delivery slice acceptance](issues/10-large-slice-acceptance.md) —
+  build one manifest-gated local report package over existing bundles.
 
 ## Not yet specified
 
-- Retention windows and cleanup/legal-hold authority remain open human decisions.
+- [Retention and legal-hold authority](issues/07-retention-and-legal-hold.md) —
+  default retention, deletion authority, and hold representation.
+- [Client delivery surface boundary](issues/08-client-delivery-surface.md) —
+  smallest safe operator/client export contract.
+- [Evidence quality frontier](issues/09-quality-evidence-frontier.md) —
+  reject-versus-advisory checks for reportable evidence packages.
+- [Agency delivery slice acceptance](issues/10-large-slice-acceptance.md) —
+  one bounded implementation seam after the three decisions above.
 - The live GA4 property and OAuth scope remain operator-gated.
-- The minimum client-facing delivery surface after the local control plane is stable.
 
 ## Out of scope
 
