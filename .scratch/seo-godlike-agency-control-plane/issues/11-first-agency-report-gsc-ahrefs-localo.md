@@ -89,10 +89,13 @@ auth or schema is unknown.
   registry write. The mixed valid/invalid manifest falsifier confirms no
   partial mutation. Ahrefs country is stored per Ahrefs property, with an
   explicit CLI override available for a run.
-- Latest read-only GSC discovery returned 39 properties: 2 are registered for
-  Bodymove and 37 property entries remain onboarding candidates. After
-  collapsing URL-prefix and `sc-domain` variants, that is 34 unique domain
-  candidates. No candidate was assigned to a client automatically.
+- Latest read-only GSC discovery on 2026-07-29 returned 39 properties: the
+  current registry has 2 Bodymove properties and 37 discovered property entries
+  remain outside that registered scope. After collapsing URL-prefix and
+  `sc-domain` variants, the fresh result is 35 unique hosts, including the
+  newly observed `fala-uderzeniowa.warszawa.pl`. No candidate was assigned to a
+  client automatically. An ignored operator mapping template and handoff are
+  retained under `docs/agents/runs/2026-07-29-property-mapping-dbf9b18/`.
 - Localo discovery seam: `--localo-discover` performs only MCP `initialize`
   and `tools/list`, redacts auth, and fails closed when
   `keyring:seo-godlike/localo-mcp-token` is absent; the missing-keyring path is
