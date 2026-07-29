@@ -108,6 +108,8 @@ auth or schema is unknown.
 2. Confirm that the profile is the intended Body Move location; do not assume
    the Warsaw search snapshot is the canonical client profile.
 3. Confirm that `bodymove.pl` remains the Ahrefs target.
-4. For the 37 discovery candidates, provide an explicit mapping of
-   `client_id`, canonical GSC property/alias, Ahrefs target, and Ahrefs country
-   before enabling collection.
+4. For the 37 unregistered GSC property entries (representing 34 normalized
+   unassigned hosts), provide an explicit mapping of `client_id`, canonical
+   GSC property/alias, Ahrefs target, and Ahrefs country before enabling
+   collection. Do not confuse raw property-entry count with normalized-host
+   count; URL-prefix and `sc-domain` variants are separate GSC identifiers.
