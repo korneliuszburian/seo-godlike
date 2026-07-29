@@ -2,7 +2,8 @@ import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { GOOGLE_GA4_READ_ONLY_SCOPE, preflightOAuth, validateOAuthClientReference } from "./auth-preflight.js";
 import { calculateDateRanges, GSC_ANALYTICS_DIMENSIONS } from "./analytics.js";
-import { Ga4AnalyticsRequest, GscAnalyticsRequest, Provider } from "./domain.js";
+import { AhrefsAnalyticsRequest, Ga4AnalyticsRequest, GscAnalyticsRequest, Provider } from "./domain.js";
+import { AHREFS_METRICS_OPERATION, getAhrefsApiKey, queryAhrefsMetrics, runAhrefsAnalytics } from "./ahrefs.js";
 import { runGscAnalytics } from "./gsc-analytics.js";
 import { runGa4Analytics } from "./ga4-analytics.js";
 import { runFixtureAnalysis } from "./pipeline.js";
@@ -157,11 +158,39 @@ async function main(): Promise<void> {
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
     return;
   }
+  if (process.argv.includes("--ahrefs-analytics")) {
+    const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
+    const clientId = argument("--client-id");
+    const propertyId = argument("--property-id");
+    const date = optionalArgument("--ahrefs-date") ?? new Date().toISOString().slice(0, 10);
+    const canonicalPropertyId = resolveRegisteredProperty(registry, clientId, propertyId, "ahrefs").canonical_property_id;
+    const rawPath = optionalArgument("--raw");
+    const rawText = rawPath
+      ? await readFile(resolve(rawPath), "utf8")
+      : await queryAhrefsMetrics(await getAhrefsApiKey(), canonicalPropertyId, date);
+    const request: AhrefsAnalyticsRequest = {
+      schema_version: "1",
+      run_id: buildAnalyticsRunId({ clientId, propertyId: canonicalPropertyId, provider: "ahrefs", start: date, end: date }),
+      client_id: clientId,
+      property_id: canonicalPropertyId,
+      provider: "ahrefs",
+      operation: AHREFS_METRICS_OPERATION,
+      metric: "org_traffic",
+      date_range: { start: date, end: date },
+      credential_ref: "keyring:seo-godlike/ahrefs-api-key",
+      policy_mode: "read_only",
+      captured_at: new Date().toISOString(),
+    };
+    await runAhrefsAnalytics(request, registry, capabilities, rawText, resolve(argument("--output")));
+    process.stdout.write(JSON.stringify({ provider: "ahrefs", property_id: canonicalPropertyId, output: resolve(argument("--output")) }, null, 2) + "\n");
+    return;
+  }
   if (process.argv.includes("--add-property")) {
     const canonicalValue = optionalArgument("--canonical-property") ?? "true";
     if (canonicalValue !== "true" && canonicalValue !== "false") throw new Error("--canonical-property must be true or false");
     const providerValue = optionalArgument("--provider") ?? "google-search-console";
-    if (providerValue !== "google-search-console" && providerValue !== "google-analytics") throw new Error("unsupported provider '" + providerValue + "'");
+    if (providerValue !== "google-search-console" && providerValue !== "google-analytics" && providerValue !== "ahrefs") throw new Error("unsupported provider '" + providerValue + "'");
     const registry = await addProperty({
       registryPath: argument("--registry"),
       clientId: argument("--client-id"),

@@ -12,9 +12,9 @@ interface PackageEntry {
   client_id: string;
   client_display_name: string;
   property_id: string;
-  provider: "google-search-console" | "google-analytics";
-  operation: "search_analytics.query" | "properties.runReport";
-  metric_id: "gsc.clicks" | "ga4.sessions";
+  provider: "google-search-console" | "google-analytics" | "ahrefs";
+  operation: "search_analytics.query" | "properties.runReport" | "site-explorer.metrics";
+  metric_id: "gsc.clicks" | "ga4.sessions" | "ahrefs.org_traffic";
   value: number;
   period: { start: string; end: string };
   generated_at: string;
@@ -80,6 +80,8 @@ function reportEntry(value: unknown, bundlePath: string): PackageEntry {
     ? { provider: "google-search-console" as const, operation: "search_analytics.query" as const, metric_id: "gsc.clicks" as const, value: (value.analytics.current as Record<string, unknown> | undefined)?.clicks }
     : value.provider === "google-analytics" && value.operation === "properties.runReport"
       ? { provider: "google-analytics" as const, operation: "properties.runReport" as const, metric_id: "ga4.sessions" as const, value: (value.analytics.current as Record<string, unknown> | undefined)?.sessions }
+      : value.provider === "ahrefs" && value.operation === "site-explorer.metrics"
+        ? { provider: "ahrefs" as const, operation: "site-explorer.metrics" as const, metric_id: "ahrefs.org_traffic" as const, value: (value.analytics.current as Record<string, unknown> | undefined)?.organic_traffic }
       : null;
   if (!pair || typeof pair.value !== "number" || !Number.isFinite(pair.value) || pair.value < 0) throw new Error("unsupported or invalid provider analytics shape");
   const range = value.analytics.current_date_range;

@@ -1,5 +1,5 @@
-export type Provider = "google-search-console" | "google-analytics";
-export type Operation = "search_analytics.query" | "properties.runReport";
+export type Provider = "google-search-console" | "google-analytics" | "ahrefs";
+export type Operation = "search_analytics.query" | "properties.runReport" | "site-explorer.metrics";
 
 export interface AnalysisRequest {
   schema_version: string;
@@ -51,6 +51,20 @@ export interface Ga4AnalyticsRequest {
   captured_at: string;
 }
 
+export interface AhrefsAnalyticsRequest {
+  schema_version: string;
+  run_id: string;
+  client_id: string;
+  property_id: string;
+  provider: "ahrefs";
+  operation: "site-explorer.metrics";
+  metric: "org_traffic";
+  date_range: { start: string; end: string };
+  credential_ref: string;
+  policy_mode: "read_only";
+  captured_at: string;
+}
+
 export interface ClientRegistry {
   clients: Array<{
     client_id: string;
@@ -90,7 +104,7 @@ export interface SourceRecord {
 
 export interface MetricObservation {
   observation_id: string;
-  metric_id: "gsc.clicks" | "ga4.sessions";
+  metric_id: "gsc.clicks" | "ga4.sessions" | "ahrefs.org_traffic";
   client_id: string;
   property_id: string;
   period: { start: string; end: string };

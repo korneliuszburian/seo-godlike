@@ -20,6 +20,7 @@ export interface ResolvedProperty {
 function propertyFormat(propertyId: string, provider: Provider): boolean {
   if (!propertyId || /\s/.test(propertyId)) return false;
   if (provider === "google-analytics") return /^properties\/[1-9]\d*$/.test(propertyId);
+  if (provider === "ahrefs") return /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(propertyId);
   if (propertyId.startsWith("sc-domain:")) return propertyId.length > "sc-domain:".length;
   try {
     const url = new URL(propertyId);
