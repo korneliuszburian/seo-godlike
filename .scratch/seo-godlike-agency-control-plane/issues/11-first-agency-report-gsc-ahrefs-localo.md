@@ -34,6 +34,15 @@ auth or schema is unknown.
   connector/tool and no verified operation schema; live auth/discovery is
   operator-gated.
 
+## Local proof
+
+- fixed point: `85f6cbc`;
+- Ahrefs adapter: three focused falsifiers, read-only bundle hash proof, and
+  report-package integration pass;
+- repository suite: `npm test` passes (52 TypeScript tests + 3 context tests);
+- live Ahrefs and Localo evidence is not claimed until operator auth and scope
+  are present.
+
 ## Operator handoff
 
 1. Create an Ahrefs API key in the agency workspace and store it in the local
