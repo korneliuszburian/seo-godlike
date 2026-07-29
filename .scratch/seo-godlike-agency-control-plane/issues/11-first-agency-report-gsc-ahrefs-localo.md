@@ -100,6 +100,18 @@ auth or schema is unknown.
   and 0 previous rows; the Krakow property returned 22,690 current and 24,258
   previous rows. These are Search Console observations only, not ownership or
   Ahrefs authorization proof.
+- A bounded Ahrefs attempt for `krakow.bodymove.pl` was rejected with HTTP
+  403 on the organic-keywords request. The target is therefore not retained in
+  the registry and is not represented as Ahrefs-ready; only the verified
+  `bodymove.pl` Ahrefs target remains eligible for collection.
+- Bodymove client report v7:
+  `artifacts/analysis/bodymove-client-report-20260729-v7/`; it combines the
+  two completed GSC properties with the verified root Ahrefs profile, keeps the
+  Krakow Ahrefs 403 outside accepted evidence, and remains `partial` because
+  GA4 and Localo are unavailable. The executive layer reports 2 observed GSC
+  properties, 1 estimated Ahrefs property, 207 joined context entries, and 36
+  rule-based signals; the five-file report manifest and nested package
+  manifest both verify.
 - Only explicitly registered properties are eligible for Ahrefs collection.
   GSC discovery results are not treated as proof of client ownership or Ahrefs
   authorization for additional domains.
