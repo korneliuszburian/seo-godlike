@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { GOOGLE_GA4_READ_ONLY_SCOPE, preflightOAuth, validateOAuthClientReference } from "./auth-preflight.js";
 import { calculateDateRanges, GSC_ANALYTICS_DIMENSIONS } from "./analytics.js";
 import { AhrefsAnalyticsRequest, Ga4AnalyticsRequest, GscAnalyticsRequest, Provider } from "./domain.js";
-import { AHREFS_METRICS_OPERATION, getAhrefsApiKey, queryAhrefsMetrics, runAhrefsAnalytics } from "./ahrefs.js";
+import { AHREFS_METRICS_OPERATION, getAhrefsApiKey, queryAhrefsMetrics, queryAhrefsProfile, runAhrefsAnalytics, runAhrefsProfile } from "./ahrefs.js";
 import { runGscAnalytics } from "./gsc-analytics.js";
 import { runGa4Analytics } from "./ga4-analytics.js";
 import { runFixtureAnalysis } from "./pipeline.js";
@@ -140,6 +140,7 @@ interface AhrefsOptions {
   clientId: string;
   propertyId: string;
   date: string;
+  country: string;
   registry: ClientRegistry;
   capabilities: CapabilityRegistry;
   outputDir: string;
@@ -147,7 +148,33 @@ interface AhrefsOptions {
 
 async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
   const canonicalPropertyId = resolveRegisteredProperty(options.registry, options.clientId, options.propertyId, "ahrefs").canonical_property_id;
-  const rawText = await queryAhrefsMetrics(await getAhrefsApiKey(), canonicalPropertyId, options.date);
+  const apiKey = await getAhrefsApiKey();
+  const profileCapability = options.capabilities.capabilities.find((item) => item.provider === "ahrefs" && item.operation_id === "site-explorer.profile");
+  if (profileCapability) {
+    const comparisonDate = new Date(`${options.date}T00:00:00Z`);
+    comparisonDate.setUTCDate(comparisonDate.getUTCDate() - 28);
+    const comparison = comparisonDate.toISOString().slice(0, 10);
+    const rawResponses = await queryAhrefsProfile(apiKey, canonicalPropertyId, options.date, comparison, options.country);
+    const request = {
+      schema_version: "1",
+      run_id: buildAnalyticsRunId({ clientId: options.clientId, propertyId: canonicalPropertyId, provider: "ahrefs", start: options.date, end: options.date }),
+      client_id: options.clientId,
+      property_id: canonicalPropertyId,
+      provider: "ahrefs" as const,
+      operation: "site-explorer.profile" as const,
+      metric: "org_traffic" as const,
+      date_range: { start: options.date, end: options.date },
+      comparison_date_range: { start: comparison, end: comparison },
+      country: options.country,
+      limits: { top_pages: 100 as const, organic_keywords: 500 as const, organic_competitors: 20 as const },
+      credential_ref: "keyring:seo-godlike/ahrefs-api-key",
+      policy_mode: "read_only" as const,
+      captured_at: new Date().toISOString(),
+    };
+    await runAhrefsProfile(request, options.registry, options.capabilities, rawResponses, options.outputDir);
+    return;
+  }
+  const rawText = await queryAhrefsMetrics(apiKey, canonicalPropertyId, options.date);
   const request: AhrefsAnalyticsRequest = {
     schema_version: "1",
     run_id: buildAnalyticsRunId({ clientId: options.clientId, propertyId: canonicalPropertyId, provider: "ahrefs", start: options.date, end: options.date }),
@@ -200,6 +227,7 @@ async function main(): Promise<void> {
     const oauthClientPath = optionalArgument("--oauth-client");
     const artifactsDir = optionalArgument("--artifacts-dir");
     const ahrefsDate = optionalArgument("--ahrefs-date") ?? new Date().toISOString().slice(0, 10);
+    const ahrefsCountry = optionalArgument("--ahrefs-country") ?? "pl";
     const runId = optionalArgument("--run-id") ?? `agency-run-${new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14)}`;
     const startedAt = new Date().toISOString();
     const scope = buildScopePlan(registry, capabilities);
@@ -211,7 +239,7 @@ async function main(): Promise<void> {
       const outputDir = join(outputRoot, buildAnalyticsRunId({ clientId: entry.client_id, propertyId: entry.property_id, provider: entry.provider, start: entry.provider === "ahrefs" ? ahrefsDate : ranges.current.start, end: entry.provider === "ahrefs" ? ahrefsDate : ranges.current.end }));
       if (entry.provider === "google-search-console") return { id, status: "ready" as const, run: async () => { if (!oauthClientPath) throw new Error("missing --oauth-client for Google Search Console"); await runSingleAnalytics({ oauthClientPath, propertyId: entry.property_id, clientId: entry.client_id, registry, capabilities, outputDir, artifactsDir }); } };
       if (entry.provider === "google-analytics") return { id, status: "ready" as const, run: async () => { if (!oauthClientPath) throw new Error("missing --oauth-client for Google Analytics"); await runSingleGa4Analytics({ oauthClientPath, propertyId: entry.property_id, clientId: entry.client_id, registry, capabilities, outputDir }); } };
-      return { id, status: "ready" as const, run: async () => runSingleAhrefsAnalytics({ clientId: entry.client_id, propertyId: entry.property_id, date: ahrefsDate, registry, capabilities, outputDir }) };
+      return { id, status: "ready" as const, run: async () => runSingleAhrefsAnalytics({ clientId: entry.client_id, propertyId: entry.property_id, date: ahrefsDate, country: ahrefsCountry, registry, capabilities, outputDir }) };
     });
     const sourceTasks = sourceRegistry.sources.map((source) => ({ id: `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}`, status: source.status === "ready" ? "ready" as const : "blocked" as const, reason: source.reason ?? "external source is unavailable" }));
     const result = await executeAgencyTasks([...propertyTasks, ...sourceTasks]);

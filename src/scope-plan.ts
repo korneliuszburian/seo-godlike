@@ -15,6 +15,9 @@ const METRIC_CATALOG: Record<Provider, MetricDefinition[]> = {
     { metric_id: "ahrefs.org_traffic", provider: "ahrefs", operation: "site-explorer.metrics", label: "Estimated organic traffic", unit: "count", dimensions: [], read_only: true },
     { metric_id: "ahrefs.org_keywords", provider: "ahrefs", operation: "site-explorer.metrics", label: "Organic keywords", unit: "count", dimensions: [], read_only: true },
     { metric_id: "ahrefs.org_keywords_top_3", provider: "ahrefs", operation: "site-explorer.metrics", label: "Organic keywords in top 3", unit: "count", dimensions: [], read_only: true },
+    { metric_id: "ahrefs.top_pages", provider: "ahrefs", operation: "site-explorer.profile", label: "Top organic pages", unit: "count", dimensions: ["url"], read_only: true },
+    { metric_id: "ahrefs.org_keywords_detail", provider: "ahrefs", operation: "site-explorer.profile", label: "Organic keyword opportunities", unit: "count", dimensions: ["keyword", "country", "position"], read_only: true },
+    { metric_id: "ahrefs.org_competitors", provider: "ahrefs", operation: "site-explorer.profile", label: "Organic competitors", unit: "count", dimensions: ["competitor_domain"], read_only: true },
   ],
 };
 

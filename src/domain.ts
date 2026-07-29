@@ -1,7 +1,7 @@
 export type Provider = "google-search-console" | "google-analytics" | "ahrefs";
 export type ExternalProvider = "localo" | "google-analytics";
-export type Operation = "search_analytics.query" | "properties.runReport" | "site-explorer.metrics";
-export type MetricId = "gsc.clicks" | "gsc.impressions" | "gsc.ctr" | "gsc.position" | "ga4.sessions" | "ahrefs.org_traffic" | "ahrefs.org_keywords" | "ahrefs.org_keywords_top_3";
+export type Operation = "search_analytics.query" | "properties.runReport" | "site-explorer.metrics" | "site-explorer.profile";
+export type MetricId = "gsc.clicks" | "gsc.impressions" | "gsc.ctr" | "gsc.position" | "ga4.sessions" | "ahrefs.org_traffic" | "ahrefs.org_keywords" | "ahrefs.org_keywords_top_3" | "ahrefs.top_pages" | "ahrefs.org_keywords_detail" | "ahrefs.org_competitors";
 
 export interface AnalysisRequest {
   schema_version: string;
@@ -62,6 +62,23 @@ export interface AhrefsAnalyticsRequest {
   operation: "site-explorer.metrics";
   metric: "org_traffic";
   date_range: { start: string; end: string };
+  credential_ref: string;
+  policy_mode: "read_only";
+  captured_at: string;
+}
+
+export interface AhrefsProfileRequest {
+  schema_version: string;
+  run_id: string;
+  client_id: string;
+  property_id: string;
+  provider: "ahrefs";
+  operation: "site-explorer.profile";
+  metric: "org_traffic";
+  date_range: { start: string; end: string };
+  comparison_date_range: { start: string; end: string };
+  country: string;
+  limits: { top_pages: 100; organic_keywords: 500; organic_competitors: 20 };
   credential_ref: string;
   policy_mode: "read_only";
   captured_at: string;

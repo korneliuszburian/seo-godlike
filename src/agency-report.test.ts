@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { ScopePlan, SourceRegistry } from "./domain.js";
-import { writeAgencyReport } from "./agency-report.js";
+import { composeCrossSourceContext, writeAgencyReport } from "./agency-report.js";
 
 test("agency report preserves unavailable sources instead of inventing metrics", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-report-test-"));
@@ -26,4 +26,20 @@ test("agency report preserves unavailable sources instead of inventing metrics",
   assert.match(await readFile(join(output, "agency-report.md"), "utf8"), /unavailable/);
   assert.match(await readFile(join(output, "agency-report.html"), "utf8"), /no live capability/);
   await rm(root, { recursive: true, force: true });
+});
+
+test("cross-source context joins GSC pages and queries to Ahrefs without merging metrics", () => {
+  const context = composeCrossSourceContext([
+    {
+      client_id: "bodymove",
+      provider: "google-search-console",
+      analytics: { current: { top_pages: [{ key: "https://bodymove.pl/a/", clicks: 10, impressions: 100, ctr: 0.1, position: 5 }], top_queries: [{ key: "Rehabilitacja", clicks: 4, impressions: 20, ctr: 0.2, position: 3 }] } },
+    },
+    {
+      client_id: "bodymove",
+      provider: "ahrefs",
+      analytics: { current: { top_pages: [{ url: "https://bodymove.pl/a", sum_traffic: 200, keywords: 12, top_keyword_best_position: 2 }], organic_keyword_rows: [{ keyword: "rehabilitacja", sum_traffic: 80, best_position: 4, best_position_url: "https://bodymove.pl/a" }] } },
+    },
+  ]);
+  assert.deepEqual(context.map((entry) => [entry.key_type, entry.key, entry.gsc.clicks, entry.ahrefs.estimated_traffic]), [["page", "https://bodymove.pl/a", 10, 200], ["query", "rehabilitacja", 4, 80]]);
 });

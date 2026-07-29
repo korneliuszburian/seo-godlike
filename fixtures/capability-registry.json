@@ -12,11 +12,11 @@
       "state": "schema_verified"
     },
     {
-      "capability_id": "ahrefs.site-explorer.metrics",
+      "capability_id": "ahrefs.site-explorer.profile",
       "provider": "ahrefs",
-      "operation_id": "site-explorer.metrics",
+      "operation_id": "site-explorer.profile",
       "api_version": "v3",
-      "metric_ids": ["ahrefs.org_traffic", "ahrefs.org_keywords", "ahrefs.org_keywords_top_3"],
+      "metric_ids": ["ahrefs.top_pages", "ahrefs.org_keywords_detail", "ahrefs.org_competitors"],
       "discovery": "fixture_declared",
       "read_write": "read",
       "state": "schema_verified"
