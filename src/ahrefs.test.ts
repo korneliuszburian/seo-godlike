@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { runAhrefsAnalytics, queryAhrefsMetrics } from "./ahrefs.js";
 import { AhrefsAnalyticsRequest, CapabilityRegistry, ClientRegistry } from "./domain.js";
+import { writeReportPackage } from "./report-package.js";
 
 const registry: ClientRegistry = { clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "bodymove.pl", provider: "ahrefs", canonical_property: true }] }] };
 const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "ahrefs.site-explorer.metrics", provider: "ahrefs", operation_id: "site-explorer.metrics", api_version: "v3", read_write: "read", state: "schema_verified" }] };
@@ -23,6 +24,9 @@ test("Ahrefs metrics writes a manifest-verified read-only bundle", async () => {
     assert.equal(content.byteLength, expected.bytes);
     assert.equal(createHash("sha256").update(content).digest("hex"), expected.sha256);
   }
+  const packageSummary = await writeReportPackage(root, join(root, "package"));
+  assert.equal(packageSummary.package_status, "reportable");
+  assert.equal(packageSummary.accepted_bundles[0]?.metric_id, "ahrefs.org_traffic");
   await rm(root, { recursive: true, force: true });
 });
 
