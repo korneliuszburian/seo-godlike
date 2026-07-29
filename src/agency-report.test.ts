@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { ScopePlan, SourceRegistry } from "./domain.js";
-import { composeCrossSourceContext, writeAgencyReport } from "./agency-report.js";
+import { composeCrossSourceContext, composeExecutiveSummary, writeAgencyReport } from "./agency-report.js";
 
 test("agency report preserves unavailable sources instead of inventing metrics", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-report-test-"));
@@ -25,7 +26,38 @@ test("agency report preserves unavailable sources instead of inventing metrics",
   assert.equal(summary.source_status.at(-1)?.provider, "localo");
   assert.match(await readFile(join(output, "agency-report.md"), "utf8"), /unavailable/);
   assert.match(await readFile(join(output, "agency-report.html"), "utf8"), /no live capability/);
+  assert.match(await readFile(join(output, "agency-report-appendix.md"), "utf8"), /Full cross-source context/);
+  const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, { sha256: string; bytes: number }> };
+  assert.deepEqual(Object.keys(manifest.files).sort(), ["agency-report-appendix.html", "agency-report-appendix.md", "agency-report.html", "agency-report.json", "agency-report.md"]);
+  for (const [name, expected] of Object.entries(manifest.files)) {
+    const bytes = await readFile(join(output, name));
+    assert.equal(bytes.byteLength, expected.bytes);
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), expected.sha256);
+  }
   await rm(root, { recursive: true, force: true });
+});
+
+test("executive summary labels sources and preserves complete join coverage", () => {
+  const context = [
+    { client_id: "bodymove", key_type: "page" as const, join_type: "matched" as const, key: "https://bodymove.pl/a", gsc: { clicks: 1, impressions: 10, ctr: 0.1, position: 3 }, ahrefs: { estimated_traffic: 20, position: 2, keywords: 4, ranking_url: "https://bodymove.pl/a" } },
+    { client_id: "bodymove", key_type: "page" as const, join_type: "gsc_only" as const, key: "https://bodymove.pl/b", gsc: { clicks: 2, impressions: 20, ctr: 0.1, position: 4 }, ahrefs: null },
+    { client_id: "bodymove", key_type: "query" as const, join_type: "ahrefs_only" as const, key: "rehabilitacja", gsc: null, ahrefs: { estimated_traffic: 30, position: 5, keywords: null, ranking_url: "https://bodymove.pl/a" } },
+  ];
+  const summary = composeExecutiveSummary([
+    { client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", analytics: { current_date_range: { start: "2026-07-01", end: "2026-07-28" }, current: { clicks: 3, impressions: 30, ctr: 0.1, position: 3.5 } } },
+    { client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs", analytics: { organic_traffic: 100, organic_keywords: 50, organic_keywords_top_3: 10 } },
+  ], context, [
+    { client_id: "bodymove", kind: "low_ctr", key: "query", evidence: "100 impressions; CTR 1.00%", severity: "attention" },
+  ]);
+  assert.equal(summary.source_labels.gsc, "Observed — Google Search Console");
+  assert.equal(summary.source_labels.ahrefs, "Estimated — Ahrefs");
+  assert.equal(summary.source_labels.heuristic, "Rule-based signal — not a recommendation");
+  assert.deepEqual(summary.join_coverage, { matched: 1, gsc_only: 1, ahrefs_only: 1, total: 3 });
+  assert.equal(summary.observed_gsc[0]?.clicks, 3);
+  assert.equal(summary.observed_gsc[0]?.property_id, "sc-domain:bodymove.pl");
+  assert.equal(summary.estimated_ahrefs[0]?.organic_traffic, 100);
+  assert.equal(summary.estimated_ahrefs[0]?.property_id, "bodymove.pl");
+  assert.equal(summary.preview.context_shown, 3);
 });
 
 test("cross-source context joins GSC pages and queries to Ahrefs without merging metrics", () => {

@@ -68,11 +68,18 @@ auth or schema is unknown.
   `artifacts/analysis/bodymove-full-seo-report-20260729-v4/`, manifest
   verified, HTML/Markdown/JSON cross-source context present, and source status
   includes GA4 and Localo as unavailable without invented metrics;
+- operator report v6:
+  `artifacts/analysis/bodymove-full-seo-report-20260729-v6-rerun/`, with a
+  deterministic executive JSON/Markdown/HTML layer plus full Markdown/HTML
+  evidence appendix. The executive preview shows 25 of 207 context entries;
+  the appendix preserves all 207 entries and all 29 rule-based signals. Five
+  generated files are verified by the output manifest, including the corrected
+  canonical properties `sc-domain:bodymove.pl` and `bodymove.pl`.
 - report findings layer: deterministic low-CTR, striking-distance, and Ahrefs
   opportunity signals are present in the regenerated report; 29 signals were
   emitted for Bodymove and are explicitly labeled as evidence-derived, not
   automated recommendations;
-- repository suite: `npm test` passes (74 TypeScript tests + 3 context tests);
+- repository suite: `npm test` passes (80 TypeScript tests + 3 context tests);
 - Codex manager proof: `--codex-manager` returned a read-only execution
   checklist containing GSC/Ahrefs ready sources and GA4/Localo unavailable
   blockers, without an application API key;
