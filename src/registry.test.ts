@@ -133,3 +133,16 @@ test("--add-property accepts a canonical GA4 property resource", async () => {
   assert.equal(persisted.clients[0]?.properties[1]?.property_id, "properties/123456789");
   await rm(directory, { recursive: true, force: true });
 });
+
+test("--add-properties validates the whole batch before atomic write", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-registry-batch-test-"));
+  const registryPath = join(directory, "client-registry.json");
+  const batchPath = join(directory, "onboarding.json");
+  await writeFile(registryPath, JSON.stringify(registry), "utf8");
+  await writeFile(batchPath, JSON.stringify({ clients: [{ client_id: "new-client", display_name: "New Client", properties: [{ property_id: "new-client.pl", provider: "ahrefs", canonical_property: true, country: "pl" }] }] }), "utf8");
+  await execFileAsync(process.execPath, ["dist/cli.js", "--add-properties", batchPath, "--registry", registryPath], { cwd: process.cwd() });
+  const persisted = JSON.parse(await readFile(registryPath, "utf8")) as ClientRegistry;
+  assert.equal(persisted.clients.at(-1)?.client_id, "new-client");
+  assert.equal(persisted.clients.at(-1)?.properties[0]?.country, "pl");
+  await rm(directory, { recursive: true, force: true });
+});

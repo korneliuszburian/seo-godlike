@@ -81,6 +81,10 @@ auth or schema is unknown.
 - Only explicitly registered properties are eligible for Ahrefs collection.
   GSC discovery results are not treated as proof of client ownership or Ahrefs
   authorization for additional domains.
+- Batch onboarding now accepts an explicit client/property manifest through
+  `--add-properties`; the whole manifest is validated before one atomic
+  registry write. Ahrefs country is stored per Ahrefs property, with an
+  explicit CLI override available for a run.
 - Latest read-only GSC discovery returned 39 properties: 2 are registered for
   Bodymove and 37 property entries remain onboarding candidates. After
   collapsing URL-prefix and `sc-domain` variants, that is 34 unique domain

@@ -10,6 +10,7 @@ export interface RegisteredProperty {
   provider: Provider;
   canonical_property?: boolean;
   aliases?: string[];
+  country?: string;
 }
 
 export interface ResolvedProperty {
@@ -43,6 +44,7 @@ export function validateClientRegistry(registry: ClientRegistry): void {
     const seen = new Set<string>();
     for (const property of client.properties) {
       if (!propertyFormat(property.property_id, property.provider)) throw new PolicyError("schema", `schema: invalid property_id '${property.property_id}'`);
+      if (property.country !== undefined && (property.provider !== "ahrefs" || !/^[a-z]{2}$/.test(property.country))) throw new PolicyError("schema", `schema: invalid Ahrefs country '${property.country}'`);
       if (property.canonical_property === false && (property.aliases?.length ?? 0) > 0) {
         throw new PolicyError("schema", `schema: aliases require canonical property '${property.property_id}'`);
       }
@@ -115,4 +117,43 @@ export async function addProperty(input: AddPropertyInput): Promise<ClientRegist
     throw error;
   }
   return registry;
+}
+
+export interface AddPropertiesInput {
+  registryPath: string;
+  clients: ClientRegistry["clients"];
+}
+
+export async function addProperties(input: AddPropertiesInput): Promise<ClientRegistry> {
+  if (!Array.isArray(input.clients) || input.clients.length === 0) throw new PolicyError("schema", "schema: batch must contain at least one client");
+  const path = resolve(input.registryPath);
+  const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
+  const registry = parsed as ClientRegistry;
+  validateClientRegistry(registry);
+  const incomingIds = new Set<string>();
+  for (const incoming of input.clients) {
+    assertShellSafeSegment(incoming.client_id);
+    if (incomingIds.has(incoming.client_id)) throw new PolicyError("scope", `scope: duplicate client '${incoming.client_id}' in batch`);
+    incomingIds.add(incoming.client_id);
+    if (!Array.isArray(incoming.properties) || incoming.properties.length === 0) throw new PolicyError("schema", `schema: client '${incoming.client_id}' must contain properties`);
+    for (const property of incoming.properties) {
+      if (!propertyFormat(property.property_id, property.provider)) throw new PolicyError("schema", `schema: invalid property_id '${property.property_id}'`);
+    }
+  }
+  const merged = structuredClone(registry) as ClientRegistry;
+  for (const incoming of input.clients) {
+    const existing = merged.clients.find((client) => client.client_id === incoming.client_id);
+    if (existing) existing.properties.push(...incoming.properties);
+    else merged.clients.push(incoming);
+  }
+  validateClientRegistry(merged);
+  const temporaryPath = `${path}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, canonicalJson(merged), { encoding: "utf8", flag: "wx", mode: 0o644 });
+    await rename(temporaryPath, path);
+  } catch (error) {
+    await unlink(temporaryPath).catch(() => undefined);
+    throw error;
+  }
+  return merged;
 }

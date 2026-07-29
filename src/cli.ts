@@ -9,7 +9,7 @@ import { runGa4Analytics } from "./ga4-analytics.js";
 import { runFixtureAnalysis } from "./pipeline.js";
 import { AnalysisRequest, CapabilityRegistry, ClientRegistry, SourceRegistry } from "./domain.js";
 import { getGoogleAccessToken, listSearchConsoleSites, queryGa4Report, querySearchAnalytics } from "./google.js";
-import { addProperty, resolveRegisteredProperty } from "./registry.js";
+import { addProperties, addProperty, resolveRegisteredProperty } from "./registry.js";
 import { findPreviousBundleLinks, writeHistoryDashboard } from "./report-history.js";
 import { writeReportPackage } from "./report-package.js";
 import { discoverLocaloMcp, LOCALO_MCP_URL } from "./localo-mcp.js";
@@ -140,21 +140,23 @@ interface AhrefsOptions {
   clientId: string;
   propertyId: string;
   date: string;
-  country: string;
+  country?: string;
   registry: ClientRegistry;
   capabilities: CapabilityRegistry;
   outputDir: string;
 }
 
 async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
-  const canonicalPropertyId = resolveRegisteredProperty(options.registry, options.clientId, options.propertyId, "ahrefs").canonical_property_id;
+  const resolvedProperty = resolveRegisteredProperty(options.registry, options.clientId, options.propertyId, "ahrefs");
+  const canonicalPropertyId = resolvedProperty.canonical_property_id;
+  const country = options.country ?? resolvedProperty.property.country ?? "pl";
   const apiKey = await getAhrefsApiKey();
   const profileCapability = options.capabilities.capabilities.find((item) => item.provider === "ahrefs" && item.operation_id === "site-explorer.profile");
   if (profileCapability) {
     const comparisonDate = new Date(`${options.date}T00:00:00Z`);
     comparisonDate.setUTCDate(comparisonDate.getUTCDate() - 28);
     const comparison = comparisonDate.toISOString().slice(0, 10);
-    const rawResponses = await queryAhrefsProfile(apiKey, canonicalPropertyId, options.date, comparison, options.country);
+    const rawResponses = await queryAhrefsProfile(apiKey, canonicalPropertyId, options.date, comparison, country);
     const request = {
       schema_version: "1",
       run_id: buildAnalyticsRunId({ clientId: options.clientId, propertyId: canonicalPropertyId, provider: "ahrefs", start: options.date, end: options.date }),
@@ -165,7 +167,7 @@ async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
       metric: "org_traffic" as const,
       date_range: { start: options.date, end: options.date },
       comparison_date_range: { start: comparison, end: comparison },
-      country: options.country,
+      country,
       limits: { top_pages: 100 as const, organic_keywords: 500 as const, organic_competitors: 20 as const },
       credential_ref: "keyring:seo-godlike/ahrefs-api-key",
       policy_mode: "read_only" as const,
@@ -227,7 +229,7 @@ async function main(): Promise<void> {
     const oauthClientPath = optionalArgument("--oauth-client");
     const artifactsDir = optionalArgument("--artifacts-dir");
     const ahrefsDate = optionalArgument("--ahrefs-date") ?? new Date().toISOString().slice(0, 10);
-    const ahrefsCountry = optionalArgument("--ahrefs-country") ?? "pl";
+    const ahrefsCountry = optionalArgument("--ahrefs-country");
     const runId = optionalArgument("--run-id") ?? `agency-run-${new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14)}`;
     const startedAt = new Date().toISOString();
     const scope = buildScopePlan(registry, capabilities);
@@ -320,6 +322,12 @@ async function main(): Promise<void> {
   }
   if (process.argv.includes("--localo-discover")) {
     const result = await discoverLocaloMcp(optionalArgument("--localo-url") ?? LOCALO_MCP_URL);
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--add-properties")) {
+    const registry = JSON.parse(await readFile(resolve(argument("--add-properties")), "utf8")) as { clients: ClientRegistry["clients"] };
+    const result = await addProperties({ registryPath: argument("--registry"), clients: registry.clients });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }

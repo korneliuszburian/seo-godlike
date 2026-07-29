@@ -93,6 +93,7 @@ export interface ClientRegistry {
       provider: Provider;
       canonical_property?: boolean;
       aliases?: string[];
+      country?: string;
     }>;
   }>;
 }

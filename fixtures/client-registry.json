@@ -15,7 +15,8 @@
         {
           "canonical_property": true,
           "property_id": "bodymove.pl",
-          "provider": "ahrefs"
+          "provider": "ahrefs",
+          "country": "pl"
         }
       ]
     }
