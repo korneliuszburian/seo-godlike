@@ -16,8 +16,10 @@ auth or schema is unknown.
 
 - GSC uses the existing agency keyring and canonical property
   `sc-domain:bodymove.pl`.
-- Ahrefs uses API v3 `site-explorer/metrics`, a keyring-only API key reference,
-  explicit target scope, and an immutable evidence bundle.
+- Ahrefs uses API v3 Site Explorer profile endpoints (`metrics`, `top-pages`,
+  `organic-keywords`, and `organic-competitors`), a keyring-only API key
+  reference, explicit target and country scope, bounded limits, and immutable
+  evidence bundles.
 - Localo is accepted only after MCP discovery proves an actual read operation
   and its returned snapshot is bound to a request, source, observation, claim,
   and manifest; no invented Localo schema is allowed.
@@ -29,9 +31,11 @@ auth or schema is unknown.
 
 - GSC: `validated_real_domain` for the existing bodymove property.
 - Ahrefs: `bodymove.pl` is explicitly registered as a read-only `v3`
-  capability; the live metrics request succeeded and produced an immutable
-  bundle with organic traffic `67021`, organic keywords `4791`, and 9/9
-  manifest hashes verified.
+  profile capability; the live profile request succeeded with organic traffic
+  `67021`, organic keywords `4791`, Top 3 keywords `1935`, 100 top-page rows,
+  100 returned organic-keyword rows within the 500-row request bound, and 20
+  competitor rows. GSC/Ahrefs joins are kept separate and produced 32
+  normalized page/query context entries in the agency report.
 - Localo: MCP discovery now succeeds with protocol `2025-03-26` and server
   `localo 1.0.0`. The current schema exposes read-only `query` and `docs`
   tools; `mutation` exists but remains outside this slice. A read-only search
@@ -40,11 +44,11 @@ auth or schema is unknown.
 
 ## Local proof
 
-- fixed point: local workspace after `2bba8a7` plus the agency control-plane
-  working slice;
-- Ahrefs adapter: three focused falsifiers, read-only bundle hash proof, and
-  report-package integration pass; live bundle:
-  `artifacts/analysis/bodymove-ahrefs-20260729-rerun/`;
+- fixed point: commit `f15c7ec` on `main`, with the Ahrefs profile implementation
+  at `6bd6396`;
+- Ahrefs adapter: bounded profile falsifiers, read-only bundle hash proof, and
+  report-package integration pass; live profile bundle:
+  `artifacts/analysis/bodymove-full-profile-20260729-v2/`;
 - combined package:
   `artifacts/analysis/bodymove-report-package-20260729/`, status `partial`,
   with accepted GSC and Ahrefs bundles;
@@ -58,10 +62,10 @@ auth or schema is unknown.
   its report package is `partial` with 2 accepted bundles and 2 blocked
   sources;
 - final agency report:
-  `artifacts/analysis/bodymove-agency-report-20260729-final-v3/`, manifest
-  verified and source status includes GA4 and Localo as unavailable without
-  invented metrics;
-- repository suite: `npm test` passes (67 TypeScript tests + 3 context tests);
+  `artifacts/analysis/bodymove-full-seo-report-20260729-v2/`, manifest
+  verified, HTML/Markdown/JSON cross-source context present, and source status
+  includes GA4 and Localo as unavailable without invented metrics;
+- repository suite: `npm test` passes (74 TypeScript tests + 3 context tests);
 - Codex manager proof: `--codex-manager` returned a read-only execution
   checklist containing GSC/Ahrefs ready sources and GA4/Localo unavailable
   blockers, without an application API key;
@@ -70,6 +74,9 @@ auth or schema is unknown.
 - live Ahrefs evidence is claimed for the verified `bodymove.pl` bundle; Localo
   authentication and discovery succeed, but no managed Body Move profile exists,
   so no Localo metric evidence is claimed.
+- Only explicitly registered properties are eligible for Ahrefs collection.
+  GSC discovery results are not treated as proof of client ownership or Ahrefs
+  authorization for additional domains.
 - Localo discovery seam: `--localo-discover` performs only MCP `initialize`
   and `tools/list`, redacts auth, and fails closed when
   `keyring:seo-godlike/localo-mcp-token` is absent; fixed point `65e117e`.

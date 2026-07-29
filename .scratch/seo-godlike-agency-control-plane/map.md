@@ -1,7 +1,7 @@
 # Agency control plane expansion wayfinder:map
 
 Map status: active route, explicitly confirmed for the current goal at fixed
-point `cc0864b`. Ticket status and the capability inventory are the current
+point `f15c7ec`. Ticket status and the capability inventory are the current
 authority; this map is only the decision navigation for the route.
 
 Freshness rule: when the route, blocker, or next decision changes, update the
@@ -36,8 +36,9 @@ ownership, credential, and publication decisions remain explicit.
   provider-specific transport behind an adapter and avoid speculative universals.
 - [Hosted runtime deferral](../../docs/adr/0014-hosted-runtime-deferral.md) —
   hosted credentials and deployment require a separate decision and authority.
-- [GA4 second-provider route](issues/03-second-provider.md) — GA4 is the next
-  bounded read-only provider; Ahrefs is deferred for this extension.
+- [GA4 second-provider route](issues/03-second-provider.md) — GA4 remains the
+  next operator-gated Google provider; Ahrefs profile reporting is delivered
+  for explicitly registered properties.
 - [Fallow boundary](issues/04-fallow-boundary.md) — Fallow is a parallel,
   read-only repository-quality aid, not a provider or evidence authority.
 - [Bundle-first storage](issues/01-evidence-storage-retention.md) — SQLite is
