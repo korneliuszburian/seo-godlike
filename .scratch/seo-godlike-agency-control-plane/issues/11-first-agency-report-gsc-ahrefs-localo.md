@@ -34,8 +34,11 @@ auth or schema is unknown.
   profile capability; the live profile request succeeded with organic traffic
   `67021`, organic keywords `4791`, Top 3 keywords `1935`, 100 top-page rows,
   100 returned organic-keyword rows within the 500-row request bound, and 20
-  competitor rows. GSC/Ahrefs joins are kept separate and produced 32
-  normalized page/query context entries in the agency report.
+  competitor rows. Bounded list manifest entries now preserve both requested
+  and returned row counts, so the 100/500/20 responses are machine-detectable
+  as bounded deliveries rather than silently treated as complete inventories.
+  GSC/Ahrefs joins are kept separate and preserve `matched`, `gsc_only`, and
+  `ahrefs_only` rows instead of dropping one-sided context.
 - Localo: MCP discovery now succeeds with protocol `2025-03-26` and server
   `localo 1.0.0`. The current schema exposes read-only `query` and `docs`
   tools; `mutation` exists but remains outside this slice. A read-only search
@@ -83,7 +86,8 @@ auth or schema is unknown.
   authorization for additional domains.
 - Batch onboarding now accepts an explicit client/property manifest through
   `--add-properties`; the whole manifest is validated before one atomic
-  registry write. Ahrefs country is stored per Ahrefs property, with an
+  registry write. The mixed valid/invalid manifest falsifier confirms no
+  partial mutation. Ahrefs country is stored per Ahrefs property, with an
   explicit CLI override available for a run.
 - Latest read-only GSC discovery returned 39 properties: 2 are registered for
   Bodymove and 37 property entries remain onboarding candidates. After
@@ -91,7 +95,8 @@ auth or schema is unknown.
   candidates. No candidate was assigned to a client automatically.
 - Localo discovery seam: `--localo-discover` performs only MCP `initialize`
   and `tools/list`, redacts auth, and fails closed when
-  `keyring:seo-godlike/localo-mcp-token` is absent; fixed point `65e117e`.
+  `keyring:seo-godlike/localo-mcp-token` is absent; the missing-keyring path is
+  now covered by an injected-loader falsifier; fixed point `65e117e`.
 
 ## Operator handoff
 

@@ -70,9 +70,11 @@ test("Ahrefs profile persists bounded pages, keyword, and competitor context", a
   assert.equal(report.analytics.current.top_pages.length, 1);
   assert.equal(report.analytics.current.organic_keyword_rows[0]?.keyword, "rehabilitacja");
   assert.equal(report.analytics.current.competitors[0]?.competitor_domain, "competitor.example");
-  const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, unknown> };
-  assert.ok(manifest.files["raw-response.top-pages.json"]);
-  assert.ok(manifest.files["raw-response.organic-keywords.json"]);
-  assert.ok(manifest.files["raw-response.competitors.json"]);
+  const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, { sha256: string; bytes: number; request_row_limit?: number; response_row_count?: number }> };
+  assert.deepEqual(manifest.files["raw-response.top-pages.json"], { sha256: manifest.files["raw-response.top-pages.json"]?.sha256, bytes: manifest.files["raw-response.top-pages.json"]?.bytes, request_row_limit: 100, response_row_count: 1 });
+  assert.equal(manifest.files["raw-response.organic-keywords.json"]?.request_row_limit, 500);
+  assert.equal(manifest.files["raw-response.organic-keywords.json"]?.response_row_count, 1);
+  assert.equal(manifest.files["raw-response.competitors.json"]?.request_row_limit, 20);
+  assert.equal(manifest.files["raw-response.competitors.json"]?.response_row_count, 1);
   await rm(root, { recursive: true, force: true });
 });

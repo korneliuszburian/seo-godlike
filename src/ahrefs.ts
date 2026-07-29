@@ -174,7 +174,17 @@ export async function runAhrefsProfile(request: AhrefsProfileRequest, registry: 
   const files: Record<string, string> = { "request.json": requestText, "raw-response.metrics.json": rawResponses.metrics, "raw-response.top-pages.json": rawResponses.topPages, "raw-response.organic-keywords.json": rawResponses.organicKeywords, "raw-response.competitors.json": rawResponses.competitors, "source.json": canonicalJson(sources), "observation.json": canonicalJson(observation), "claim.json": canonicalJson(claim), "audit-event.json": canonicalJson(log), "analytics.json": canonicalJson(analytics), "report.json": canonicalJson(report), "report.md": reportMarkdown };
   await mkdir(outputDir, { recursive: false });
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
-  await writeExclusive(join(outputDir, "manifest.json"), canonicalJson({ schema_version: request.schema_version, run_id: request.run_id, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: sha256(content), bytes: Buffer.byteLength(content) }])) }));
+  const manifestFiles = Object.fromEntries(Object.entries(files).map(([name, content]) => {
+    const bounded = name === "raw-response.top-pages.json"
+      ? { request_row_limit: request.limits.top_pages, response_row_count: topPages.length }
+      : name === "raw-response.organic-keywords.json"
+        ? { request_row_limit: request.limits.organic_keywords, response_row_count: organicKeywords.length }
+        : name === "raw-response.competitors.json"
+          ? { request_row_limit: request.limits.organic_competitors, response_row_count: competitors.length }
+          : {};
+    return [name, { sha256: sha256(content), bytes: Buffer.byteLength(content), ...bounded }];
+  }));
+  await writeExclusive(join(outputDir, "manifest.json"), canonicalJson({ schema_version: request.schema_version, run_id: request.run_id, files: manifestFiles }));
   return report;
 }
 

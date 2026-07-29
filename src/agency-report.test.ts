@@ -33,13 +33,13 @@ test("cross-source context joins GSC pages and queries to Ahrefs without merging
     {
       client_id: "bodymove",
       provider: "google-search-console",
-      analytics: { current: { top_pages: [{ key: "https://bodymove.pl/a/", clicks: 10, impressions: 100, ctr: 0.1, position: 5 }], top_queries: [{ key: "Rehabilitacja", clicks: 4, impressions: 20, ctr: 0.2, position: 3 }] } },
+    analytics: { current: { top_pages: [{ key: "https://bodymove.pl/a/", clicks: 10, impressions: 100, ctr: 0.1, position: 5 }, { key: "https://bodymove.pl/gsc-only", clicks: 2, impressions: 20, ctr: 0.1, position: 10 }], top_queries: [{ key: "Rehabilitacja", clicks: 4, impressions: 20, ctr: 0.2, position: 3 }] } },
     },
     {
       client_id: "bodymove",
       provider: "ahrefs",
-      analytics: { current: { top_pages: [{ url: "https://bodymove.pl/a", sum_traffic: 200, keywords: 12, top_keyword_best_position: 2 }], organic_keyword_rows: [{ keyword: "rehabilitacja", sum_traffic: 80, best_position: 4, best_position_url: "https://bodymove.pl/a" }] } },
+      analytics: { current: { top_pages: [{ url: "https://bodymove.pl/a", sum_traffic: 200, keywords: 12, top_keyword_best_position: 2 }, { url: "https://bodymove.pl/ahrefs-only", sum_traffic: 50, keywords: 3, top_keyword_best_position: 12 }], organic_keyword_rows: [{ keyword: "rehabilitacja", sum_traffic: 80, best_position: 4, best_position_url: "https://bodymove.pl/a" }] } },
     },
   ]);
-  assert.deepEqual(context.map((entry) => [entry.key_type, entry.key, entry.gsc.clicks, entry.ahrefs.estimated_traffic]), [["page", "https://bodymove.pl/a", 10, 200], ["query", "rehabilitacja", 4, 80]]);
+  assert.deepEqual(context.map((entry) => [entry.key_type, entry.join_type, entry.key, entry.gsc?.clicks ?? null, entry.ahrefs?.estimated_traffic ?? null]), [["page", "matched", "https://bodymove.pl/a", 10, 200], ["page", "ahrefs_only", "https://bodymove.pl/ahrefs-only", null, 50], ["page", "gsc_only", "https://bodymove.pl/gsc-only", 2, null], ["query", "matched", "rehabilitacja", 4, 80]]);
 });

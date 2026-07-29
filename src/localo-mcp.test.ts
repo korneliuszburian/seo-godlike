@@ -32,3 +32,7 @@ test("Localo discovery fails closed on an unauthorized MCP response", async () =
     globalThis.fetch = originalFetch;
   }
 });
+
+test("Localo discovery fails closed when the keyring token is absent", async () => {
+  await assert.rejects(discoverLocaloMcp("https://example.test/mcp", undefined, async () => { throw new Error("missing secret reference 'keyring:seo-godlike/localo-mcp-token'"); }), /missing secret reference 'keyring:seo-godlike\/localo-mcp-token'/);
+});

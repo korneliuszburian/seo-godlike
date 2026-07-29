@@ -146,3 +146,15 @@ test("--add-properties validates the whole batch before atomic write", async () 
   assert.equal(persisted.clients.at(-1)?.properties[0]?.country, "pl");
   await rm(directory, { recursive: true, force: true });
 });
+
+test("--add-properties rejects a mixed valid/invalid batch without partial mutation", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-registry-batch-invalid-test-"));
+  const registryPath = join(directory, "client-registry.json");
+  const batchPath = join(directory, "onboarding.json");
+  const original = JSON.stringify(registry);
+  await writeFile(registryPath, original, "utf8");
+  await writeFile(batchPath, JSON.stringify({ clients: [{ client_id: "valid-client", properties: [{ property_id: "valid-client.pl", provider: "ahrefs", canonical_property: true, country: "pl" }] }, { client_id: "invalid-client", properties: [{ property_id: "invalid-client.pl", provider: "ahrefs", canonical_property: true, country: "POL" }] }] }), "utf8");
+  await assert.rejects(execFileAsync(process.execPath, ["dist/cli.js", "--add-properties", batchPath, "--registry", registryPath], { cwd: process.cwd() }), /invalid Ahrefs country 'POL'/);
+  assert.equal(await readFile(registryPath, "utf8"), original);
+  await rm(directory, { recursive: true, force: true });
+});

@@ -16,7 +16,11 @@ Explorer context profile per registered Ahrefs property:
 Each response remains a separate immutable raw artifact with request metadata,
 source hash, normalized data, and manifest entry. The agency report composes
 GSC observed metrics with Ahrefs estimated context through explicit URL/query
-joins and preserves provider provenance.
+joins and preserves provider provenance. Bounded list artifacts also record the
+requested row limit and returned row count, so a provider-side short response
+is machine-detectable without treating it as a complete inventory. Cross-source
+joins retain one of `matched`, `gsc_only`, or `ahrefs_only` rather than dropping
+one-sided rows.
 
 ## Alternatives rejected
 
@@ -32,6 +36,9 @@ joins and preserves provider provenance.
 The first full profile is bounded, repeatable, and suitable for all registered
 domains. A larger export or Site Audit crawl requires a separate budgeted
 decision. Missing endpoint access produces partial output rather than zeros.
+Short list responses remain evidence, but are explicitly distinguishable from
+the requested bound. One-sided joins remain visible as context with their
+provider side absent.
 
 ## Falsifier
 

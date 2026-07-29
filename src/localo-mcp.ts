@@ -63,8 +63,8 @@ function tools(value: unknown): LocaloToolDescriptor[] {
   });
 }
 
-export async function discoverLocaloMcp(url = LOCALO_MCP_URL, token?: string): Promise<LocaloDiscoveryResult> {
-  const bearer = token ?? await getLocaloToken();
+export async function discoverLocaloMcp(url = LOCALO_MCP_URL, token?: string, tokenLoader: () => Promise<string> = getLocaloToken): Promise<LocaloDiscoveryResult> {
+  const bearer = token ?? await tokenLoader();
   const initialized = await rpc(url, bearer, 1, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "seo-godlike", version: "1" } });
   const initializedResult = initialized.result ?? {};
   const listed = await rpc(url, bearer, 2, "tools/list", {});
