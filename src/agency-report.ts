@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
-import { ScopePlan, SourceRegistry } from "./domain.js";
+import { ClientRegistry, ScopePlan, SourceRegistry } from "./domain.js";
 import { ReportPackageSummary, writeReportPackage } from "./report-package.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { validateSourceRegistry } from "./source-registry.js";
@@ -72,7 +72,8 @@ async function writeExclusive(path: string, content: string): Promise<void> {
 }
 
 export async function writeAgencyReport(artifactsDir: string, outputDir: string, scope: ScopePlan, generatedAt = new Date().toISOString(), sourceRegistry: SourceRegistry = { sources: [] }): Promise<AgencyReportSummary> {
-  validateSourceRegistry(sourceRegistry);
+  const clients: ClientRegistry = { clients: [...new Set(scope.entries.map((entry) => entry.client_id))].map((client_id) => ({ client_id, properties: [] })) };
+  validateSourceRegistry(sourceRegistry, clients);
   const resolvedArtifacts = resolve(artifactsDir);
   const resolvedOutput = resolve(outputDir);
   await mkdir(resolvedOutput, { recursive: false });

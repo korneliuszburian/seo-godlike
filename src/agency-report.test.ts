@@ -16,7 +16,7 @@ test("agency report preserves unavailable sources instead of inventing metrics",
   };
   const output = join(root, "report");
   const sources: SourceRegistry = { sources: [
-    { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "not-registered", status: "unavailable", reason: "numeric GA4 property ID and analytics.readonly proof are not registered" },
+    { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: null, status: "unavailable", reason: "numeric GA4 property ID and analytics.readonly proof are not registered" },
     { source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: "bodymove.pl", status: "unavailable", reason: "managed profile unavailable" },
   ] };
   const summary = await writeAgencyReport(root, output, scope, "2026-07-29T00:00:00.000Z", sources);

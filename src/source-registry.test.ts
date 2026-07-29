@@ -19,3 +19,8 @@ test("ready source must have a target", () => {
   const registry: SourceRegistry = { sources: [{ source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: null, status: "ready", reason: null }] };
   assert.throws(() => validateSourceRegistry(registry, clients), /must declare target/);
 });
+
+test("ready external sources require provider-specific target syntax", () => {
+  const registry: SourceRegistry = { sources: [{ source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "not-registered", status: "ready", reason: null }] };
+  assert.throws(() => validateSourceRegistry(registry, clients), /numeric GA4 property target/);
+});
