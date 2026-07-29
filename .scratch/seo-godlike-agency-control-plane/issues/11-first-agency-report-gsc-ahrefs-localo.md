@@ -30,6 +30,10 @@ auth or schema is unknown.
 ## Current evidence and blockers
 
 - GSC: `validated_real_domain` for the existing bodymove property.
+- Bodymove GSC scope now explicitly includes the discovered URL-prefix
+  property `https://krakow.bodymove.pl/` alongside the canonical domain
+  property `sc-domain:bodymove.pl`; both belong to the `bodymove` client in
+  the registry. No Ahrefs target was inferred for the subdomain.
 - Ahrefs: `bodymove.pl` is explicitly registered as a read-only `v3`
   profile capability; the live profile request succeeded with organic traffic
   `67021`, organic keywords `4791`, Top 3 keywords `1935`, 100 top-page rows,
@@ -88,6 +92,14 @@ auth or schema is unknown.
 - live Ahrefs evidence is claimed for the verified `bodymove.pl` bundle; Localo
   authentication and discovery succeed, but no managed Body Move profile exists,
   so no Localo metric evidence is claimed.
+- Bodymove-only GSC batch proof:
+  `artifacts/analysis/bodymove-gsc-all-20260729/`; both registered GSC
+  properties completed for 2026-06-29 through 2026-07-26 with no failed
+  properties. Each bundle contains 10 manifest-bound files and passes SHA-256
+  and byte-count verification. The root property returned 17,098 current rows
+  and 0 previous rows; the Krakow property returned 22,690 current and 24,258
+  previous rows. These are Search Console observations only, not ownership or
+  Ahrefs authorization proof.
 - Only explicitly registered properties are eligible for Ahrefs collection.
   GSC discovery results are not treated as proof of client ownership or Ahrefs
   authorization for additional domains.

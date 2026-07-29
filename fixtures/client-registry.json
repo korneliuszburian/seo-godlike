@@ -14,9 +14,14 @@
         },
         {
           "canonical_property": true,
+          "country": "pl",
           "property_id": "bodymove.pl",
-          "provider": "ahrefs",
-          "country": "pl"
+          "provider": "ahrefs"
+        },
+        {
+          "canonical_property": true,
+          "property_id": "https://krakow.bodymove.pl/",
+          "provider": "google-search-console"
         }
       ]
     }

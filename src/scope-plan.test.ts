@@ -67,5 +67,9 @@ test("scope plan CLI exposes the agency scope contract", async () => {
   const plan = JSON.parse(result.stdout) as ReturnType<typeof buildScopePlan>;
   assert.equal(plan.schema_version, "1");
   assert.equal(plan.status, "ready");
-  assert.deepEqual(plan.entries.map((entry) => `${entry.provider}:${entry.status}`), ["google-search-console:ready", "ahrefs:ready"]);
+  assert.deepEqual(plan.entries.map((entry) => `${entry.provider}:${entry.status}`), [
+    "google-search-console:ready",
+    "ahrefs:ready",
+    "google-search-console:ready",
+  ]);
 });
