@@ -410,3 +410,15 @@ auth or schema is unknown.
 - This does not claim a live SERPROBOT API adapter: the official connector is
   still represented by an operator-provided manifest-bound snapshot until a
   stable direct response schema is verified.
+
+## OpenCode review follow-up — 2026-08-03
+
+- Review target: `17b2f8e` through `opencode-go/deepseek-v4-flash` in the
+  read-only non-interactive launcher; raw output is retained outside the repo
+  at `/tmp/seo-godlike-second-opinion-e8784a9.json`.
+- The reviewer loaded the local review skill and inspected the clean fixed
+  point, diff ledger, delivery, client content and rank/report surfaces, but
+  stopped before a final response. This is therefore **partial**, not PASS;
+  no reviewer finding is accepted from it without a reproducible claim.
+- No provider request, credential read, edit, commit, or tracker mutation was
+  performed by the reviewer.
