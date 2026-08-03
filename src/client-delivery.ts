@@ -254,6 +254,13 @@ async function verifyKeywordBundle(keyword: NonNullable<AgencyReportSummary["key
   return hashBytes(await readFile(manifestPath));
 }
 
+function omitEmptyEvidenceSections(html: string, unit: DeliveryUnit): string {
+  let result = html;
+  if (!unit.context.length) result = result.replace(/<section class="page-break wide-table"><div class="eyebrow">SZCZEGÓŁY WIDOCZNOŚCI[\s\S]*?<\/section>/, "");
+  if (!unit.insights.length) result = result.replace(/<section class="page-break"><div class="eyebrow">SYGNAŁY REGUŁOWE[\s\S]*?<\/section>/, "");
+  return result;
+}
+
 function unitHtml(unit: DeliveryUnit, generatedAt: string): string {
   const gsc = unit.metrics.filter((metric) => metric.provider === "google-search-console");
   const ahrefs = unit.metrics.filter((metric) => metric.provider === "ahrefs");
@@ -415,7 +422,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
     await mkdir(unitDir, { recursive: false, mode: 0o700 });
     const htmlName = `${safeSegment(unit.id)}-seo-report.html`;
     const htmlPath = join(unitDir, htmlName);
-    const html = appendClientContent(unitHtml(unit, generatedAt), unit.content, unit.rankMonitoring);
+    const html = appendClientContent(omitEmptyEvidenceSections(unitHtml(unit, generatedAt), unit), unit.content, unit.rankMonitoring);
     await writeFile(htmlPath, html, { encoding: "utf8", flag: "wx", mode: 0o600 });
     let pdf: string | null = null;
     if (options.renderPdf) {

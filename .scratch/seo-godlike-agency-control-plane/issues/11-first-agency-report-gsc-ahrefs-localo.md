@@ -680,3 +680,16 @@ auth or schema is unknown.
   evidence rather than independently rerun by the reviewer.
 - No provider request, credential read, Ahrefs rerun or generated production
   report rerun was performed.
+
+## Client delivery empty-section slice — 2026-08-03
+
+- Keyword-only domain units no longer render empty `Widoczność organiczna`
+  or `Sygnały do omówienia` pages; populated client evidence remains visible.
+- The renderer decides omission from the typed unit data (`context` and
+  `insights`), not from arbitrary text inside report rows. Focused tests cover
+  both omission and retention paths.
+- Local proof: 116 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`. No provider request, credential read,
+  Ahrefs rerun or generated production report rerun was performed.
+- Independent OpenCode bounded review found no blocker; it recorded only the
+  non-blocking coupling between the omission helper and current section markup.
