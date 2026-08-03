@@ -82,7 +82,7 @@ test("history aggregates two bundles chronologically and writes deterministic da
   for (const [name, expected] of Object.entries(dashboardManifest.files)) {
     const bytes = await readFile(join(output, name));
     assert.equal(bytes.byteLength, expected.bytes);
-    assert.equal(sha256(bytes), expected.sha256);
+    assert.equal(sha256(bytes.toString("utf8")), expected.sha256);
   }
   assert.deepEqual(await findPreviousBundleLinks(root, join(root, "new-run")), ["../earlier/report.md", "../later/report.md"]);
   await rm(root, { recursive: true, force: true });

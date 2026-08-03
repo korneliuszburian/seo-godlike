@@ -581,3 +581,6 @@ auth or schema is unknown.
   evidence rather than only to a path.
 - Focused history proof verifies dashboard file hashes and bytes; no provider
   request, rerun or generated production report was performed.
+- Full local proof after the test-helper correction: 112 TypeScript tests + 3
+  context tests, build, `npm audit --omit=dev --audit-level=high` with zero
+  vulnerabilities, and `git diff --check` all pass.
