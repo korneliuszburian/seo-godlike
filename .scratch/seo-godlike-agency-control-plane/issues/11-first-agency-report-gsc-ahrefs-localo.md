@@ -992,3 +992,18 @@ auth or schema is unknown.
 - Focused rank/report proof and `git diff --check` pass. OpenCode's final
   bounded review found no blocker; its only retained note was this low-risk
   literal drift, now closed. No provider request or production rerun occurred.
+
+## No-rerun rank evidence composition — 2026-08-03
+
+- Standalone `--agency-report` and `--client-delivery` now accept
+  `--rank-monitoring-root` and select the newest complete manifest-bound
+  SERPROBOT export without running any provider adapter.
+- Exact bundle paths and root selection are mutually exclusive. Delivery
+  derives expected rank identities from the report's explicit source registry
+  status, then re-verifies the selected bundle and declared provenance.
+- This gives the operator a no-rerun path from existing evidence to the full
+  local report/PDF/email bundle; it does not implement or invent a direct
+  SERPROBOT API schema.
+- Full local proof: 140 TypeScript tests + 3 context tests, build, zero high
+  audit vulnerabilities and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun or production report rerun occurred.

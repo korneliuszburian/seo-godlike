@@ -8,7 +8,7 @@ import { AgencyReportSummary, CrossSourceContextEntry } from "./agency-report.js
 import { PhraseGroup } from "./ahrefs-keywords.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { ClientContent, readClientContent, readClientContentBundle } from "./client-content.js";
-import { RankMonitoringSnapshot, readRankMonitoringBundle } from "./rank-monitoring.js";
+import { RANK_MONITORING_PROVIDER, RankMonitoringSnapshot, readRankMonitoringBundle, resolveLatestRankMonitoringBundle } from "./rank-monitoring.js";
 import { ProviderHistoryEntry, readProviderHistory } from "./provider-history.js";
 import { AgencyRunRecord, assertAgencyReadOnlyPolicy } from "./agency-run.js";
 
@@ -34,6 +34,7 @@ export interface ClientDeliveryOptions {
   clientContentPath?: string;
   clientContentBundlePath?: string;
   rankMonitoringPath?: string;
+  rankMonitoringRoot?: string;
   keywordBundleRoot?: string;
   agencyRunRecordPath?: string;
 }
@@ -426,6 +427,10 @@ async function renderPdf(htmlPath: string, pdfPath: string): Promise<void> {
 
 export async function writeClientDelivery(options: ClientDeliveryOptions): Promise<ClientDeliveryResult> {
   const summary = await readAgencyReport(options.agencyReportPath, options.artifactsDir);
+  if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
+  const resolvedRankMonitoringPath = options.rankMonitoringRoot
+    ? await resolveLatestRankMonitoringBundle(options.rankMonitoringRoot, [...new Set(summary.source_status.filter((source) => source.provider === RANK_MONITORING_PROVIDER).map((source) => source.client_id))])
+    : options.rankMonitoringPath;
   const metrics = await collectMetrics(summary, options.artifactsDir);
   const agencyReportBytes = await readFile(options.agencyReportPath);
   const clientIds = [...new Set(summary.scope.entries.map((entry) => entry.client_id).concat(summary.source_status.map((source) => source.client_id)))].sort();
@@ -442,7 +447,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const keywordManifestSha256 = summary.keyword_research ? await verifyKeywordBundle(summary.keyword_research, options.keywordBundleRoot ?? options.artifactsDir) : null;
   const outputDir = resolve(options.outputDir);
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
-  const rankBundle = options.rankMonitoringPath ? await readRankMonitoringBundle(options.rankMonitoringPath, clientIds) : null;
+  const rankBundle = resolvedRankMonitoringPath ? await readRankMonitoringBundle(resolvedRankMonitoringPath, clientIds) : null;
   const declaredRankEvidence = summary.rank_monitoring_snapshots ?? (summary.rank_monitoring ? [summary.rank_monitoring] : []);
   if (declaredRankEvidence.length) {
     if (!rankBundle) throw new Error("agency report declares rank monitoring evidence but no rank bundle was supplied");

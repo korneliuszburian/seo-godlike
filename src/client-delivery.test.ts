@@ -188,12 +188,15 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
     const summary = { schema_version: "1", report_status: "partial", generated_at: "2026-08-03T00:00:00.000Z", scope: { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "ready", entries: [
       { client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
       { client_id: "acme", client_display_name: "Acme", property_id: "sc-domain:acme.example", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
-    ] }, source_status: [], accepted_bundles: [], blocked_sources: [], cross_source_context: [], insights: [], executive: {}, rank_monitoring_snapshots: packed.snapshots.map((item) => ({ source_label: "Observed — SERPROBOT rank snapshot", client_id: item.client_id, manifest_sha256: packed.manifest_sha256, captured_at: item.captured_at, date_range: item.date_range, source_config: item.source_config, row_count: item.rows.length })) };
+    ] }, source_status: [
+      { source_id: "serprobot.bodymove", client_id: "bodymove", property_id: "123", provider: "serprobot", status: "ready", reason: null, bundle_path: null },
+      { source_id: "serprobot.acme", client_id: "acme", property_id: "456", provider: "serprobot", status: "ready", reason: null, bundle_path: null },
+    ], accepted_bundles: [], blocked_sources: [], cross_source_context: [], insights: [], executive: {}, rank_monitoring_snapshots: packed.snapshots.map((item) => ({ source_label: "Observed — SERPROBOT rank snapshot", client_id: item.client_id, manifest_sha256: packed.manifest_sha256, captured_at: item.captured_at, date_range: item.date_range, source_config: item.source_config, row_count: item.rows.length })) };
     const agencyPath = join(root, "agency-report.json");
     const agencyText = JSON.stringify(summary);
     await writeFile(agencyPath, agencyText);
     await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": agencyText }));
-    await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery"), rankMonitoringPath: rankBundle });
+    await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery"), rankMonitoringRoot: artifacts });
     const bodymoveHtml = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
     const acmeHtml = await readFile(join(root, "delivery", "acme", "acme-seo-report.html"), "utf8");
     assert.match(bodymoveHtml, /rehabilitacja/);
