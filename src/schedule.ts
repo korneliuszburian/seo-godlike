@@ -52,6 +52,8 @@ export interface AgencyScheduleOptions {
   keywordResearch?: boolean;
   allowEstimatedBudget?: boolean;
   keywordCountry?: string;
+  ahrefsDate?: string;
+  ahrefsCountry?: string;
   keywordMaxRequests?: string;
   keywordMaxApiUnits?: string;
   lockPath?: string;
@@ -73,6 +75,8 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     "--registry", shellQuote(options.registryPath), "--capabilities", shellQuote(options.capabilitiesPath),
     "--oauth-client", shellQuote(options.oauthClientPath), "--artifacts-dir", shellQuote(options.artifactsDir), "--output", output,
     "--agency-report-output", report, "--delivery-output", delivery, "--pdf",
+    ...(options.ahrefsDate ? ["--ahrefs-date", shellQuote(options.ahrefsDate)] : []),
+    ...(options.ahrefsCountry ? ["--ahrefs-country", shellQuote(options.ahrefsCountry)] : []),
     ...(options.sourceRegistryPath ? ["--source-registry", shellQuote(options.sourceRegistryPath)] : []),
     ...(options.clientContentPath ? ["--client-content", shellQuote(options.clientContentPath)] : []),
     ...(options.clientContentBundlePath ? ["--client-content-bundle", shellQuote(options.clientContentBundlePath)] : []),

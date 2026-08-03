@@ -374,6 +374,8 @@ async function main(): Promise<void> {
         keywordResearch: process.argv.includes("--keyword-research"),
         allowEstimatedBudget: process.argv.includes("--allow-estimated-budget"),
         keywordCountry: optionalArgument("--keyword-country"),
+        ahrefsDate: optionalArgument("--ahrefs-date"),
+        ahrefsCountry: optionalArgument("--ahrefs-country"),
         keywordMaxRequests: optionalArgument("--keyword-max-requests"),
         keywordMaxApiUnits: optionalArgument("--keyword-max-api-units"),
         lockPath: optionalArgument("--lock-file"),

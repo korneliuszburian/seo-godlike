@@ -923,3 +923,12 @@ auth or schema is unknown.
 - The second opinion was read-only and did not run providers, read credentials
   or rerun production reports. The fixed point is ready for the next operator
   gate, not for publication or client delivery by itself.
+
+## Monthly Ahrefs scope propagation — 2026-08-03
+
+- The monthly schedule now forwards optional `--ahrefs-date` and
+  `--ahrefs-country` values to the recurring agency run. The CLI already
+  resolved registry country defaults, but the scheduler previously had no way
+  to preserve an explicit operator override across months.
+- Schedule proof asserts both flags are emitted when configured; no cron,
+  provider request or production report rerun was performed.

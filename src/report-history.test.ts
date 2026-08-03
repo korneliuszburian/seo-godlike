@@ -323,7 +323,7 @@ test("schedule rejects unsafe client id path segments", () => {
 });
 
 test("monthly agency schedule runs the complete report and delivery pipeline", () => {
-  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles", keywordResearch: true, allowEstimatedBudget: true, keywordCountry: "pl", keywordMaxRequests: "4", keywordMaxApiUnits: "200" });
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles", keywordResearch: true, allowEstimatedBudget: true, keywordCountry: "pl", ahrefsDate: "2026-07-29", ahrefsCountry: "pl", keywordMaxRequests: "4", keywordMaxApiUnits: "200" });
   assert.match(entry, /^47 3 1 \* \* /);
   assert.match(entry, /install -d -m 700 'artifacts\/analysis' 'artifacts\/reports' 'artifacts\/delivery'/);
   assert.match(entry, /--agency-run/);
@@ -339,6 +339,9 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.match(entry, /--allow-estimated-budget/);
   assert.match(entry, /--keyword-max-api-units/);
   assert.match(entry, /200/);
+  assert.match(entry, /--ahrefs-date/);
+  assert.match(entry, /2026-07-29/);
+  assert.match(entry, /--ahrefs-country/);
   assert.match(entry, /agency_run_exit=\$\?/);
   assert.match(entry, /--report-history/);
   assert.match(entry, /--rank-history/);
