@@ -134,6 +134,12 @@ function parseArrayResponse(rawText: string, field: string): Array<Record<string
   return parsed[field].filter((row): row is Record<string, unknown> => typeof row === "object" && row !== null);
 }
 
+/** Ahrefs profile responses encode percentage deltas as hundredths of a percent. */
+function normalizeTrafficDiffPercent(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Number.isInteger(value) ? value / 10_000 : value;
+}
+
 function assertProfileRequest(request: AhrefsProfileRequest, registry: ClientRegistry, capabilities: CapabilityRegistry): string {
   assertCanonicalIsoDateTime(request.captured_at);
   if (request.policy_mode !== "read_only" || request.provider !== "ahrefs" || request.operation !== "site-explorer.profile" || request.metric !== "org_traffic") throw new PolicyError("policy");
@@ -152,7 +158,10 @@ export async function runAhrefsProfile(request: AhrefsProfileRequest, registry: 
   const canonicalPropertyId = assertProfileRequest(request, registry, capabilities);
   const displayName = registry.clients.find((client) => client.client_id === request.client_id)?.display_name ?? request.client_id;
   const metrics = parseResponse(rawResponses.metrics);
-  const topPages = parseArrayResponse(rawResponses.topPages, "pages");
+  const topPages = parseArrayResponse(rawResponses.topPages, "pages").map((row) => {
+    const ratio = normalizeTrafficDiffPercent(row.traffic_diff_percent);
+    return ratio === null ? row : { ...row, traffic_diff_percent_ratio: ratio };
+  });
   const organicKeywords = parseArrayResponse(rawResponses.organicKeywords, "keywords");
   const competitors = parseArrayResponse(rawResponses.competitors, "competitors");
   const requestText = canonicalJson(request);

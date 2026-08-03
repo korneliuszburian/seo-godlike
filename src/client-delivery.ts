@@ -133,6 +133,9 @@ function formatAhrefsPercent(value: number | null): string {
   const percent = Math.abs(value) > 1 ? value / 100 : value * 100;
   return `${new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(percent)}%`;
 }
+function formatCanonicalAhrefsPercent(value: number | null): string {
+  return value === null ? "—" : `${new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value * 100)}%`;
+}
 function formatDecimal(value: number | null): string { return value === null ? "—" : new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value); }
 function parseDay(value: string): number | null { const time = Date.parse(`${value}T00:00:00Z`); return Number.isFinite(time) ? time : null; }
 function hasAdjacentPeriods(metric: BundleMetric): boolean {
@@ -234,8 +237,9 @@ function ahrefsDetailSection(metric: BundleMetric): string {
   const scope = `Estimated — Ahrefs · ${escapeHtml(metric.property_id)}${metric.country ? ` · rynek ${escapeHtml(metric.country.toUpperCase())}` : ""}${metric.generated_at ? ` · stan na ${escapeHtml(metric.generated_at.slice(0, 10))}` : ""}`;
   const render = (values: unknown[]) => `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`;
   const pagesHtml = pages.map((row) => {
-    const trafficPercent = finite(rowValue(row, "traffic_diff_percent"));
-    return render([rowValue(row, "url", "raw_url"), rowValue(row, "sum_traffic"), rowValue(row, "traffic_diff"), trafficPercent === null ? rowValue(row, "traffic_diff_percent") : formatAhrefsPercent(trafficPercent), rowValue(row, "keywords"), rowValue(row, "top_keyword"), rowValue(row, "top_keyword_best_position"), rowValue(row, "top_keyword_best_position_diff"), rowValue(row, "referring_domains"), rowValue(row, "ur")]);
+    const canonicalTrafficPercent = finite(rowValue(row, "traffic_diff_percent_ratio"));
+    const legacyTrafficPercent = finite(rowValue(row, "traffic_diff_percent"));
+    return render([rowValue(row, "url", "raw_url"), rowValue(row, "sum_traffic"), rowValue(row, "traffic_diff"), canonicalTrafficPercent !== null ? formatCanonicalAhrefsPercent(canonicalTrafficPercent) : legacyTrafficPercent === null ? rowValue(row, "traffic_diff_percent") : formatAhrefsPercent(legacyTrafficPercent), rowValue(row, "keywords"), rowValue(row, "top_keyword"), rowValue(row, "top_keyword_best_position"), rowValue(row, "top_keyword_best_position_diff"), rowValue(row, "referring_domains"), rowValue(row, "ur")]);
   }).join("");
   const keywordsHtml = keywords.map((row) => render([rowValue(row, "keyword"), rowValue(row, "keyword_country"), rowValue(row, "best_position"), rowValue(row, "best_position_diff"), rowValue(row, "best_position_set"), rowValue(row, "best_position_url"), rowValue(row, "sum_traffic"), rowValue(row, "sum_traffic_prev"), rowValue(row, "volume"), rowValue(row, "keyword_difficulty"), intentLabels(row), rowList(row, "serp_features"), rowValue(row, "status")])).join("");
   const competitorsHtml = competitors.map((row) => render([rowValue(row, "competitor_domain"), rowValue(row, "domain_rating"), rowValue(row, "keywords_common"), rowValue(row, "keywords_target"), rowValue(row, "keywords_competitor"), rowValue(row, "share"), rowValue(row, "traffic"), rowValue(row, "traffic_diff"), rowValue(row, "value")])).join("");

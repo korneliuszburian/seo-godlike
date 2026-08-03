@@ -62,12 +62,13 @@ test("Ahrefs profile persists bounded pages, keyword, and competitor context", a
   const profileRequest: AhrefsProfileRequest = { schema_version: "1", run_id: "analytics_bodymove_bodymove.pl_ahrefs-profile_2026-07-28_2026-07-28", client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs", operation: "site-explorer.profile", metric: "org_traffic", date_range: { start: "2026-07-28", end: "2026-07-28" }, comparison_date_range: { start: "2026-06-30", end: "2026-06-30" }, country: "pl", limits: { top_pages: 100, organic_keywords: 500, organic_competitors: 20 }, credential_ref: "keyring:seo-godlike/ahrefs-api-key", policy_mode: "read_only", captured_at: "2026-07-29T08:00:00.000Z" };
   const report = await runAhrefsProfile(profileRequest, registry, profileCapabilities, {
     metrics: JSON.stringify({ metrics: { org_traffic: 100, org_keywords: 50, org_keywords_1_3: 5 } }),
-    topPages: JSON.stringify({ pages: [{ url: "https://bodymove.pl/a", sum_traffic: 10, keywords: 2 }] }),
+    topPages: JSON.stringify({ pages: [{ url: "https://bodymove.pl/a", sum_traffic: 10, keywords: 2, traffic_diff_percent: -230 }] }),
     organicKeywords: JSON.stringify({ keywords: [{ keyword: "rehabilitacja", best_position: 4, sum_traffic: 8 }] }),
     competitors: JSON.stringify({ competitors: [{ competitor_domain: "competitor.example", traffic: 20 }] }),
   }, output);
   assert.equal(report.operation, "site-explorer.profile");
   assert.equal(report.analytics.current.top_pages.length, 1);
+  assert.equal(report.analytics.current.top_pages[0]?.traffic_diff_percent_ratio, -0.023);
   assert.equal(report.analytics.current.organic_keyword_rows[0]?.keyword, "rehabilitacja");
   assert.equal(report.analytics.current.competitors[0]?.competitor_domain, "competitor.example");
   const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, { sha256: string; bytes: number; request_row_limit?: number; response_row_count?: number }> };
