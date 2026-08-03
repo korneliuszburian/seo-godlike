@@ -779,3 +779,16 @@ auth or schema is unknown.
   review was partial for older delivery/history modules because its step cap
   was reached; those boundaries were already covered by earlier local proof
   and bounded reviews.
+
+## Monthly scheduler timestamp binding — 2026-08-03
+
+- The generated monthly cron now captures one `agency_run_stamp` immediately
+  after entering the repository and reuses it for the raw run, report,
+  delivery, keyword bundle, report history and rank history paths.
+- This prevents a second-boundary rollover from splitting one scheduled run
+  across unrelated output identities or placing the keyword bundle outside its
+  run directory.
+- Focused schedule assertions prove one timestamp expression and reuse of the
+  shell variable across all derived paths. Local proof remains 119 TypeScript
+  tests + 3 context tests, build, zero high audit vulnerabilities and
+  `git diff --check`; no provider request or rerun was performed.

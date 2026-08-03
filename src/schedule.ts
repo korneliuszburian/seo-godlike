@@ -59,7 +59,7 @@ export interface AgencyScheduleOptions {
 export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   if (options.keywordResearch && !options.keywordInputPath) throw new Error("keyword research scheduling requires keywordInputPath");
   const lockPath = options.lockPath ?? `${options.artifactsDir}/.agency-monthly.lock`;
-  const stamp = "$(date +\\%Y\\%m\\%dT\\%H\\%M\\%S)";
+  const stamp = '"$agency_run_stamp"';
   const output = `${shellQuote(options.artifactsDir)}/agency-run-${stamp}`;
   const report = `${shellQuote(options.reportDir)}/agency-report-${stamp}`;
   const delivery = `${shellQuote(options.deliveryDir)}/client-delivery-${stamp}`;
@@ -84,5 +84,5 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   ].join(" ");
   const historyCommand = `node dist/cli.js --report-history ${shellQuote(options.artifactsDir)} --output ${history}`;
   const rankHistoryCommand = ` && node dist/cli.js --rank-history ${shellQuote(options.artifactsDir)} --registry ${shellQuote(options.registryPath)} --output ${rankHistory}`;
-  return `47 3 1 * * cd ${shellQuote(options.workingDirectory)} && ${command} && ${historyCommand}${rankHistoryCommand}`;
+  return `47 3 1 * * cd ${shellQuote(options.workingDirectory)} && agency_run_stamp=$(date +\\%Y\\%m\\%dT\\%H\\%M\\%S) && ${command} && ${historyCommand}${rankHistoryCommand}`;
 }
