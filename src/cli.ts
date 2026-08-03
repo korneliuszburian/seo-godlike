@@ -239,13 +239,18 @@ async function main(): Promise<void> {
     const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
     validateSourceRegistry(sourceRegistry, registry);
     const scope = buildScopePlan(registry, capabilities);
+    const artifactsDir = argument("--artifacts-dir");
+    const keywordBundlePath = optionalArgument("--keyword-bundle");
+    const keywordInputPath = optionalArgument("--keyword-input");
+    const keywordBundleRoot = optionalArgument("--keyword-bundle-root") ?? artifactsDir;
+    if (keywordBundlePath && keywordInputPath) await verifyKeywordResearchBundle(keywordBundlePath, keywordBundleRoot, keywordInputPath);
     const rankMonitoringPath = optionalArgument("--rank-monitoring");
     const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
     if (rankMonitoringPath && rankMonitoringRoot) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
     const resolvedRankMonitoringPath = rankMonitoringRoot
       ? await resolveLatestRankMonitoringBundle(await resolveRankMonitoringRoot(rankMonitoringRoot, argument("--artifacts-dir")), rankMonitoringClientIds(sourceRegistry.sources))
       : rankMonitoringPath;
-    const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), resolvedRankMonitoringPath, optionalArgument("--keyword-bundle-root"));
+    const summary = await writeAgencyReport(artifactsDir, argument("--output"), scope, new Date().toISOString(), sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath, keywordBundleRoot);
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
     return;
   }
@@ -314,6 +319,9 @@ async function main(): Promise<void> {
     const keywordMaxRequests = optionalPositiveIntegerArgument("--keyword-max-requests");
     const keywordMaxApiUnits = optionalPositiveIntegerArgument("--keyword-max-api-units");
     const keywordResearchTaskId = keywordResearchOutputPath ? `ahrefs:keywords-explorer:${keywordResearchOutputPath}` : null;
+    if (existingKeywordBundlePath && !keywordBundleRoot && !artifactsDir) {
+      throw new Error("--keyword-bundle-root or --artifacts-dir is required when reusing an existing keyword bundle");
+    }
     const existingKeywordBundleRoot = keywordBundleRoot ?? artifactsDir ?? outputRoot;
     if (existingKeywordBundlePath && keywordInputPath) {
       await verifyKeywordResearchBundle(existingKeywordBundlePath, existingKeywordBundleRoot, keywordInputPath);

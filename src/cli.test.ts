@@ -68,6 +68,63 @@ test("agency-run rejects a mismatched existing keyword bundle before creating ou
   }
 });
 
+test("agency-report rejects a mismatched keyword bundle before creating output", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-report-keyword-provenance-"));
+  const output = join(root, "report");
+  const originalInput = join(root, "original-phrases.txt");
+  const mismatchedInput = join(root, "current-phrases.txt");
+  const keywordBundle = join(root, "keyword-bundle");
+  try {
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(originalInput, "https://example.test/\noriginal phrase\n");
+    await writeFile(mismatchedInput, "https://example.test/\ncurrent phrase\n");
+    await writeAhrefsKeywordResearch({
+      inputPath: originalInput,
+      outputDir: keywordBundle,
+      capabilities: { capabilities: [{ capability_id: "ahrefs.keywords-explorer.overview", provider: "ahrefs", operation_id: "keywords-explorer.overview", api_version: "v3", metric_ids: ["ahrefs.keyword_metrics"], read_write: "read", state: "schema_verified" }] },
+      apiKey: "test-key",
+      allowEstimatedBudget: true,
+      fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "original phrase" }] }), { status: 200 }),
+    });
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        "dist/cli.js", "--agency-report",
+        "--registry", "fixtures/client-registry.json",
+        "--capabilities", "fixtures/capability-registry.json",
+        "--artifacts-dir", root,
+        "--output", output,
+        "--keyword-bundle", keywordBundle,
+        "--keyword-input", mismatchedInput,
+      ], { cwd: process.cwd() }),
+      /keyword input hash does not match bundle/,
+    );
+    await assert.rejects(access(output));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agency-run explains the required root when reusing a keyword bundle without an artifacts root", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-keyword-root-"));
+  const output = join(root, "run");
+  try {
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        "dist/cli.js", "--agency-run",
+        "--registry", "fixtures/client-registry.json",
+        "--capabilities", "fixtures/capability-registry.json",
+        "--output", output,
+        "--keyword-bundle", join(root, "keyword-bundle"),
+        "--keyword-input", join(root, "phrases.txt"),
+      ], { cwd: process.cwd() }),
+      /--keyword-bundle-root or --artifacts-dir is required/,
+    );
+    await assert.rejects(access(output));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("standalone keyword research rejects malformed budget before output", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-keywords-budget-"));
   const output = join(root, "keywords");
