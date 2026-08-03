@@ -26,7 +26,7 @@ import { writeClientDelivery } from "./client-delivery.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 import { writeClientContentBundle } from "./client-content.js";
-import { resolveLatestRankMonitoringBundle, writeRankMonitoringBundle } from "./rank-monitoring.js";
+import { RANK_MONITORING_PROVIDER, resolveLatestRankMonitoringBundle, writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { writeRankHistoryDashboard } from "./rank-history.js";
 
 function argument(name: string): string {
@@ -243,7 +243,7 @@ async function main(): Promise<void> {
     const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
     if (rankMonitoringPath && rankMonitoringRoot) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
     const resolvedRankMonitoringPath = rankMonitoringRoot
-      ? await resolveLatestRankMonitoringBundle(rankMonitoringRoot, [...new Set(sourceRegistry.sources.filter((source) => source.provider === "serprobot").map((source) => source.client_id))])
+      ? await resolveLatestRankMonitoringBundle(rankMonitoringRoot, [...new Set(sourceRegistry.sources.filter((source) => source.provider === RANK_MONITORING_PROVIDER).map((source) => source.client_id))])
       : rankMonitoringPath;
     const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), resolvedRankMonitoringPath);
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
@@ -289,7 +289,7 @@ async function main(): Promise<void> {
     const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
     if (rankMonitoringPath && rankMonitoringRoot) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
     const resolvedRankMonitoringPath = rankMonitoringRoot
-      ? await resolveLatestRankMonitoringBundle(rankMonitoringRoot, [...new Set(sourceRegistry.sources.filter((source) => source.provider === "serprobot").map((source) => source.client_id))])
+      ? await resolveLatestRankMonitoringBundle(rankMonitoringRoot, [...new Set(sourceRegistry.sources.filter((source) => source.provider === RANK_MONITORING_PROVIDER).map((source) => source.client_id))])
       : rankMonitoringPath;
     const keywordInputPath = optionalArgument("--keyword-input");
     const existingKeywordBundlePath = optionalArgument("--keyword-bundle");

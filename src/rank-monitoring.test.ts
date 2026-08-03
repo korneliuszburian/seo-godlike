@@ -84,6 +84,19 @@ test("rank monitoring root selects the newest complete manifest-bound export", a
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test("rank monitoring root ignores unrelated provider manifests", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-mixed-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [] }));
+    await mkdir(join(root, "exports"));
+    await writeRankMonitoringBundle(input, join(root, "exports", "rank"));
+    await mkdir(join(root, "exports", "unrelated"));
+    await writeFile(join(root, "exports", "unrelated", "manifest.json"), JSON.stringify({ schema_version: "1", files: {} }));
+    assert.equal(await resolveLatestRankMonitoringBundle(join(root, "exports"), ["bodymove"]), join(root, "exports", "rank"));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("rank monitoring root fails instead of silently falling back after a matching export is tampered", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-tampered-"));
   try {

@@ -61,13 +61,16 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
     let entries;
     try { entries = await readdir(directory, { withFileTypes: true }); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
-    const manifest = entries.find((entry) => entry.isFile() && entry.name === "manifest.json");
-    if (manifest) {
-      try {
+    const manifestEntry = entries.find((entry) => entry.isFile() && entry.name === "manifest.json");
+    if (manifestEntry) {
+      let manifestValue: unknown;
+      try { manifestValue = JSON.parse(await readFile(join(directory, manifestEntry.name), "utf8")) as unknown; }
+      catch { manifestValue = null; }
+      if (record(manifestValue) && manifestValue.provider === RANK_MONITORING_PROVIDER) {
         const bundle = await readRankMonitoringBundle(directory, expectedClientIds);
         const ids = new Set(bundle.snapshots.map((snapshot) => snapshot.client_id));
         if (expectedClientIds.every((clientId) => ids.has(clientId))) candidates.push({ path: directory, bundle });
-      } catch (error) { throw error; }
+      }
     }
     for (const entry of entries.filter((item) => item.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) await inspect(join(directory, entry.name));
   }

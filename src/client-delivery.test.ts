@@ -203,6 +203,7 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
     assert.doesNotMatch(bodymoveHtml, /acme-fraza/);
     assert.match(acmeHtml, /acme-fraza/);
     assert.doesNotMatch(acmeHtml, /rehabilitacja/);
+    await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "conflict"), rankMonitoringPath: rankBundle, rankMonitoringRoot: artifacts }), /mutually exclusive/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
