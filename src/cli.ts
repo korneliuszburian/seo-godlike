@@ -206,7 +206,7 @@ async function main(): Promise<void> {
   }
   if (process.argv.includes("--pack-rank-monitoring")) {
     const result = await writeRankMonitoringBundle(argument("--input"), argument("--output"));
-    process.stdout.write(`${JSON.stringify({ client_id: result.snapshot.client_id, rows: result.snapshot.rows.length, manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify({ client_id: result.snapshot.client_id, client_ids: result.snapshots.map((snapshot) => snapshot.client_id), rows: result.snapshot.rows.length, rows_by_client: Object.fromEntries(result.snapshots.map((snapshot) => [snapshot.client_id, snapshot.rows.length])), manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--codex-manager")) {

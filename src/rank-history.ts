@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
-import { RankMonitoringSnapshot, parseRankMonitoringSnapshot, readRankMonitoringBundle } from "./rank-monitoring.js";
+import { RankMonitoringSnapshot, readRankMonitoringBundle } from "./rank-monitoring.js";
 
 export interface RankHistoryEntry {
   bundle_path: string;
@@ -53,23 +53,22 @@ async function manifestPaths(root: string): Promise<string[]> {
   return paths.sort();
 }
 
-async function readRankBundleIfPresent(manifestPath: string, artifactsDir: string, expectedClientIds: readonly string[]): Promise<RankHistoryEntry | null> {
+async function readRankBundleIfPresent(manifestPath: string, artifactsDir: string, expectedClientIds: readonly string[]): Promise<RankHistoryEntry[]> {
   const bundleDir = resolve(manifestPath, "..");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { files?: Record<string, unknown> };
-  if (!isRecord(manifest.files) || !("report.json" in manifest.files)) return null;
+  if (!isRecord(manifest.files) || !("report.json" in manifest.files)) return [];
   const report = JSON.parse(await readFile(join(bundleDir, "report.json"), "utf8")) as unknown;
-  if (!isRecord(report) || report.provider !== "serprobot" || typeof report.client_id !== "string") return null;
-  const snapshot = parseRankMonitoringSnapshot(report);
+  if (!isRecord(report) || report.provider !== "serprobot") return [];
   const verified = await readRankMonitoringBundle(bundleDir, expectedClientIds);
-  return {
+  return verified.snapshots.map((snapshot) => ({
     bundle_path: relative(resolve(artifactsDir), bundleDir) || ".",
-    client_id: verified.snapshot.client_id,
-    captured_at: verified.snapshot.captured_at,
-    date_range: verified.snapshot.date_range,
-    source_config: verified.snapshot.source_config,
-    rows: verified.snapshot.rows,
+    client_id: snapshot.client_id,
+    captured_at: snapshot.captured_at,
+    date_range: snapshot.date_range,
+    source_config: snapshot.source_config,
+    rows: snapshot.rows,
     manifest_sha256: verified.manifest_sha256,
-  };
+  }));
 }
 
 function immediatelyPrecedes(previous: RankHistoryEntry, current: RankHistoryEntry): boolean {
@@ -103,8 +102,7 @@ export async function readRankHistory(artifactsDir: string, expectedClientIds: r
   const root = resolve(artifactsDir);
   const entries: RankHistoryEntry[] = [];
   for (const manifestPath of await manifestPaths(root)) {
-    const entry = await readRankBundleIfPresent(manifestPath, root, expectedClientIds);
-    if (entry) entries.push(entry);
+    entries.push(...await readRankBundleIfPresent(manifestPath, root, expectedClientIds));
   }
   return entries.sort((a, b) => a.date_range.start.localeCompare(b.date_range.start) || a.date_range.end.localeCompare(b.date_range.end) || a.client_id.localeCompare(b.client_id) || a.bundle_path.localeCompare(b.bundle_path));
 }

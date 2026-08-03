@@ -200,6 +200,12 @@ async function readAgencyReport(path: string, artifactsDir: string): Promise<Age
     const rank = value.rank_monitoring;
     if (!isRecord(rank) || rank.source_label !== "Observed — SERPROBOT rank snapshot" || typeof rank.client_id !== "string" || typeof rank.manifest_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(rank.manifest_sha256) || typeof rank.captured_at !== "string" || !isRecord(rank.date_range) || typeof rank.date_range.start !== "string" || typeof rank.date_range.end !== "string" || typeof rank.row_count !== "number" || !Number.isInteger(rank.row_count) || rank.row_count < 0) throw new Error("agency report rank monitoring evidence validation failed");
   }
+  if (value.rank_monitoring_snapshots !== undefined) {
+    if (!Array.isArray(value.rank_monitoring_snapshots) || value.rank_monitoring_snapshots.length === 0) throw new Error("agency report rank monitoring snapshots validation failed");
+    for (const rank of value.rank_monitoring_snapshots) {
+      if (!isRecord(rank) || rank.source_label !== "Observed — SERPROBOT rank snapshot" || typeof rank.client_id !== "string" || typeof rank.manifest_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(rank.manifest_sha256) || typeof rank.captured_at !== "string" || !isRecord(rank.date_range) || typeof rank.date_range.start !== "string" || typeof rank.date_range.end !== "string" || typeof rank.row_count !== "number" || !Number.isInteger(rank.row_count) || rank.row_count < 0) throw new Error("agency report rank monitoring snapshots validation failed");
+    }
+  }
   return value as AgencyReportSummary;
 }
 
@@ -359,9 +365,13 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const outputDir = resolve(options.outputDir);
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
   const rankBundle = options.rankMonitoringPath ? await readRankMonitoringBundle(options.rankMonitoringPath, clientIds) : null;
-  if (summary.rank_monitoring) {
+  const declaredRankEvidence = summary.rank_monitoring_snapshots ?? (summary.rank_monitoring ? [summary.rank_monitoring] : []);
+  if (declaredRankEvidence.length) {
     if (!rankBundle) throw new Error("agency report declares rank monitoring evidence but no rank bundle was supplied");
-    if (rankBundle.manifest_sha256 !== summary.rank_monitoring.manifest_sha256 || rankBundle.snapshot.client_id !== summary.rank_monitoring.client_id || rankBundle.snapshot.rows.length !== summary.rank_monitoring.row_count) throw new Error("rank monitoring evidence does not match agency report provenance");
+    for (const declared of declaredRankEvidence) {
+      const snapshot = rankBundle.snapshots.find((item) => item.client_id === declared.client_id);
+      if (rankBundle.manifest_sha256 !== declared.manifest_sha256 || !snapshot || snapshot.rows.length !== declared.row_count || snapshot.captured_at !== declared.captured_at || snapshot.date_range.start !== declared.date_range.start || snapshot.date_range.end !== declared.date_range.end) throw new Error("rank monitoring evidence does not match agency report provenance");
+    }
   }
   const keyword = summary.keyword_research;
   const clientKeywordGroups = new Map<string, Array<{ group: PhraseGroup; rows: Array<Record<string, unknown>> }>>();
@@ -377,7 +387,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
       clientKeywordGroups.set(owner.client_id, groups);
     }
   }
-  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContentById.get(clientId) ?? (directClientContent?.client_id === clientId ? directClientContent : null); const rankMonitoring = rankBundle?.snapshot.client_id === clientId ? rankBundle.snapshot : null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${action.status}: ${action.title}`) : [], content, rankMonitoring }; });
+  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContentById.get(clientId) ?? (directClientContent?.client_id === clientId ? directClientContent : null); const rankMonitoring = rankBundle?.snapshots.find((snapshot) => snapshot.client_id === clientId) ?? null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${action.status}: ${action.title}`) : [], content, rankMonitoring }; });
   if (keyword) {
     for (const inputGroup of keyword.input_groups) {
       if (summary.scope.entries.some((entry) => hostFromProperty(entry.property_id) === inputGroup.host.toLowerCase())) continue;

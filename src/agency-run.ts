@@ -6,6 +6,7 @@ export interface AgencyTask {
 }
 
 export function buildExternalSourceTasks(sourceRegistry: SourceRegistry, rankMonitoringPath?: string): AgencyTask[] {
+  const expectedRankClientIds = [...new Set(sourceRegistry.sources.filter((source) => source.provider === "serprobot").map((source) => source.client_id))];
   return sourceRegistry.sources.map((source) => {
     const id = `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}`;
     if (source.status !== "ready") return { id, status: "blocked", reason: source.reason ?? "external source is unavailable" };
@@ -15,8 +16,10 @@ export function buildExternalSourceTasks(sourceRegistry: SourceRegistry, rankMon
       id,
       status: "ready",
       run: async () => {
-        const verified = await readRankMonitoringBundle(rankMonitoringPath, [source.client_id]);
-        const projectId = verified.snapshot.source_config?.project_id;
+        const verified = await readRankMonitoringBundle(rankMonitoringPath, expectedRankClientIds);
+        const snapshot = verified.snapshots.find((item) => item.client_id === source.client_id);
+        if (!snapshot) throw new Error(`SERPROBOT snapshot missing for '${source.client_id}'`);
+        const projectId = snapshot.source_config?.project_id;
         if (source.target !== projectId) throw new Error(`SERPROBOT project mismatch for '${source.client_id}'`);
       },
     };

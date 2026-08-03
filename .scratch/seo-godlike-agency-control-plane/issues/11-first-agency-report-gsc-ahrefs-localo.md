@@ -604,3 +604,18 @@ auth or schema is unknown.
 - Focused proof covers deterministic sorting, duplicate/unknown identity
   rejection and preservation of two client action registers. No provider
   request, credential read or report rerun was performed.
+
+## Multi-client SERPROBOT snapshot follow-up — 2026-08-03
+
+- The existing normalized SERPROBOT import seam now accepts either the legacy
+  single snapshot or one manifest-bound `{ snapshots: [...] }` collection.
+  Snapshot identities are unique, sorted deterministically and checked against
+  the declared source/client scope; project IDs are verified per client.
+- Agency report, delivery and rank-history consumers preserve the collection
+  boundary and select only the matching client's rows. A single client still
+  emits the legacy shape for compatibility.
+- Focused proof covers multi-client packing, per-client source validation,
+  tenant-separated HTML delivery and history consumption. This remains an
+  operator-imported SERPROBOT snapshot; no live connector/API call was added.
+  No provider request, credential read, Ahrefs rerun or generated production
+  report rerun was performed.

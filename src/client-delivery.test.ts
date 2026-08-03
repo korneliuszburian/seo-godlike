@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import test from "node:test";
 import { AgencyReportSummary } from "./agency-report.js";
 import { writeClientDelivery } from "./client-delivery.js";
+import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 
 function hash(value: string): string { return createHash("sha256").update(value).digest("hex"); }
 function manifest(files: Record<string, string>): string { return JSON.stringify({ files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hash(content), bytes: Buffer.byteLength(content) }])) }); }
@@ -138,6 +139,36 @@ test("client delivery renders the complete bounded Ahrefs profile context", asyn
     assert.match(html, /AHREFS · Konkurenci organiczni/);
     assert.match(html, /konkurent\.pl/);
     assert.match(html, /stan na 2026-07-29/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("client delivery assigns a multi-client rank bundle to the matching reports", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-delivery-multi-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    const rankInput = join(root, "rank.json");
+    const rankBundle = join(artifacts, "rank");
+    await mkdir(artifacts, { recursive: true });
+    const snapshot = (client_id: string, project_id: string, keyword: string) => ({ schema_version: "1", provider: "serprobot", client_id, captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id, search_engine: "google.pl", location: null, device: null }, rows: [{ keyword, position: 3, previous_position: null, search_engine: "google.pl", location: "PL", device: "desktop", url: null }] });
+    await writeFile(rankInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [snapshot("acme", "456", "acme-fraza"), snapshot("bodymove", "123", "rehabilitacja")] }));
+    const packed = await writeRankMonitoringBundle(rankInput, rankBundle);
+    const summary = { schema_version: "1", report_status: "partial", generated_at: "2026-08-03T00:00:00.000Z", scope: { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "ready", entries: [
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
+      { client_id: "acme", client_display_name: "Acme", property_id: "sc-domain:acme.example", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
+    ] }, source_status: [], accepted_bundles: [], blocked_sources: [], cross_source_context: [], insights: [], executive: {}, rank_monitoring_snapshots: packed.snapshots.map((item) => ({ source_label: "Observed — SERPROBOT rank snapshot", client_id: item.client_id, manifest_sha256: packed.manifest_sha256, captured_at: item.captured_at, date_range: item.date_range, source_config: item.source_config, row_count: item.rows.length })) };
+    const agencyPath = join(root, "agency-report.json");
+    const agencyText = JSON.stringify(summary);
+    await writeFile(agencyPath, agencyText);
+    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": agencyText }));
+    await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery"), rankMonitoringPath: rankBundle });
+    const bodymoveHtml = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
+    const acmeHtml = await readFile(join(root, "delivery", "acme", "acme-seo-report.html"), "utf8");
+    assert.match(bodymoveHtml, /rehabilitacja/);
+    assert.doesNotMatch(bodymoveHtml, /acme-fraza/);
+    assert.match(acmeHtml, /acme-fraza/);
+    assert.doesNotMatch(acmeHtml, /rehabilitacja/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

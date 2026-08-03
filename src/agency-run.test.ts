@@ -70,3 +70,25 @@ test("SERPROBOT snapshot is a local read-only source task and missing input is b
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("SERPROBOT collection validates the project for each client without provider IO", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-source-collection-"));
+  try {
+    const input = join(root, "rank.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [
+      { schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [] },
+      { schema_version: "1", provider: "serprobot", client_id: "acme", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "456", search_engine: "google.pl", location: null, device: null }, rows: [] },
+    ] }));
+    const bundle = join(root, "rank-bundle");
+    await writeRankMonitoringBundle(input, bundle);
+    const sources = { sources: [
+      { source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot" as const, target: "123", status: "ready" as const, reason: null },
+      { source_id: "serprobot.acme", client_id: "acme", provider: "serprobot" as const, target: "456", status: "ready" as const, reason: null },
+    ] };
+    const result = await executeAgencyTasks(buildExternalSourceTasks(sources, bundle));
+    assert.equal(result.status, "ready");
+    assert.deepEqual(result.completed, ["bodymove:serprobot:123", "acme:serprobot:456"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

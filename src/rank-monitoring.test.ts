@@ -42,3 +42,20 @@ test("rank monitoring packer creates the manifest-bound input expected by delive
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("rank monitoring collection keeps multiple client snapshots in one manifest-bound bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-multi-"));
+  try {
+    const input = join(root, "input.json");
+    const output = join(root, "bundle");
+    const snapshot = (client_id: string, project_id: string, keyword: string) => ({ schema_version: "1", provider: "serprobot", client_id, captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id, search_engine: "google.pl", location: null, device: null }, rows: [{ keyword, position: 4, previous_position: null, search_engine: "google.pl", location: "PL", url: null }] });
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [snapshot("zeta-client", "22", "zeta"), snapshot("bodymove", "11", "rehabilitacja")] }));
+    const result = await writeRankMonitoringBundle(input, output);
+    assert.deepEqual(result.snapshots.map((item) => item.client_id), ["bodymove", "zeta-client"]);
+    const read = await readRankMonitoringBundle(output, ["bodymove", "zeta-client"]);
+    assert.deepEqual(read.snapshots.map((item) => [item.client_id, item.source_config?.project_id]), [["bodymove", "11"], ["zeta-client", "22"]]);
+    await assert.rejects(readRankMonitoringBundle(output, ["bodymove"]), /identity mismatch: zeta-client/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
