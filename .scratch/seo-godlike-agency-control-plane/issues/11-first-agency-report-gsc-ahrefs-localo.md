@@ -1007,3 +1007,16 @@ auth or schema is unknown.
 - Full local proof: 140 TypeScript tests + 3 context tests, build, zero high
   audit vulnerabilities and `git diff --check`. No provider request, credential
   read, Ahrefs rerun or production report rerun occurred.
+
+## Rank root mixed-provider hardening — 2026-08-03
+
+- The recurring rank resolver now ignores unrelated provider manifests while
+  continuing to fail closed for a manifest explicitly declared as SERPROBOT
+  when its report, hash or client identities are invalid.
+- The CLI uses the shared rank-provider identity for root selection, and the
+  delivery seam has a focused mutual-exclusion falsifier for exact path versus
+  root input.
+- Fixed point `b57239d`; local proof passes with 141 TypeScript tests + 3
+  context tests, build, zero high audit vulnerabilities and `git diff --check`.
+  No provider request, credential read, Ahrefs rerun or production report rerun
+  occurred.
