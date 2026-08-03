@@ -273,3 +273,18 @@ auth or schema is unknown.
   live adapter is implemented.
 - Local proof: `npm test` passes with 96 TypeScript tests and 3 context tests;
   strict build and `git diff --check` pass.
+
+## Follow-up hardening — 2026-08-03
+
+- Monthly cron now forwards the keyword bundle and phrase-input paths, so the
+  recurring agency run does not silently drop keyword research.
+- Agency report files are created with mode `0600`; appendix Markdown escapes
+  pipe/newline content in keyword cells; cross-source missing GSC fields remain
+  `null`/unavailable rather than being rendered as zero.
+- Focused proof now covers keyword cron wiring, report permissions, appendix
+  escaping, and missing-field preservation. Local gates pass with 97
+  TypeScript tests and 3 context tests.
+- OpenCode review of `1570b9b` found the keyword wiring gap and these hardening
+  items; it was an interim review because its bounded step cap did not read the
+  full repository diff. A fresh fixed-point review is required after this
+  follow-up commit.

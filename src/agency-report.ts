@@ -22,7 +22,7 @@ export interface CrossSourceContextEntry {
   key_type: "page" | "query";
   join_type: "matched" | "gsc_only" | "ahrefs_only";
   key: string;
-  gsc: { clicks: number; impressions: number; ctr: number; position: number } | null;
+  gsc: { clicks: number | null; impressions: number | null; ctr: number | null; position: number | null } | null;
   ahrefs: { estimated_traffic: number | null; position: number | null; keywords: number | null; ranking_url: string | null } | null;
 }
 
@@ -137,7 +137,7 @@ export function composeCrossSourceContext(reports: Array<{ client_id: string; pr
     for (const key of new Set([...gscPageMap.keys(), ...ahrefsPageMap.keys()])) {
       const row = gscPageMap.get(key);
       const ahrefsRow = ahrefsPageMap.get(key);
-      result.push({ client_id: clientId, key_type: "page", join_type: row && ahrefsRow ? "matched" : row ? "gsc_only" : "ahrefs_only", key, gsc: row ? { clicks: finiteOrNull(row.clicks) ?? 0, impressions: finiteOrNull(row.impressions) ?? 0, ctr: finiteOrNull(row.ctr) ?? 0, position: finiteOrNull(row.position) ?? 0 } : null, ahrefs: ahrefsRow ? { estimated_traffic: finiteOrNull(ahrefsRow.sum_traffic), position: finiteOrNull(ahrefsRow.top_keyword_best_position), keywords: finiteOrNull(ahrefsRow.keywords), ranking_url: typeof ahrefsRow.url === "string" ? ahrefsRow.url : typeof ahrefsRow.raw_url === "string" ? ahrefsRow.raw_url : null } : null });
+      result.push({ client_id: clientId, key_type: "page", join_type: row && ahrefsRow ? "matched" : row ? "gsc_only" : "ahrefs_only", key, gsc: row ? { clicks: finiteOrNull(row.clicks), impressions: finiteOrNull(row.impressions), ctr: finiteOrNull(row.ctr), position: finiteOrNull(row.position) } : null, ahrefs: ahrefsRow ? { estimated_traffic: finiteOrNull(ahrefsRow.sum_traffic), position: finiteOrNull(ahrefsRow.top_keyword_best_position), keywords: finiteOrNull(ahrefsRow.keywords), ranking_url: typeof ahrefsRow.url === "string" ? ahrefsRow.url : typeof ahrefsRow.raw_url === "string" ? ahrefsRow.raw_url : null } : null });
     }
     const ahrefsKeywords = Array.isArray(ahrefsCurrent.organic_keyword_rows) ? ahrefsCurrent.organic_keyword_rows.filter((row): row is Record<string, unknown> => typeof row === "object" && row !== null) : [];
     const ahrefsKeywordMap = new Map<string, Record<string, unknown>>();
@@ -148,7 +148,7 @@ export function composeCrossSourceContext(reports: Array<{ client_id: string; pr
     for (const key of new Set([...gscQueryMap.keys(), ...ahrefsKeywordMap.keys()])) {
       const row = gscQueryMap.get(key);
       const ahrefsRow = ahrefsKeywordMap.get(key);
-      result.push({ client_id: clientId, key_type: "query", join_type: row && ahrefsRow ? "matched" : row ? "gsc_only" : "ahrefs_only", key, gsc: row ? { clicks: finiteOrNull(row.clicks) ?? 0, impressions: finiteOrNull(row.impressions) ?? 0, ctr: finiteOrNull(row.ctr) ?? 0, position: finiteOrNull(row.position) ?? 0 } : null, ahrefs: ahrefsRow ? { estimated_traffic: finiteOrNull(ahrefsRow.sum_traffic), position: finiteOrNull(ahrefsRow.best_position), keywords: null, ranking_url: typeof ahrefsRow.best_position_url === "string" ? ahrefsRow.best_position_url : null } : null });
+      result.push({ client_id: clientId, key_type: "query", join_type: row && ahrefsRow ? "matched" : row ? "gsc_only" : "ahrefs_only", key, gsc: row ? { clicks: finiteOrNull(row.clicks), impressions: finiteOrNull(row.impressions), ctr: finiteOrNull(row.ctr), position: finiteOrNull(row.position) } : null, ahrefs: ahrefsRow ? { estimated_traffic: finiteOrNull(ahrefsRow.sum_traffic), position: finiteOrNull(ahrefsRow.best_position), keywords: null, ranking_url: typeof ahrefsRow.best_position_url === "string" ? ahrefsRow.best_position_url : null } : null });
     }
   }
   return result.sort((a, b) => a.client_id.localeCompare(b.client_id) || a.key_type.localeCompare(b.key_type) || a.key.localeCompare(b.key));
@@ -166,7 +166,7 @@ function finiteMetric(value: unknown): number {
 
 function rankedContext(context: CrossSourceContextEntry[]): CrossSourceContextEntry[] {
   return [...context].sort((a, b) => {
-    const score = (entry: CrossSourceContextEntry): number => entry.gsc ? entry.gsc.impressions : entry.ahrefs?.estimated_traffic ?? 0;
+    const score = (entry: CrossSourceContextEntry): number => entry.gsc?.impressions ?? entry.ahrefs?.estimated_traffic ?? 0;
     return score(b) - score(a) || a.client_id.localeCompare(b.client_id) || a.key_type.localeCompare(b.key_type) || a.key.localeCompare(b.key);
   });
 }
@@ -213,6 +213,10 @@ export function composeExecutiveSummary(reports: AgencyInputReport[], context: C
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+
+function markdownCell(value: unknown): string {
+  return String(value ?? "—").replaceAll("|", "\\|").replaceAll("\r", " ").replaceAll("\n", " ");
 }
 
 function acceptedBundleFor(source: AgencyReportSourceStatus, packageSummary: ReportPackageSummary): ReportPackageSummary["accepted_bundles"][number] | undefined {
@@ -325,7 +329,7 @@ function appendixMarkdown(summary: AgencyReportSummary, details: string[]): stri
       "",
       "| Keyword | Volume | Monthly volume | Global volume | Clicks | CPC | CPS | Difficulty | Traffic potential | Parent topic | Parent volume | Intents | SERP features | SERP last update |",
       "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | --- | --- | --- |",
-      ...group.rows.map((row) => `| ${row.keyword ?? "—"} | ${row.volume ?? "—"} | ${row.volume_monthly ?? "—"} | ${row.global_volume ?? "—"} | ${row.clicks ?? "—"} | ${row.cpc ?? "—"} | ${row.cps ?? "—"} | ${row.difficulty ?? "—"} | ${row.traffic_potential ?? "—"} | ${row.parent_topic ?? "—"} | ${row.parent_volume ?? "—"} | ${Array.isArray(row.intents) ? row.intents.join(", ") : row.intents ?? "—"} | ${Array.isArray(row.serp_features) ? row.serp_features.join(", ") : row.serp_features ?? "—"} | ${row.serp_last_update ?? "—"} |`),
+      ...group.rows.map((row) => `| ${[row.keyword, row.volume, row.volume_monthly, row.global_volume, row.clicks, row.cpc, row.cps, row.difficulty, row.traffic_potential, row.parent_topic, row.parent_volume, Array.isArray(row.intents) ? row.intents.join(", ") : row.intents, Array.isArray(row.serp_features) ? row.serp_features.join(", ") : row.serp_features, row.serp_last_update].map(markdownCell).join(" | ")} |`),
       "",
     ]),
     "Notes:",
@@ -347,7 +351,7 @@ function appendixMarkdown(summary: AgencyReportSummary, details: string[]): stri
     "",
     "| Client | Type | Join | Key | GSC clicks | GSC impressions | GSC position | Ahrefs traffic | Ahrefs position |",
     "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
-    ...summary.cross_source_context.map((entry) => `| ${entry.client_id} | ${entry.key_type} | ${entry.join_type} | ${entry.key} | ${entry.gsc?.clicks ?? "—"} | ${entry.gsc?.impressions ?? "—"} | ${entry.gsc ? entry.gsc.position.toFixed(2) : "—"} | ${entry.ahrefs?.estimated_traffic ?? "—"} | ${entry.ahrefs?.position ?? "—"} |`),
+    ...summary.cross_source_context.map((entry) => `| ${entry.client_id} | ${entry.key_type} | ${entry.join_type} | ${entry.key} | ${entry.gsc?.clicks ?? "—"} | ${entry.gsc?.impressions ?? "—"} | ${entry.gsc?.position?.toFixed(2) ?? "—"} | ${entry.ahrefs?.estimated_traffic ?? "—"} | ${entry.ahrefs?.position ?? "—"} |`),
     "",
     "## Full rule-based signals",
     "",
@@ -366,14 +370,14 @@ function appendixMarkdown(summary: AgencyReportSummary, details: string[]): stri
 }
 
 function appendixHtml(summary: AgencyReportSummary, details: string[]): string {
-  const contextRows = summary.cross_source_context.map((entry) => `<tr>${[entry.client_id, entry.key_type, entry.join_type, entry.key, entry.gsc?.clicks ?? "—", entry.gsc?.impressions ?? "—", entry.gsc ? entry.gsc.position.toFixed(2) : "—", entry.ahrefs?.estimated_traffic ?? "—", entry.ahrefs?.position ?? "—"].map((value) => `<td>${escapeHtml(String(value))}</td>`).join("")}</tr>`).join("\n");
+  const contextRows = summary.cross_source_context.map((entry) => `<tr>${[entry.client_id, entry.key_type, entry.join_type, entry.key, entry.gsc?.clicks ?? "—", entry.gsc?.impressions ?? "—", entry.gsc?.position?.toFixed(2) ?? "—", entry.ahrefs?.estimated_traffic ?? "—", entry.ahrefs?.position ?? "—"].map((value) => `<td>${escapeHtml(String(value))}</td>`).join("")}</tr>`).join("\n");
   const insightRows = summary.insights.map((insight) => `<tr>${[insight.client_id, insight.kind, insight.key, insight.evidence, insight.severity].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("\n");
   const keywordHtml = summary.keyword_research ? `<h2 id="keyword-research">Full Ahrefs Keywords Explorer phrase research</h2><p><span class="badge estimated">Estimated — Ahrefs Keywords Explorer</span> Every supplied input group is retained. Returned rows: ${summary.keyword_research.groups.reduce((total, group) => total + group.rows.length, 0)}.</p>${summary.keyword_research.input_groups.map((group) => { const result = summary.keyword_research?.groups.find((candidate) => candidate.host === group.host); const rows = result?.rows ?? []; return `<h3>${escapeHtml(group.host)}</h3><p>Supplied phrases: ${group.phrases.length}; returned rows: ${rows.length}</p><div class="table-wrap"><table><thead><tr><th>Keyword</th><th>Volume</th><th>Monthly volume</th><th>Global volume</th><th>Clicks</th><th>CPC</th><th>CPS</th><th>Difficulty</th><th>Traffic potential</th><th>Parent topic</th><th>Parent volume</th><th>Intents</th><th>SERP features</th><th>SERP last update</th></tr></thead><tbody>${rows.map((row) => [row.keyword, row.volume, row.volume_monthly, row.global_volume, row.clicks, row.cpc, row.cps, row.difficulty, row.traffic_potential, row.parent_topic, row.parent_volume, Array.isArray(row.intents) ? row.intents.join(", ") : row.intents, Array.isArray(row.serp_features) ? row.serp_features.join(", ") : row.serp_features, row.serp_last_update].map((value) => `<td>${escapeHtml(String(value ?? "—"))}</td>`).join("")).map((row) => `<tr>${row}</tr>`).join("")}</tbody></table></div>`; }).join("")}<h3>Input notes</h3><ul>${summary.keyword_research.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : "";
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agency SEO evidence appendix</title><style>body{font-family:system-ui,sans-serif;margin:2rem;color:#172033}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:900px}th,td{text-align:left;padding:.45rem;border-bottom:1px solid #ddd}th{background:#f1f5f9}.badge{display:inline-block;border-radius:999px;padding:.2rem .55rem;font-size:.8rem;font-weight:700;background:#eee5ff;color:#5b21b6}pre{white-space:pre-wrap;background:#f8fafc;padding:1rem;border:1px solid #e5e7eb}@media print{pre{break-inside:avoid}}</style></head><body><h1>Agency SEO report — evidence appendix</h1><p>Full deterministic context and findings. GSC is observed; Ahrefs is estimated context; unavailable sources are not zero.</p><h2 id="pages">Full cross-source context</h2><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Join</th><th>Key</th><th>GSC clicks</th><th>GSC impressions</th><th>GSC position</th><th>Ahrefs traffic</th><th>Ahrefs position</th></tr></thead><tbody>${contextRows}</tbody></table></div><h2 id="findings">Full rule-based signals</h2><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Key</th><th>Evidence</th><th>Severity</th></tr></thead><tbody>${insightRows}</tbody></table></div>${keywordHtml}<h2 id="evidence">Evidence reports</h2>${details.map(escapeHtml).map((detail) => `<pre>${detail}</pre>`).join("")}</body></html>\n`;
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
-  await writeFile(path, content, { encoding: "utf8", flag: "wx" });
+  await writeFile(path, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 
 export async function writeAgencyReport(artifactsDir: string, outputDir: string, scope: ScopePlan, generatedAt = new Date().toISOString(), sourceRegistry: SourceRegistry = { sources: [] }, keywordBundlePath?: string, keywordInputPath?: string): Promise<AgencyReportSummary> {

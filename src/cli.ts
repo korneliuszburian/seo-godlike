@@ -316,6 +316,8 @@ async function main(): Promise<void> {
         clientContentPath: optionalArgument("--client-content"),
         clientContentBundlePath: optionalArgument("--client-content-bundle"),
         rankMonitoringPath: optionalArgument("--rank-monitoring"),
+        keywordBundlePath: optionalArgument("--keyword-bundle"),
+        keywordInputPath: optionalArgument("--keyword-input"),
         keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
         lockPath: optionalArgument("--lock-file"),
       })}\n`);

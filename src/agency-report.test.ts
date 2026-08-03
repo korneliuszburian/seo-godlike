@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -34,6 +34,7 @@ test("agency report preserves unavailable sources instead of inventing metrics",
     const bytes = await readFile(join(output, name));
     assert.equal(bytes.byteLength, expected.bytes);
     assert.equal(createHash("sha256").update(bytes).digest("hex"), expected.sha256);
+    assert.equal((await stat(join(output, name))).mode & 0o777, 0o600);
   }
   await rm(root, { recursive: true, force: true });
 });
@@ -77,6 +78,15 @@ test("cross-source context joins GSC pages and queries to Ahrefs without merging
   assert.deepEqual(context.map((entry) => [entry.key_type, entry.join_type, entry.key, entry.gsc?.clicks ?? null, entry.ahrefs?.estimated_traffic ?? null]), [["page", "matched", "https://bodymove.pl/a", 10, 200], ["page", "ahrefs_only", "https://bodymove.pl/ahrefs-only", null, 50], ["page", "gsc_only", "https://bodymove.pl/gsc-only", 2, null], ["query", "matched", "rehabilitacja", 4, 80]]);
 });
 
+test("cross-source context preserves missing GSC fields as unavailable instead of zero", () => {
+  const context = composeCrossSourceContext([
+    { client_id: "bodymove", provider: "google-search-console", analytics: { current: { top_pages: [{ key: "https://bodymove.pl/missing", impressions: 10 }] } } },
+    { client_id: "bodymove", provider: "ahrefs", analytics: { current: { top_pages: [] } } },
+  ]);
+  assert.equal(context[0]?.gsc?.clicks, null);
+  assert.equal(context[0]?.gsc?.ctr, null);
+});
+
 test("agency report preserves every supplied keyword group and full returned rows", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-keyword-report-test-"));
   try {
@@ -90,7 +100,7 @@ test("agency report preserves every supplied keyword group and full returned row
       outputDir: keywordBundle,
       capabilities: { capabilities: [{ capability_id: "ahrefs.keywords-explorer.overview", provider: "ahrefs", operation_id: "keywords-explorer.overview", api_version: "v3", metric_ids: ["ahrefs.keyword_metrics"], read_write: "read", state: "schema_verified" }] },
       apiKey: "test-key",
-      fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "fraza jedna", volume: 12, clicks: 3, difficulty: 7, serp_features: ["local_pack"] }] }), { status: 200 }),
+      fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "fraza jedna", volume: 12, clicks: 3, difficulty: 7, parent_topic: "a|b\nc", serp_features: ["local_pack"] }] }), { status: 200 }),
     });
     const scope: ScopePlan = { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] };
     const output = join(root, "report");
@@ -100,6 +110,7 @@ test("agency report preserves every supplied keyword group and full returned row
     const appendix = await readFile(join(output, "agency-report-appendix.md"), "utf8");
     assert.match(appendix, /wilmed\.pl/);
     assert.match(appendix, /local_pack/);
+    assert.match(appendix, /a\\\|b c/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

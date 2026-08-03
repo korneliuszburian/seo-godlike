@@ -284,7 +284,7 @@ test("schedule rejects unsafe client id path segments", () => {
 });
 
 test("monthly agency schedule runs the complete report and delivery pipeline", () => {
-  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundleRoot: "artifacts/keyword-bundles" });
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles" });
   assert.match(entry, /^17 3 1 \* \* /);
   assert.match(entry, /--agency-run/);
   assert.match(entry, /--agency-report-output 'artifacts\/reports'\/agency-report-\$\(date/);
@@ -292,6 +292,8 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.match(entry, /--source-registry 'fixtures\/source-registry\.json'/);
   assert.match(entry, /--client-content 'fixtures\/client-content\.json'/);
   assert.match(entry, /--client-content-bundle 'fixtures\/client-content-bundle'/);
+  assert.match(entry, /--keyword-bundle 'artifacts\/keyword-bundles\/report'/);
+  assert.match(entry, /--keyword-input 'fixtures\/keywords\.txt'/);
   assert.match(entry, /--keyword-bundle-root 'artifacts\/keyword-bundles'/);
   assert.match(entry, /flock -n 'artifacts\/analysis\/\.agency-monthly\.lock'/);
 });
