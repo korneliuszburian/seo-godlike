@@ -93,7 +93,7 @@ test("agency report preserves every supplied keyword group and full returned row
     const artifacts = join(root, "artifacts");
     await mkdir(artifacts);
     const inputPath = join(root, "phrases.txt");
-    await writeFile(inputPath, "https://wilmed.pl/\nTUTAJ nie mamy fraz\n\nhttps://cmr-ostroleka.pl/\nfraza jedna\n");
+    await writeFile(inputPath, "https://wilmed.pl/\n# note: TUTAJ nie mamy fraz\n\nhttps://cmr-ostroleka.pl/\nfraza jedna\n");
     const keywordBundle = join(root, "keywords");
     await writeAhrefsKeywordResearch({
       inputPath,

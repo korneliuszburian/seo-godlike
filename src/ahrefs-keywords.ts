@@ -69,8 +69,10 @@ export function parsePhraseInput(text: string): PhraseInput {
       groups.push(current);
       continue;
     }
-    if (!current || /^(dla\s|tutaj\b)/i.test(line)) {
-      notes.push(current ? `${current.host}: ${line}` : line);
+    if (!current || /^#\s*note\s*:/i.test(line)) {
+      const note = current ? line.replace(/^#\s*note\s*:\s*/i, "") : line;
+      if (!note) continue;
+      notes.push(current ? `${current.host}: ${note}` : note);
       continue;
     }
     current.phrases.push(line);

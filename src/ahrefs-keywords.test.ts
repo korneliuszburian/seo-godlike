@@ -9,9 +9,15 @@ import { CapabilityRegistry } from "./domain.js";
 const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "ahrefs.keywords-explorer.overview", provider: "ahrefs", operation_id: "keywords-explorer.overview", api_version: "v3", metric_ids: ["ahrefs.keyword_metrics"], read_write: "read", state: "schema_verified" }] };
 
 test("phrase parser separates domains, notes, and duplicate phrases", () => {
-  const input = parsePhraseInput("https://example.pl/\nFizjo Warszawa\nfizjo warszawa\ndla klienta później\n\nhttps://second.pl/\nfraza");
-  assert.deepEqual(input.groups, [{ host: "example.pl", phrases: ["fizjo warszawa"] }, { host: "second.pl", phrases: ["fraza"] }]);
-  assert.deepEqual(input.notes, ["example.pl: dla klienta później"]);
+  const input = parsePhraseInput("https://example.pl/\nFizjo Warszawa\nfizjo warszawa\ndla klienta później\n# note: wyłączona lokalizacja\n\nhttps://second.pl/\nfraza");
+  assert.deepEqual(input.groups, [{ host: "example.pl", phrases: ["fizjo warszawa", "dla klienta później"] }, { host: "second.pl", phrases: ["fraza"] }]);
+  assert.deepEqual(input.notes, ["example.pl: wyłączona lokalizacja"]);
+});
+
+test("phrase parser does not treat ordinary phrases as implicit notes", () => {
+  const input = parsePhraseInput("https://example.pl/\ntutaj rehabilitacja\n# note: operator context");
+  assert.deepEqual(input.groups[0]?.phrases, ["tutaj rehabilitacja"]);
+  assert.deepEqual(input.notes, ["example.pl: operator context"]);
 });
 
 test("keyword query sends one bounded Keywords Explorer request", async () => {

@@ -312,6 +312,20 @@ auth or schema is unknown.
   blocker; the remaining review items are explicitly unverified and require a
   future full-capacity review.
 
+## OpenCode fixed-point review — 2026-08-03
+
+- Review target: `7ec440be`; working tree was clean and the reviewer found no
+  proven blocker in the inspected delivery surface. The review was partial,
+  not a PASS: the bounded step cap left the schedule, registry, CLI and full
+  test execution unverified.
+- One actionable data-quality finding was verified locally: phrase parsing used
+  content heuristics (`dla`/`tutaj`) that could silently remove a real keyword.
+  The parser now treats post-URL lines as phrases and accepts notes only with
+  an explicit `# note:` marker. Focused falsifiers cover both cases.
+- The review artifact is retained outside the repository at
+  `/tmp/seo-godlike-second-opinion-7ec440b.json`; it contains no credentials or
+  provider payloads. A fresh review is required after this repair.
+
 ## Delivery automation follow-up — 2026-08-03
 
 - Monthly cron now forwards `--artifacts-dir`, keeping scheduled agency runs
