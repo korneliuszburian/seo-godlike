@@ -200,7 +200,7 @@ export async function writeReportPackage(artifactsDir: string, outputDir: string
   rejected.sort((a, b) => a.bundle_path.localeCompare(b.bundle_path));
   const summary: ReportPackageSummary = { schema_version: "1", package_status: accepted.length === 0 ? (rejected.length === 0 ? "empty" : "partial") : (rejected.length === 0 ? "reportable" : "partial"), bundle_count: accepted.length, accepted_bundles: accepted, skipped_bundles: skipped, rejected_bundles: rejected, advisory: { fallow: "not_supplied" } };
   const files = { "report-package.json": canonicalJson(summary), "report-package.md": markdown(summary), "report-package.html": html(summary) };
-  await mkdir(outputDir, { recursive: false });
+  await mkdir(outputDir, { recursive: false, mode: 0o700 });
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
   const manifest = { schema_version: "1", package_status: summary.package_status, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashText(content), bytes: Buffer.byteLength(content) }])) };
   await writeExclusive(join(outputDir, "manifest.json"), canonicalJson(manifest));

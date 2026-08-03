@@ -93,7 +93,7 @@ export async function executeAgencyTasks(tasks: AgencyTask[]): Promise<AgencyRun
 
 export async function writeAgencyRunRecord(outputDir: string, record: AgencyRunRecord): Promise<void> {
   assertAgencyReadOnlyPolicy(record);
-  await writeFile(join(outputDir, "agency-run.json"), canonicalJson(record), { encoding: "utf8", flag: "wx" });
+  await writeFile(join(outputDir, "agency-run.json"), canonicalJson(record), { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";

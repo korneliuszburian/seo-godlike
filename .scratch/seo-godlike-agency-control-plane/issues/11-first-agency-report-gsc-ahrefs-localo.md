@@ -744,3 +744,14 @@ auth or schema is unknown.
   read-only mode but stopped at its step cap before a final prose verdict; no
   concrete blocker was emitted. No provider request, credential read, Ahrefs
   rerun or generated production report rerun was performed.
+
+## Generated evidence permission hardening — 2026-08-03
+
+- Agency run records are now written `0600`; agency-report and report-package
+  output directories are created `0700`. This keeps recurring execution
+  metadata and generated evidence private on shared local machines.
+- A focused test asserts the agency-run record mode. Existing delivery and
+  report file modes remain `0600`; no overwrite behavior changed.
+- Local proof: 118 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun or generated production report rerun was performed.

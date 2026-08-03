@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -31,6 +31,7 @@ test("agency run record persists the read-only approval boundary", async () => {
   const result = await executeAgencyTasks([]);
   await writeAgencyRunRecord(root, { schema_version: "1", run_id: "run-1", started_at: "2026-07-29T00:00:00.000Z", finished_at: "2026-07-29T00:00:01.000Z", policy_mode: "read_only", approval_boundary: "no_external_write_operations", retention_mode: "operator_managed", deletion_authority: "operator_only", result });
   const record = JSON.parse(await readFile(join(root, "agency-run.json"), "utf8"));
+  assert.equal((await stat(join(root, "agency-run.json"))).mode & 0o777, 0o600);
   assert.equal(record.approval_boundary, "no_external_write_operations");
   assert.equal(record.retention_mode, "operator_managed");
   assert.equal(record.deletion_authority, "operator_only");

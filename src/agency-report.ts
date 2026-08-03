@@ -508,7 +508,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   validateSourceRegistry(sourceRegistry, clients);
   const resolvedArtifacts = resolve(artifactsDir);
   const resolvedOutput = resolve(outputDir);
-  await mkdir(resolvedOutput, { recursive: false });
+  await mkdir(resolvedOutput, { recursive: false, mode: 0o700 });
   const packageSummary = await writeReportPackage(resolvedArtifacts, join(resolvedOutput, "package"));
   const propertyStatus = scope.entries.map((entry) => {
     const source: AgencyReportSourceStatus = { client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null };
