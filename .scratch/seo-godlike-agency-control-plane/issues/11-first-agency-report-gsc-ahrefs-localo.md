@@ -846,3 +846,15 @@ auth or schema is unknown.
   empty scope. Local proof: 124 TypeScript tests + 3 context tests, build,
   zero high audit vulnerabilities and `git diff --check`; no provider request,
   credential read or Ahrefs rerun was performed.
+
+## Monthly history after partial run — 2026-08-03
+
+- The generated monthly cron no longer chains report-history and rank-history
+  behind the agency-run exit status with `&&`. It records each exit code,
+  attempts both local history dashboards, and returns the agency failure first
+  (or the history failure when collection succeeded).
+- This keeps historical dashboards refreshable after a controlled partial
+  provider run while preserving a non-zero cron result for operator alerting.
+- Focused schedule/history proof: 20 tests pass; full local proof remains 124
+  TypeScript tests + 3 context tests, build, zero high audit vulnerabilities
+  and `git diff --check`. No provider request or report rerun was performed.
