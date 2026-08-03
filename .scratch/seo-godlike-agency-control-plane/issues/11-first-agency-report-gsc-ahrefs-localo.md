@@ -960,3 +960,15 @@ auth or schema is unknown.
 - OpenCode second opinion for fixed point `c4cab8c` found no blocker; its
   static verification gap was replaced by the local proof above. No provider
   request, credential read, Ahrefs rerun or production report rerun occurred.
+
+## Rank-only source identity alignment — 2026-08-03
+
+- Agency report rank evidence now validates identities against the explicit
+  SERPROBOT source registry, not only analytics scope entries. Source-only
+  clients can therefore have a verified rank report without an invented GSC,
+  GA4 or Ahrefs property.
+- The report validation client set now includes source-registry clients, while
+  provider and project checks remain manifest-bound and read-only.
+- A focused falsifier covers a rank-only client; full local proof passes with
+  140 TypeScript tests + 3 context tests, build, zero high audit vulnerabilities
+  and `git diff --check`. No provider request or report rerun occurred.

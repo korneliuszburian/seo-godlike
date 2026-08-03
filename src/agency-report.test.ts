@@ -174,3 +174,20 @@ test("agency report binds an imported rank snapshot to its manifest provenance",
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("agency report accepts a rank-only client owned by the source registry", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-rank-only-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    const rankInput = join(root, "rank.json");
+    await writeFile(rankInput, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "rank-only", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "456", search_engine: "google.pl", location: null, device: null }, rows: [] }));
+    const rankBundle = join(root, "rank-bundle");
+    await writeRankMonitoringBundle(rankInput, rankBundle);
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] };
+    const sourceRegistry: SourceRegistry = { sources: [{ source_id: "serprobot.rank-only", client_id: "rank-only", provider: "serprobot", target: "456", status: "ready", reason: null }] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-08-03T00:00:00.000Z", sourceRegistry, undefined, undefined, rankBundle);
+    assert.equal(summary.rank_monitoring?.client_id, "rank-only");
+    assert.equal(summary.source_status[0]?.client_id, "rank-only");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

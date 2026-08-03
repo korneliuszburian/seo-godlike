@@ -504,7 +504,7 @@ async function writeExclusive(path: string, content: string): Promise<void> {
 }
 
 export async function writeAgencyReport(artifactsDir: string, outputDir: string, scope: ScopePlan, generatedAt = new Date().toISOString(), sourceRegistry: SourceRegistry = { sources: [] }, keywordBundlePath?: string, keywordInputPath?: string, rankMonitoringPath?: string): Promise<AgencyReportSummary> {
-  const clients: ClientRegistry = { clients: [...new Set(scope.entries.map((entry) => entry.client_id))].map((client_id) => ({ client_id, properties: [] })) };
+  const clients: ClientRegistry = { clients: [...new Set([...scope.entries.map((entry) => entry.client_id), ...sourceRegistry.sources.map((source) => source.client_id)])].map((client_id) => ({ client_id, properties: [] })) };
   validateSourceRegistry(sourceRegistry, clients);
   const resolvedArtifacts = resolve(artifactsDir);
   const resolvedOutput = resolve(outputDir);
@@ -525,7 +525,8 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const crossSourceContext = composeCrossSourceContext(reports);
   const insights = composeReportInsights(reports);
   const keywordResearch = keywordBundlePath ? await readKeywordResearchBundle(keywordBundlePath, keywordInputPath) : undefined;
-  const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, [...new Set(scope.entries.map((entry) => entry.client_id))]) : [];
+  const rankClientIds = [...new Set(sourceRegistry.sources.filter((source) => source.provider === "serprobot").map((source) => source.client_id))];
+  const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
   const rankMonitoring = rankMonitoringEvidence[0];
   const profileContext = composeAhrefsProfileContext(reports);
   const summary: AgencyReportSummary = { schema_version: "1", report_status: packageSummary.accepted_bundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: packageSummary.accepted_bundles, blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: crossSourceContext, insights, executive: composeExecutiveSummary(reports, crossSourceContext, insights), ...(profileContext.length ? { ahrefs_profile_context: profileContext } : {}), ...(keywordResearch ? { keyword_research: keywordResearch } : {}), ...(rankMonitoring ? { rank_monitoring: rankMonitoring } : {}), ...(rankMonitoringEvidence.length > 1 ? { rank_monitoring_snapshots: rankMonitoringEvidence } : {}) };
