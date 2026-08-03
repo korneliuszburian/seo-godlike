@@ -254,6 +254,7 @@ test("schedule only renders a daily cron entry", () => {
   assert.match(entry, /--analytics/);
   assert.match(entry, /flock -n 'artifacts\/analysis\/\.bodymove-analytics\.lock' node/);
   assert.match(entry, /date \+\\%Y\\%m\\%d/);
+  assert.match(entry, /date \+\\%Y\\%m\\%dT\\%H\\%M\\%S/);
   assert.match(entry, /--output 'artifacts\/analysis'\/bodymove-analytics-pipeline-\$\(date/);
   assert.doesNotMatch(entry, /--output 'artifacts\/analysis\/bodymove-analytics-pipeline/);
   assert.doesNotMatch(entry, /crontab/);
@@ -293,6 +294,7 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.match(entry, /--artifacts-dir 'artifacts\/analysis'/);
   assert.match(entry, /--agency-report-output 'artifacts\/reports'\/agency-report-\$\(date/);
   assert.match(entry, /--delivery-output 'artifacts\/delivery'\/client-delivery-\$\(date/);
+  assert.match(entry, /agency-report-\$\(date \+\\%Y\\%m\\%dT\\%H\\%M\\%S\)/);
   assert.match(entry, /&& node dist\/cli\.js --report-history 'artifacts\/analysis' --output 'artifacts\/reports\/history-\$\(date/);
   assert.match(entry, /--source-registry 'fixtures\/source-registry\.json'/);
   assert.match(entry, /--client-content 'fixtures\/client-content\.json'/);

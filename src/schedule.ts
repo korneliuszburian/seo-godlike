@@ -17,7 +17,7 @@ export interface ScheduleOptions {
 
 export function buildDailyAnalyticsCron(options: ScheduleOptions): string {
   assertShellSafeSegment(options.clientId);
-  const output = `${shellQuote(options.artifactsDir)}/${options.clientId}-analytics-pipeline-$(date +\\%Y\\%m\\%d)`;
+  const output = `${shellQuote(options.artifactsDir)}/${options.clientId}-analytics-pipeline-$(date +\\%Y\\%m\\%dT\\%H\\%M\\%S)`;
   const lockPath = options.lockPath ?? `${options.artifactsDir}/.${options.clientId}-analytics.lock`;
   const command = [
     "flock", "-n", shellQuote(lockPath), "node", "dist/cli.js", "--analytics",
@@ -54,7 +54,7 @@ export interface AgencyScheduleOptions {
 
 export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   const lockPath = options.lockPath ?? `${options.artifactsDir}/.agency-monthly.lock`;
-  const stamp = "$(date +\\%Y\\%m)";
+  const stamp = "$(date +\\%Y\\%m\\%dT\\%H\\%M\\%S)";
   const output = `${shellQuote(options.artifactsDir)}/agency-run-${stamp}`;
   const report = `${shellQuote(options.reportDir)}/agency-report-${stamp}`;
   const delivery = `${shellQuote(options.deliveryDir)}/client-delivery-${stamp}`;
