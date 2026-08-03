@@ -1033,3 +1033,22 @@ auth or schema is unknown.
   context tests, build, zero high audit vulnerabilities and `git diff --check`.
   No provider request, credential read, Ahrefs rerun or production report rerun
   occurred.
+
+## Rank resolver second-opinion follow-up — 2026-08-03
+
+- OpenCode/DeepSeek bounded review identified a recurring-run risk: an older
+  valid SERPROBOT bundle containing a retired or foreign client could prevent
+  selection of a newer complete bundle. It also identified duplicated rank
+  client identity derivation and duplicated source labels.
+- Fixed point `46858f8` now skips only the stale identity-mismatch candidate,
+  while hash-invalid, malformed or otherwise corrupted SERPROBOT candidates
+  still fail closed. Client-ID derivation and the observed SERPROBOT label are
+  centralized in `src/rank-monitoring.ts`.
+- A focused falsifier covers stale foreign-client exports alongside a newer
+  valid export; tampered matching exports remain fail-closed. Local proof now
+  passes with 144 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun or production report rerun occurred.
+- The reviewer confirmed no blocker. Remaining operator/product gate:
+  recurring rank collection still consumes an existing manifest-bound export;
+  no direct SERPROBOT API schema is invented.
