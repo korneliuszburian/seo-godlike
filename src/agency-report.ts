@@ -156,6 +156,18 @@ async function readKeywordResearchBundle(bundlePath: string, keywordBundleRoot: 
     notes = parsed.notes;
   }
   if (typeof report.country !== "string" || !Array.isArray(report.groups) || !report.groups.every((group) => typeof group.host === "string" && Array.isArray(group.phrases) && Array.isArray(group.rows))) throw new Error("invalid keyword research groups");
+  const request = JSON.parse(verified.get("request.json") ?? "null") as { provider?: unknown; operation?: unknown; country?: unknown; groups?: unknown };
+  if (request.provider !== "ahrefs" || request.operation !== "keywords-explorer.overview" || request.country !== report.country || !Array.isArray(request.groups) || !request.groups.every((group) => typeof group === "object" && group !== null && typeof (group as { host?: unknown }).host === "string" && Array.isArray((group as { phrases?: unknown }).phrases) && (group as { phrases: unknown[] }).phrases.every((phrase) => typeof phrase === "string"))) {
+    throw new Error("invalid keyword research request");
+  }
+  const sortGroups = (groups: Array<{ host: string; phrases: string[] }>): Array<{ host: string; phrases: string[] }> => groups
+    .map((group) => ({ host: group.host, phrases: group.phrases }))
+    .sort((left, right) => left.host.localeCompare(right.host));
+  const requestedGroups = sortGroups((request.groups as Array<{ host: string; phrases: string[] }>));
+  const expectedGroups = sortGroups(inputGroups.filter((group) => group.phrases.length > 0));
+  const returnedGroups = sortGroups(report.groups as Array<{ host: string; phrases: string[]; rows: Array<Record<string, unknown>> }>);
+  if (canonicalJson(requestedGroups) !== canonicalJson(expectedGroups)) throw new Error("keyword request groups do not match supplied input");
+  if (canonicalJson(returnedGroups) !== canonicalJson(requestedGroups)) throw new Error("keyword report groups do not match keyword request");
   return { source_label: "Estimated — Ahrefs Keywords Explorer", country: report.country, input_sha256: report.input_sha256, input_groups: inputGroups, notes, groups: report.groups as AgencyKeywordResearch["groups"], bundle_path: relative(resolvedKeywordRoot, root) || ".", manifest_files: manifestFiles };
 }
 

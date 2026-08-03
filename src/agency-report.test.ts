@@ -240,6 +240,19 @@ test("agency report preserves every supplied keyword group and full returned row
     assert.match(appendix, /wilmed\.pl/);
     assert.match(appendix, /local_pack/);
     assert.match(appendix, /a\\\|b c/);
+
+    const requestPath = join(keywordBundle, "request.json");
+    const request = JSON.parse(await readFile(requestPath, "utf8")) as { groups: Array<{ host: string; phrases: string[] }> };
+    const tamperedRequest = canonicalJson({ ...request, groups: [] });
+    await writeFile(requestPath, tamperedRequest);
+    const keywordManifestPath = join(keywordBundle, "manifest.json");
+    const keywordManifest = JSON.parse(await readFile(keywordManifestPath, "utf8")) as { files: Record<string, { sha256: string; bytes: number }> };
+    keywordManifest.files["request.json"] = { sha256: sha256(tamperedRequest), bytes: Buffer.byteLength(tamperedRequest) };
+    await writeFile(keywordManifestPath, canonicalJson(keywordManifest));
+    await assert.rejects(
+      () => writeAgencyReport(artifacts, join(root, "tampered-report"), scope, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath, undefined, root),
+      /keyword request groups do not match supplied input/,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
