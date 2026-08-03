@@ -1270,3 +1270,19 @@ auth or schema is unknown.
 - Added a focused readiness falsifier. Proof passes with 159 TypeScript tests
   + 3 context tests, build, zero high audit vulnerabilities and
   `git diff --check`; no provider request or Ahrefs rerun occurred.
+
+## Keyword bundle provenance guard — 2026-08-03
+
+- The operator-provided input `frazy strony (1).txt` was audited without
+  reading or calling any provider: its metadata describes 5 host groups and 44
+  normalized phrases. The existing Ahrefs Keywords Explorer bundle declares
+  the same input SHA-256 but contains only 4 queried groups and 41 returned
+  rows. It must not be presented as a complete result for the current input.
+- Fixed point `67eba1a` makes agency report ingestion require and cross-check
+  the manifest-bound `request.json`: provider/operation/country, non-empty
+  input groups, and returned group phrase sets must agree. A tampered request
+  falsifier rejects before report output is written.
+- No Ahrefs rerun, credential read, provider request, or generated production
+  report rerun was performed. The correct operator state is `needs operator
+  action`: either provide an accepted bundle matching the current input or
+  explicitly keep the older 4-group bundle under its original input identity.
