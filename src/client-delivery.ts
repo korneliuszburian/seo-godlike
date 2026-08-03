@@ -116,7 +116,9 @@ function normalizePdfMetadata(bytes: Buffer): Buffer {
 }
 function metricValue(metric: BundleMetric, field: string): number | null { return finite(metric.current[field]); }
 function formatNumber(value: number | null): string { return value === null ? "—" : new Intl.NumberFormat("pl-PL").format(value); }
-function formatPercent(value: number | null): string { return value === null ? "—" : `${(value * 100).toFixed(2)}%`; }
+function formatPercent(value: number | null): string {
+  return value === null ? "—" : `${new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value * 100)}%`;
+}
 function formatDecimal(value: number | null): string { return value === null ? "—" : new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value); }
 function parseDay(value: string): number | null { const time = Date.parse(`${value}T00:00:00Z`); return Number.isFinite(time) ? time : null; }
 function hasAdjacentPeriods(metric: BundleMetric): boolean {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -169,6 +169,31 @@ test("agency report preserves every supplied keyword group and full returned row
     assert.match(appendix, /wilmed\.pl/);
     assert.match(appendix, /local_pack/);
     assert.match(appendix, /a\\\|b c/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agency report rejects a keyword manifest entry symlink escaping the bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-keyword-symlink-test-"));
+  try {
+    const inputPath = join(root, "phrases.txt");
+    await writeFile(inputPath, "https://wilmed.pl/\nfraza jedna\n");
+    const keywordBundle = join(root, "keywords");
+    await writeAhrefsKeywordResearch({
+      inputPath,
+      outputDir: keywordBundle,
+      capabilities: { capabilities: [{ capability_id: "ahrefs.keywords-explorer.overview", provider: "ahrefs", operation_id: "keywords-explorer.overview", api_version: "v3", metric_ids: ["ahrefs.keyword_metrics"], read_write: "read", state: "schema_verified" }] },
+      apiKey: "test-key",
+      allowEstimatedBudget: true,
+      fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "fraza jedna", volume: 12, clicks: 3, difficulty: 7 }] }), { status: 200 }),
+    });
+    const outside = join(root, "outside-report.json");
+    const report = await readFile(join(keywordBundle, "report.json"));
+    await writeFile(outside, report);
+    await rm(join(keywordBundle, "report.json"));
+    await symlink(outside, join(keywordBundle, "report.json"));
+    await assert.rejects(() => writeAgencyReport(join(root, "artifacts"), join(root, "report"), { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] }, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath), /escapes its root through a symlink/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

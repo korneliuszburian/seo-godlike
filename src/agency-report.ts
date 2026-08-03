@@ -7,6 +7,7 @@ import { validateSourceRegistry } from "./source-registry.js";
 import { composeReportInsights, ReportInsight } from "./report-insights.js";
 import { parsePhraseInput, PhraseGroup } from "./ahrefs-keywords.js";
 import { RANK_MONITORING_SOURCE_LABEL, rankMonitoringClientIds, readRankMonitoringBundle, RankMonitoringSnapshot } from "./rank-monitoring.js";
+import { resolveExistingInside } from "./path-confinement.js";
 
 interface AgencyReportSourceStatus {
   source_id?: string;
@@ -136,7 +137,7 @@ async function readKeywordResearchBundle(bundlePath: string, inputPath?: string)
   const manifestFiles: Record<string, { sha256: string; bytes: number }> = {};
   for (const [name, entry] of Object.entries(manifest.files)) {
     if (!safeManifestName(name) || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number" || !Number.isInteger(entry.bytes)) throw new Error(`invalid keyword manifest entry '${name}'`);
-    const content = await readFile(join(root, name), "utf8");
+    const content = await readFile(await resolveExistingInside(root, name, "keyword manifest entry"), "utf8");
     if (Buffer.byteLength(content) !== entry.bytes || sha256(content) !== entry.sha256) throw new Error(`keyword manifest hash mismatch for '${name}'`);
     verified.set(name, content);
     manifestFiles[name] = { sha256: entry.sha256, bytes: entry.bytes };

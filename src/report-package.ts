@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { canonicalJson, sha256 as hashText } from "./serialize.js";
+import { resolveExistingInside } from "./path-confinement.js";
 
 interface ManifestFile { sha256: string; bytes: number }
 interface Manifest { files: Record<string, ManifestFile> }
@@ -105,11 +106,13 @@ function reportEntry(value: unknown, bundlePath: string, manifestSha256: string)
 
 async function readVerifiedEntry(manifestPath: string, artifactsDir: string): Promise<PackageEntry> {
   const bundleDir = dirname(manifestPath);
-  const manifest = parseManifest(JSON.parse(await readFile(manifestPath, "utf8")) as unknown);
+  const safeBundleDir = await resolveExistingInside(artifactsDir, relative(resolve(artifactsDir), bundleDir) || ".", "report package bundle");
+  const safeManifestPath = join(safeBundleDir, "manifest.json");
+  const manifest = parseManifest(JSON.parse(await readFile(safeManifestPath, "utf8")) as unknown);
   const files = new Map<string, Buffer>();
   for (const name of Object.keys(manifest.files).sort()) {
     if (name.startsWith("/") || name.split("/").includes("..") || name.includes(`..${sep}`)) throw new Error(`unsafe manifest path '${name}'`);
-    const bytes = await readFile(join(bundleDir, name));
+    const bytes = await readFile(await resolveExistingInside(safeBundleDir, name, "report package manifest entry"));
     const expected = manifest.files[name];
     if (bytes.byteLength !== expected.bytes || sha256(bytes) !== expected.sha256) throw new Error(`manifest hash mismatch for '${name}'`);
     files.set(name, bytes);
@@ -121,7 +124,7 @@ async function readVerifiedEntry(manifestPath: string, artifactsDir: string): Pr
   if (typeof declaredHash !== "string") throw new Error("reportability metadata is incomplete: canonical_json_hash missing");
   const { canonical_json_hash: _, ...reportWithoutHash } = report;
   if (hashText(canonicalJson(reportWithoutHash)) !== declaredHash) throw new Error("canonical_json_hash mismatch");
-  const entry = reportEntry(report, relative(artifactsDir, bundleDir) || ".", sha256(await readFile(manifestPath)));
+  const entry = reportEntry(report, relative(resolve(artifactsDir), safeBundleDir) || ".", sha256(await readFile(safeManifestPath)));
   const requestBytes = files.get("request.json");
   if (!requestBytes) throw new Error("reportability metadata is incomplete: request.json missing");
   const request = JSON.parse(requestBytes.toString("utf8")) as Record<string, unknown>;

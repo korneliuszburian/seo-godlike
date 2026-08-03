@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -226,6 +226,23 @@ test("report package is empty without manifests and rejects invalid reportabilit
   assert.equal(result.package_status, "partial");
   assert.match(result.rejected_bundles[0]?.reason ?? "", /canonical_json_hash mismatch/);
   await rm(root, { recursive: true, force: true });
+});
+
+test("report package rejects a manifest entry symlink escaping the bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-package-symlink-test-"));
+  try {
+    await writeStrictBundle(root, "valid", 12, "2026-07-28T08:00:00Z");
+    const bundle = join(root, "valid");
+    const outside = join(root, "outside-report.json");
+    const report = await readFile(join(bundle, "report.json"));
+    await writeFile(outside, report);
+    await rm(join(bundle, "report.json"));
+    await symlink(outside, join(bundle, "report.json"));
+    const summary = await writeReportPackage(root, join(root, "package"));
+    assert.match(summary.rejected_bundles[0]?.reason ?? "", /escapes its root through a symlink/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("report package rejects a report whose request is not read-only", async () => {

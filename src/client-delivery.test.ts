@@ -172,7 +172,7 @@ test("client delivery renders the complete bounded Ahrefs profile context", asyn
     await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery") });
     const html = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
     assert.match(html, /AHREFS · Najważniejsze strony/);
-    assert.match(html, /14\.00%/);
+    assert.match(html, /14,00%/);
     assert.match(html, /AHREFS · Frazy organiczne/);
     assert.match(html, /local_pack/);
     assert.match(html, /AHREFS · Konkurenci organiczni/);
