@@ -201,7 +201,7 @@ async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
 async function main(): Promise<void> {
   if (process.argv.includes("--pack-client-content")) {
     const result = await writeClientContentBundle(argument("--input"), argument("--output"));
-    process.stdout.write(`${JSON.stringify({ client_id: result.content.client_id, manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify({ client_id: result.content.client_id, client_ids: result.contents.map((content) => content.client_id), manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--pack-rank-monitoring")) {
