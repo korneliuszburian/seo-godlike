@@ -458,3 +458,17 @@ auth or schema is unknown.
   `git diff --check` pass. No provider request or evidence rerun was made.
 - Remaining boundary: SERPROBOT is still an operator-imported snapshot seam;
   no direct response schema or live connector is claimed.
+
+## Ahrefs budget guard follow-up — 2026-08-03
+
+- Commit `bc26fa9` makes Keywords Explorer fail closed unless the operator
+  explicitly passes `--allow-estimated-budget`. The existing request-count and
+  minimum-unit checks remain in place, but the request manifest now states that
+  the estimate is only a minimum request-cost bound; actual cost depends on
+  returned rows and selected fields.
+- A focused test proves the missing flag causes zero network calls. Local proof
+  passes with 110 TypeScript tests and 3 context tests, build, audit and
+  `git diff --check`. No Ahrefs request, rerun or credential read was made.
+- This is a safety boundary, not a claim that the provider cost can be
+  predicted exactly from the current input. The operator must deliberately
+  accept that uncertainty before any future keyword collection.
