@@ -98,3 +98,24 @@ test("provider history rejects a manifest file symlink escaping the bundle", asy
   await assert.rejects(readProviderHistory(root, [{ client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs" }]), /escapes bundle/);
   await rm(root, { recursive: true, force: true });
 });
+
+test("provider history fails closed when an accepted bundle report is missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-provider-history-"));
+  await writeBundle(root, "missing-report", report("ahrefs", "2026-06-29", "2026-07-26", 40, "missing-report"));
+  await rm(join(root, "missing-report", "report.json"));
+  await assert.rejects(
+    readProviderHistory(root, [{ client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs" }], ["missing-report"]),
+    /required report is unreadable/,
+  );
+  await rm(root, { recursive: true, force: true });
+});
+
+test("provider history follows an in-root bundle symlink without dropping the bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-provider-history-"));
+  await writeBundle(root, "real-bundle", report("ahrefs", "2026-06-29", "2026-07-26", 40, "symlinked-manifest"));
+  await symlink(join(root, "real-bundle"), join(root, "alias-bundle"));
+  const entries = await readProviderHistory(root, [{ client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs" }], ["alias-bundle"]);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.run_id, "symlinked-manifest");
+  await rm(root, { recursive: true, force: true });
+});

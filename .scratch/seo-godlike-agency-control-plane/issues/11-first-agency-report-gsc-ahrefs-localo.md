@@ -896,3 +896,19 @@ auth or schema is unknown.
   tampering, non-adjacent ranges and escaping manifest entries.
 - No provider request, credential read, Ahrefs rerun or generated production
   report rerun was performed.
+
+## Provider history evidence-boundary hardening — 2026-08-03
+
+- The history artifact walker now resolves and confines traversed symlinks to
+  the configured artifacts root; an in-root bundle symlink is followed without
+  silently dropping its manifest, while an escaping manifest symlink fails
+  closed.
+- Client delivery passes accepted provider bundle paths to history loading, so
+  a missing or unreadable `report.json` in an accepted history bundle is an
+  explicit error rather than an omitted history entry. Non-history accepted
+  provider reports remain ignored when their shape is not the history contract.
+- Focused proof covers missing required reports and symlinked bundles. Full
+  local proof: 133 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`.
+- No provider request, credential read, Ahrefs rerun or generated production
+  report rerun was performed.

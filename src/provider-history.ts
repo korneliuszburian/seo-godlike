@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile, realpath } from "node:fs/promises";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { readdir, readFile, realpath, stat } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 export type HistoryProvider = "google-search-console" | "google-analytics" | "ahrefs";
 export type HistoryMetricUnit = "count" | "ratio" | "position";
@@ -108,7 +108,15 @@ function parseReport(value: unknown): ProviderHistoryEntry | null {
 
 async function manifestPaths(root: string): Promise<string[]> {
   const paths: string[] = [];
+  const rootReal = await realpath(root);
+  const seenDirectories = new Set<string>();
+  const seenManifests = new Set<string>();
+  function insideRoot(path: string): boolean { return path === rootReal || path.startsWith(`${rootReal}${sep}`); }
   async function walk(directory: string): Promise<void> {
+    const realDirectory = await realpath(directory);
+    if (!insideRoot(realDirectory)) throw new Error(`provider history path escapes artifacts root: ${directory}`);
+    if (seenDirectories.has(realDirectory)) return;
+    seenDirectories.add(realDirectory);
     let entries;
     try { entries = await readdir(directory, { withFileTypes: true }); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
@@ -116,24 +124,42 @@ async function manifestPaths(root: string): Promise<string[]> {
       const path = join(directory, entry.name);
       if (entry.isDirectory()) await walk(path);
       else if (entry.isFile() && entry.name === "manifest.json") paths.push(path);
+      else if (entry.isSymbolicLink()) {
+        const realPath = await realpath(path);
+        if (!insideRoot(realPath)) {
+          if (entry.name === "manifest.json") throw new Error(`provider history symlink escapes artifacts root: ${path}`);
+          continue;
+        }
+        const target = await stat(path);
+        if (target.isDirectory()) await walk(path);
+        else if (target.isFile() && entry.name === "manifest.json" && !seenManifests.has(realPath)) {
+          seenManifests.add(realPath);
+          paths.push(path);
+        }
+      }
     }
   }
   await walk(root);
   return paths.sort();
 }
 
-async function readVerifiedManifest(manifestPath: string, artifactsRoot: string, scope?: ReadonlySet<string>): Promise<ProviderHistoryEntry | null> {
+async function readVerifiedManifest(manifestPath: string, artifactsRoot: string, scope?: ReadonlySet<string>, requiredBundlePaths?: ReadonlySet<string>): Promise<ProviderHistoryEntry | null> {
   const bundleDir = dirname(manifestPath);
+  const required = requiredBundlePaths?.has(relative(artifactsRoot, bundleDir)) ?? false;
   let raw: unknown;
-  try { raw = JSON.parse(await readFile(join(bundleDir, "report.json"), "utf8")) as unknown; } catch { return null; }
+  try { raw = JSON.parse(await readFile(join(bundleDir, "report.json"), "utf8")) as unknown; }
+  catch (error) {
+    if (required) throw new Error(`provider history required report is unreadable: ${join(bundleDir, "report.json")}`, { cause: error });
+    return null;
+  }
   const candidate = parseReport(raw);
   const rawIdentity = isRecord(raw) && typeof raw.client_id === "string" && Array.isArray(raw.property_refs) && typeof raw.property_refs[0] === "string" && typeof raw.provider === "string" && isRecord(raw.analytics) && "current_date_range" in raw.analytics
     ? JSON.stringify([raw.client_id, raw.property_refs[0], raw.provider])
     : null;
   const inScope = (candidate !== null && scope?.has(JSON.stringify([candidate.client_id, candidate.property_id, candidate.provider]))) || (rawIdentity !== null && scope?.has(rawIdentity));
-  if (scope && !inScope) return null;
+  if (scope && !inScope && !required) return null;
   if (!candidate) {
-    if (scope) throw new Error(`invalid in-scope provider history report: ${join(bundleDir, "report.json")}`);
+    if (scope && !required) throw new Error(`invalid in-scope provider history report: ${join(bundleDir, "report.json")}`);
     return null;
   }
   const manifest = parseManifest(JSON.parse(await readFile(manifestPath, "utf8")) as unknown);
@@ -182,12 +208,14 @@ function withComparisons(entries: ProviderHistoryEntry[]): ProviderHistoryEntry[
   });
 }
 
-export async function readProviderHistory(artifactsDir: string, identities?: readonly ProviderHistoryIdentity[]): Promise<ProviderHistoryEntry[]> {
+export async function readProviderHistory(artifactsDir: string, identities?: readonly ProviderHistoryIdentity[], requiredBundlePaths?: readonly string[]): Promise<ProviderHistoryEntry[]> {
   const root = resolve(artifactsDir);
   const scope = identities ? new Set(identities.map((identity) => JSON.stringify([identity.client_id, identity.property_id, identity.provider]))) : undefined;
+  const required = requiredBundlePaths ? new Set(requiredBundlePaths.map((path) => isAbsolute(path) ? resolve(path) : resolve(root, path))) : undefined;
   const entriesByIdentity = new Map<string, ProviderHistoryEntry>();
   for (const manifestPath of await manifestPaths(root)) {
-    const entry = await readVerifiedManifest(manifestPath, root, scope);
+    const bundlePath = resolve(dirname(manifestPath));
+    const entry = await readVerifiedManifest(manifestPath, root, scope, required?.has(bundlePath) ? new Set([relative(root, bundlePath)]) : undefined);
     if (!entry) continue;
     const key = deduplicationKey(entry);
     const existing = entriesByIdentity.get(key);
