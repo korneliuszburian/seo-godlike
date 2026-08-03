@@ -431,3 +431,13 @@ auth or schema is unknown.
   providers no longer appear as ready tasks without an executor.
 - Focused agency-run/rank proof passes. This remains an import-based source
   until a stable direct SERPROBOT response contract is verified.
+
+## Rank history follow-up — 2026-08-03
+
+- Commit `b85d83a` adds a local rank-history dashboard. It scans only verified
+  SERPROBOT manifests already present under the artifacts root and compares
+  shared keywords across non-overlapping snapshots; it performs no provider
+  request and does not treat missing positions as zero.
+- The monthly cron now emits both analytics history and rank history outputs.
+- Focused history/scheduler proof passes; live SERPROBOT collection remains
+  explicitly outside this slice.
