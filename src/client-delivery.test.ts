@@ -28,10 +28,12 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const keywordManifest = manifest({ "report.json": keywordReport });
     await writeFile(join(keywordBundle, "manifest.json"), keywordManifest);
     const summary = { schema_version: "1", report_status: "partial", generated_at: "2026-08-03T00:00:00.000Z", scope: { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "ready", entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] }, source_status: [{ client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, bundle_path: "gsc-bundle" }], accepted_bundles: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", manifest_sha256: hash(bundleManifest), bundle_path: "gsc-bundle" }], blocked_sources: [], cross_source_context: [], insights: [], executive: {} as AgencyReportSummary["executive"], keyword_research: { source_label: "Estimated — Ahrefs Keywords Explorer", country: "pl", input_sha256: "x", input_groups: [{ host: "bodymove.pl", phrases: ["bodymove-keyword"] }, { host: "other.pl", phrases: ["fraza"] }], notes: [], groups: [{ host: "bodymove.pl", phrases: ["bodymove-keyword"], rows: [{ keyword: "bodymove-keyword", volume: 10, parent_volume: 20 }] }, { host: "other.pl", phrases: ["fraza"], rows: [{ keyword: "fraza", volume: 10, parent_volume: 20 }] }], bundle_path: keywordBundle, manifest_files: { "report.json": { sha256: hash(keywordReport), bytes: Buffer.byteLength(keywordReport) } } } } as unknown as AgencyReportSummary;
-    const agencyPath = join(root, "agency-report.json");
+    const reportDir = join(root, "report");
+    await mkdir(reportDir, { recursive: true });
+    const agencyPath = join(reportDir, "agency-report.json");
     const agencyText = JSON.stringify(summary);
     await writeFile(agencyPath, agencyText);
-    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": agencyText }));
+    await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": agencyText }));
     const contentPath = join(root, "client-content.json");
     await writeFile(contentPath, JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [{ action_id: "a-1", client_id: "bodymove", period: { start: "2026-07-01", end: "2026-07-01" }, type: "sponsored_article", status: "published", title: "Artykuł sponsorowany", target_url: "https://bodymove.pl/", published_at: "2026-07-01", notes: null }], glossary: [{ term: "CTR", explanation: "Współczynnik klikalności" }], contact: { name: "Operator", email: "operator@example.test", phone: null } }));
     const result = await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery"), clientContentPath: contentPath });
@@ -61,7 +63,7 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const nonAdjacentSummary = { ...summary, accepted_bundles: summary.accepted_bundles.map((item) => ({ ...item, manifest_sha256: hash(nonAdjacentManifest) })) };
     const nonAdjacentText = JSON.stringify(nonAdjacentSummary);
     await writeFile(agencyPath, nonAdjacentText);
-    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": nonAdjacentText }));
+    await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": nonAdjacentText }));
     await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "non-adjacent-delivery") });
     assert.match(await readFile(join(root, "non-adjacent-delivery", "bodymove", "bodymove-seo-report.html"), "utf8"), /Brak porównywalnej bazy/);
     await writeFile(join(bundle, "report.json"), bundleReport);
@@ -73,14 +75,14 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const multiPropertySummary = { ...summary, accepted_bundles: summary.accepted_bundles.map((item) => ({ ...item, manifest_sha256: hash(multiPropertyManifest) })) };
     const multiPropertyText = JSON.stringify(multiPropertySummary);
     await writeFile(agencyPath, multiPropertyText);
-    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": multiPropertyText }));
+    await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": multiPropertyText }));
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "multi-property-delivery") }), /bundle identity does not match accepted manifest/);
     await writeFile(join(bundle, "report.json"), bundleReport);
     await writeFile(join(bundle, "manifest.json"), bundleManifest);
     const ambiguousSummary = { ...summary, scope: { ...summary.scope, entries: [...summary.scope.entries, { client_id: "other-client", client_display_name: "Other", property_id: "https://bodymove.pl/", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] } };
     const ambiguousText = JSON.stringify(ambiguousSummary);
     await writeFile(agencyPath, ambiguousText);
-    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": ambiguousText }));
+    await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": ambiguousText }));
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "ambiguous-delivery") }), /maps to multiple clients/);
     const deliveryManifest = JSON.parse(await readFile(join(root, "delivery", "manifest.json"), "utf8")) as { files: Record<string, unknown> };
     assert.ok(deliveryManifest.files["bodymove/bodymove-seo-report.eml"]);
@@ -93,13 +95,13 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const traversalSummary = { ...summary, accepted_bundles: summary.accepted_bundles.map((bundle) => ({ ...bundle, bundle_path: "../outside" })) };
     const traversalText = JSON.stringify(traversalSummary);
     await writeFile(agencyPath, traversalText);
-    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": traversalText }));
+    await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": traversalText }));
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "traversal-delivery") }), /agency bundle_path escapes its root/);
     await writeFile(join(bundle, "report.json"), bundleReport);
     const keywordTraversalSummary = { ...summary, accepted_bundles: summary.accepted_bundles, keyword_research: { ...summary.keyword_research, bundle_path: "../outside" } };
     const keywordTraversalText = JSON.stringify(keywordTraversalSummary);
     await writeFile(agencyPath, keywordTraversalText);
-    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": keywordTraversalText }));
+    await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": keywordTraversalText }));
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "keyword-traversal-delivery") }), /keyword bundle_path escapes keyword bundle root/);
   } finally {
     await rm(root, { recursive: true, force: true });

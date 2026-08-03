@@ -515,3 +515,18 @@ auth or schema is unknown.
 - A focused fixture falsifier proves the three bounded sections and
   representative provenance fields render without any provider call. No
   Ahrefs rerun, credential read, or external mutation was performed.
+
+## OpenCode review follow-up — 2026-08-03
+
+- Review target: `0c6104c`, read-only non-interactive
+  `opencode-go/deepseek-v4-flash`; raw packet:
+  `/tmp/seo-godlike-second-opinion-0c6104c.json`.
+- The review was **partial** because its step budget ended before the full
+  repository ledger and suite. It identified one concrete root mismatch:
+  accepted bundle paths were validated relative to the agency report
+  directory but consumed relative to `--artifacts-dir`.
+- Commit `0c6104c` itself adds the full bounded Ahrefs profile renderer.
+  The follow-up fixes the reviewer finding by using the same artifacts root
+  for validation and consumption, and adds a sibling-layout falsifier.
+- No provider request, credential read, artifact regeneration, or external
+  mutation was performed.

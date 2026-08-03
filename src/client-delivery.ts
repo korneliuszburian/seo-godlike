@@ -180,9 +180,10 @@ function extractMetric(report: Record<string, unknown>): BundleMetric | null {
   return { client_id: typeof report.client_id === "string" ? report.client_id : "", provider: report.provider, property_id: report.property_refs[0], generated_at: typeof report.generated_at === "string" ? report.generated_at : null, country: request && typeof request.country === "string" ? request.country : null, current, previous, current_range: currentRange, previous_range: previousRange };
 }
 
-async function readAgencyReport(path: string): Promise<AgencyReportSummary> {
-  const root = dirname(resolve(path));
-  const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
+async function readAgencyReport(path: string, artifactsDir: string): Promise<AgencyReportSummary> {
+  const reportRoot = dirname(resolve(path));
+  const artifactsRoot = resolve(artifactsDir);
+  const manifest = JSON.parse(await readFile(join(reportRoot, "manifest.json"), "utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
   const entry = manifest.files?.["agency-report.json"];
   const content = await readFile(path, "utf8");
   if (!entry || entry.sha256 !== sha256(content) || entry.bytes !== Buffer.byteLength(content)) throw new Error("agency report manifest verification failed");
@@ -193,7 +194,7 @@ async function readAgencyReport(path: string): Promise<AgencyReportSummary> {
   }
   for (const bundle of value.accepted_bundles) {
     if (!isRecord(bundle) || typeof bundle.bundle_path !== "string" || typeof bundle.manifest_sha256 !== "string" || typeof bundle.client_id !== "string" || typeof bundle.property_id !== "string" || typeof bundle.provider !== "string") throw new Error("agency report accepted bundle validation failed");
-    resolveInside(root, bundle.bundle_path, "agency bundle_path");
+    resolveInside(artifactsRoot, bundle.bundle_path, "agency bundle_path");
   }
   if (value.rank_monitoring !== undefined) {
     const rank = value.rank_monitoring;
@@ -346,7 +347,7 @@ async function renderPdf(htmlPath: string, pdfPath: string): Promise<void> {
 }
 
 export async function writeClientDelivery(options: ClientDeliveryOptions): Promise<ClientDeliveryResult> {
-  const summary = await readAgencyReport(options.agencyReportPath);
+  const summary = await readAgencyReport(options.agencyReportPath, options.artifactsDir);
   const metrics = await collectMetrics(summary, options.artifactsDir);
   const agencyReportBytes = await readFile(options.agencyReportPath);
   const clientIds = [...new Set(summary.scope.entries.map((entry) => entry.client_id).concat(summary.source_status.map((source) => source.client_id)))].sort();
