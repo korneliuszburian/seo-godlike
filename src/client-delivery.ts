@@ -300,6 +300,7 @@ async function collectSourceManifestHashes(summary: AgencyReportSummary, artifac
 }
 
 async function verifyKeywordBundle(keyword: NonNullable<AgencyReportSummary["keyword_research"]>, keywordBundleRoot: string): Promise<string> {
+  if (keyword.bundle_path.startsWith("/") || keyword.bundle_path.includes("\\")) throw new Error("keyword bundle_path must be relative to keyword bundle root");
   const lexicalRoot = resolve(keywordBundleRoot);
   const lexicalBundle = resolve(lexicalRoot, keyword.bundle_path);
   if (lexicalBundle !== lexicalRoot && !lexicalBundle.startsWith(`${lexicalRoot}${sep}`)) throw new Error("keyword bundle_path escapes keyword bundle root");
@@ -444,13 +445,15 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const clientContentBundle = options.clientContentBundlePath ? await readClientContentBundle(options.clientContentBundlePath, clientIds) : null;
   const clientContentById = new Map((clientContentBundle?.contents ?? []).map((content) => [content.client_id, content] as const));
   const directClientContent = options.clientContentPath ? await readClientContent(options.clientContentPath) : null;
+  if (directClientContent && !clientIds.includes(directClientContent.client_id)) throw new Error(`client content client_id '${directClientContent.client_id}' is outside delivery scope`);
   const sourceManifestHashes = await collectSourceManifestHashes(summary, options.artifactsDir);
   const agencyRunRecord = options.agencyRunRecordPath ? await readAgencyRunRecord(options.agencyRunRecordPath) : null;
   const historyIdentities = summary.accepted_bundles.map((entry) => ({ client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider })).filter((entry): entry is { client_id: string; property_id: string; provider: "google-search-console" | "google-analytics" | "ahrefs" } => entry.provider === "google-search-console" || entry.provider === "google-analytics" || entry.provider === "ahrefs");
   const historyBundlePaths = summary.accepted_bundles
     .filter((entry) => entry.provider === "google-search-console" || entry.provider === "google-analytics" || entry.provider === "ahrefs")
     .map((entry) => entry.bundle_path);
-  const historyEntries = await readProviderHistory(options.artifactsDir, historyIdentities, historyBundlePaths);
+  const acceptedHistoryPaths = new Set(historyBundlePaths.map((path) => resolve(options.artifactsDir, path)));
+  const historyEntries = (await readProviderHistory(options.artifactsDir, historyIdentities, historyBundlePaths)).filter((entry) => acceptedHistoryPaths.has(resolve(options.artifactsDir, entry.bundle_path)));
   const keywordManifestSha256 = summary.keyword_research ? await verifyKeywordBundle(summary.keyword_research, options.keywordBundleRoot ?? options.artifactsDir) : null;
   const outputDir = resolve(options.outputDir);
   await mkdir(outputDir, { recursive: false, mode: 0o700 });

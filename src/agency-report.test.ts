@@ -151,7 +151,7 @@ test("agency report preserves every supplied keyword group and full returned row
     await mkdir(artifacts);
     const inputPath = join(root, "phrases.txt");
     await writeFile(inputPath, "https://wilmed.pl/\n# note: TUTAJ nie mamy fraz\n\nhttps://cmr-ostroleka.pl/\nfraza jedna\n");
-    const keywordBundle = join(root, "keywords");
+    const keywordBundle = join(artifacts, "keywords");
     await writeAhrefsKeywordResearch({
       inputPath,
       outputDir: keywordBundle,
@@ -177,9 +177,11 @@ test("agency report preserves every supplied keyword group and full returned row
 test("agency report rejects a keyword manifest entry symlink escaping the bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-keyword-symlink-test-"));
   try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
     const inputPath = join(root, "phrases.txt");
     await writeFile(inputPath, "https://wilmed.pl/\nfraza jedna\n");
-    const keywordBundle = join(root, "keywords");
+    const keywordBundle = join(artifacts, "keywords");
     await writeAhrefsKeywordResearch({
       inputPath,
       outputDir: keywordBundle,
@@ -193,7 +195,7 @@ test("agency report rejects a keyword manifest entry symlink escaping the bundle
     await writeFile(outside, report);
     await rm(join(keywordBundle, "report.json"));
     await symlink(outside, join(keywordBundle, "report.json"));
-    await assert.rejects(() => writeAgencyReport(join(root, "artifacts"), join(root, "report"), { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] }, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath), /escapes its root through a symlink/);
+    await assert.rejects(() => writeAgencyReport(artifacts, join(root, "report"), { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] }, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath), /escapes its root through a symlink/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
