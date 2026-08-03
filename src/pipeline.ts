@@ -62,7 +62,7 @@ function markdown(report: Report, observation: MetricObservation, claim: Claim):
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
-  await writeFile(path, content, { encoding: "utf8", flag: "wx" });
+  await writeFile(path, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 
 export async function runFixtureAnalysis(
@@ -151,7 +151,7 @@ export async function runFixtureAnalysis(
     "report.json": canonicalJson(report),
     "report.md": markdown(report, observation, claim),
   };
-  await mkdir(outputDir, { recursive: false });
+  await mkdir(outputDir, { recursive: false, mode: 0o700 });
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
   const manifest = {
     schema_version: request.schema_version,

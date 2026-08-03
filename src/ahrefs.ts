@@ -181,7 +181,7 @@ export async function runAhrefsProfile(request: AhrefsProfileRequest, registry: 
   const competitorRows = competitors.slice(0, request.limits.organic_competitors).map((row) => `| ${markdownCell(row.competitor_domain)} | ${markdownCell(row.traffic)} | ${markdownCell(row.domain_rating)} | ${markdownCell(row.keywords_common)} | ${markdownCell(row.share)} |`);
   const reportMarkdown = [`# Ahrefs SEO profile: ${displayName}`, "", `- Property: ${canonicalPropertyId}`, `- Snapshot date: ${request.date_range.end}`, `- Comparison date: ${request.comparison_date_range.end}`, `- Estimated organic traffic: ${metrics.org_traffic}`, `- Organic keywords: ${metrics.org_keywords}`, `- Organic keywords Top 3: ${metrics.org_keywords_1_3}`, "", "## Top pages", "", "| URL | Estimated traffic | Keywords | Top keyword | Position |", "| --- | ---: | ---: | --- | ---: |", ...pageRows, "", "## Organic keyword context (first 25 rows)", "", "| Keyword | Country | Position | Traffic | Volume | Intent |", "| --- | --- | ---: | ---: | ---: | --- |", ...keywordRows, "", "## Organic competitors", "", "| Domain | Traffic | Domain Rating | Common keywords | Share |", "| --- | ---: | ---: | ---: | ---: |", ...competitorRows, "", "## Provenance", "", "- Ahrefs values are estimates and remain separate from observed GSC metrics.", `- Raw responses are bound by manifest hashes.`, `- Canonical JSON hash: ${report.canonical_json_hash}`, ""].join("\n");
   const files: Record<string, string> = { "request.json": requestText, "raw-response.metrics.json": rawResponses.metrics, "raw-response.top-pages.json": rawResponses.topPages, "raw-response.organic-keywords.json": rawResponses.organicKeywords, "raw-response.competitors.json": rawResponses.competitors, "source.json": canonicalJson(sources), "observation.json": canonicalJson(observation), "claim.json": canonicalJson(claim), "audit-event.json": canonicalJson(log), "analytics.json": canonicalJson(analytics), "report.json": canonicalJson(report), "report.md": reportMarkdown };
-  await mkdir(outputDir, { recursive: false });
+  await mkdir(outputDir, { recursive: false, mode: 0o700 });
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
   const manifestFiles = Object.fromEntries(Object.entries(files).map(([name, content]) => {
     const bounded = name === "raw-response.top-pages.json"
@@ -198,7 +198,7 @@ export async function runAhrefsProfile(request: AhrefsProfileRequest, registry: 
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
-  await writeFile(path, content, { encoding: "utf8", flag: "wx" });
+  await writeFile(path, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 
 export async function runAhrefsAnalytics(request: AhrefsAnalyticsRequest, registry: ClientRegistry, capabilities: CapabilityRegistry, rawText: string, outputDir: string): Promise<AhrefsAnalyticsReport> {
@@ -219,7 +219,7 @@ export async function runAhrefsAnalytics(request: AhrefsAnalyticsRequest, regist
   const reportBase = { report_id: `report_${request.run_id}`, schema_version: request.schema_version, run_id: request.run_id, client_id: request.client_id, client_display_name: displayName, provider: request.provider, operation: request.operation, property_refs: [canonicalPropertyId], source_refs: [sourceId], observation_refs: [observation.observation_id], claim_refs: [claim.claim_id], generated_at: request.captured_at, evidence_manifest_ref: "manifest.json", analytics };
   const report: AhrefsAnalyticsReport = { ...reportBase, canonical_json_hash: sha256(canonicalJson(reportBase)) };
   const files = { "request.json": requestText, "raw-response.json": rawText, "source.json": canonicalJson(source), "observation.json": canonicalJson(observation), "claim.json": canonicalJson(claim), "audit-event.json": canonicalJson(log), "analytics.json": canonicalJson(analytics), "report.json": canonicalJson(report), "report.md": `# Ahrefs analytics report: ${displayName}\n\n- Property: ${canonicalPropertyId}\n- Date: ${request.date_range.end}\n- Estimated organic traffic: ${metrics.org_traffic}\n- Organic keywords: ${metrics.org_keywords}\n- Organic keywords in top 3: ${metrics.org_keywords_1_3}\n- Canonical JSON hash: ${report.canonical_json_hash}\n` };
-  await mkdir(outputDir, { recursive: false });
+  await mkdir(outputDir, { recursive: false, mode: 0o700 });
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
   const manifest = { schema_version: request.schema_version, run_id: request.run_id, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: sha256(content), bytes: Buffer.byteLength(content) }])) };
   await writeExclusive(join(outputDir, "manifest.json"), canonicalJson(manifest));

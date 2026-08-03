@@ -181,7 +181,7 @@ function html(summary: ReportPackageSummary): string {
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
-  await writeFile(path, content, { encoding: "utf8", flag: "wx" });
+  await writeFile(path, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 
 export async function writeReportPackage(artifactsDir: string, outputDir: string): Promise<ReportPackageSummary> {

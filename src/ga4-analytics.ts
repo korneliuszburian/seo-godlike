@@ -104,7 +104,7 @@ function assertGa4Request(request: Ga4AnalyticsRequest, registry: ClientRegistry
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
-  await writeFile(path, content, { encoding: "utf8", flag: "wx" });
+  await writeFile(path, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 
 function markdown(report: Ga4AnalyticsReport, observation: MetricObservation, claim: Claim): string {
@@ -208,7 +208,7 @@ export async function runGa4Analytics(
     "report.json": canonicalJson(report),
     "report.md": markdown(report, observation, claim),
   };
-  await mkdir(outputDir, { recursive: false });
+  await mkdir(outputDir, { recursive: false, mode: 0o700 });
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
   const manifest = {
     schema_version: request.schema_version,

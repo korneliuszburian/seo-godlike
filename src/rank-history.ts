@@ -135,7 +135,7 @@ function html(summary: RankHistorySummary): string {
 
 export async function writeRankHistoryDashboard(artifactsDir: string, outputDir: string, expectedClientIds: readonly string[]): Promise<RankHistorySummary> {
   const summary = summarizeRankHistory(await readRankHistory(artifactsDir, expectedClientIds));
-  await mkdir(resolve(outputDir), { recursive: false });
+  await mkdir(resolve(outputDir), { recursive: false, mode: 0o700 });
   await writeFile(join(resolve(outputDir), "rank-history.json"), `${JSON.stringify(summary, null, 2)}\n`, { encoding: "utf8", flag: "wx", mode: 0o600 });
   await writeFile(join(resolve(outputDir), "rank-history.md"), markdown(summary), { encoding: "utf8", flag: "wx", mode: 0o600 });
   await writeFile(join(resolve(outputDir), "rank-history.html"), html(summary), { encoding: "utf8", flag: "wx", mode: 0o600 });

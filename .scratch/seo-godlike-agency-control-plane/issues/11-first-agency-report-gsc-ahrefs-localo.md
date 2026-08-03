@@ -1554,3 +1554,15 @@ auth or schema is unknown.
 - Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
+
+## Evidence writer permission hardening — 2026-08-04
+
+- The exact-HEAD review found the same default-mode gap in standalone GSC,
+  GA4, Ahrefs, pipeline, report-package, and rank-history writers.
+- Evidence directories now request `0700` and their exclusive JSON/Markdown/
+  HTML writes request `0600`, aligning standalone providers with the agency
+  run and delivery boundaries. Existing umask-safe output behavior is covered
+  by the full writer suite; no provider transport was exercised.
+- Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.
