@@ -4,7 +4,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { readRankMonitoringBundle } from "./rank-monitoring.js";
+import { readRankMonitoringBundle, writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { sha256 } from "./serialize.js";
 
 test("rank monitoring bundle verifies identity and deterministic row order", async () => {
@@ -17,4 +17,18 @@ test("rank monitoring bundle verifies identity and deterministic row order", asy
     assert.deepEqual(result.snapshot.rows.map((row) => row.keyword), ["alpha", "zeta"]);
     await assert.rejects(readRankMonitoringBundle(root, ["other"]), /identity mismatch/);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank monitoring packer creates the manifest-bound input expected by delivery", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-pack-"));
+  try {
+    const input = join(root, "input.json");
+    const output = join(root, "bundle");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [{ keyword: "zeta", position: 8, previous_position: 9, search_engine: "google.pl", location: "PL", url: null }] }));
+    const result = await writeRankMonitoringBundle(input, output);
+    assert.equal(result.snapshot.rows.length, 1);
+    assert.equal((await readRankMonitoringBundle(output, ["bodymove"])).snapshot.rows[0]?.keyword, "zeta");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

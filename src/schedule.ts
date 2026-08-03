@@ -42,6 +42,7 @@ export interface AgencyScheduleOptions {
   reportDir: string;
   deliveryDir: string;
   clientContentPath?: string;
+  clientContentBundlePath?: string;
   rankMonitoringPath?: string;
   keywordBundleRoot?: string;
   lockPath?: string;
@@ -60,6 +61,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     "--agency-report-output", report, "--delivery-output", delivery, "--pdf",
     ...(options.sourceRegistryPath ? ["--source-registry", shellQuote(options.sourceRegistryPath)] : []),
     ...(options.clientContentPath ? ["--client-content", shellQuote(options.clientContentPath)] : []),
+    ...(options.clientContentBundlePath ? ["--client-content-bundle", shellQuote(options.clientContentBundlePath)] : []),
     ...(options.rankMonitoringPath ? ["--rank-monitoring", shellQuote(options.rankMonitoringPath)] : []),
     ...(options.keywordBundleRoot ? ["--keyword-bundle-root", shellQuote(options.keywordBundleRoot)] : []),
   ].join(" ");

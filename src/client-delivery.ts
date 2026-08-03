@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import { AgencyReportSummary, CrossSourceContextEntry } from "./agency-report.js";
 import { PhraseGroup } from "./ahrefs-keywords.js";
 import { canonicalJson, sha256 } from "./serialize.js";
-import { ClientContent, readClientContent } from "./client-content.js";
+import { ClientContent, readClientContent, readClientContentBundle } from "./client-content.js";
 import { RankMonitoringSnapshot, readRankMonitoringBundle } from "./rank-monitoring.js";
 
 const execFileAsync = promisify(execFile);
@@ -30,6 +30,7 @@ export interface ClientDeliveryOptions {
   outputDir: string;
   renderPdf?: boolean;
   clientContentPath?: string;
+  clientContentBundlePath?: string;
   rankMonitoringPath?: string;
   keywordBundleRoot?: string;
 }
@@ -240,12 +241,13 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const summary = await readAgencyReport(options.agencyReportPath);
   const metrics = await collectMetrics(summary, options.artifactsDir);
   const agencyReportBytes = await readFile(options.agencyReportPath);
-  const clientContent = options.clientContentPath ? await readClientContent(options.clientContentPath) : null;
+  const clientIds = [...new Set(summary.scope.entries.map((entry) => entry.client_id).concat(summary.source_status.map((source) => source.client_id)))].sort();
+  const clientContentBundle = options.clientContentBundlePath ? await readClientContentBundle(options.clientContentBundlePath, clientIds) : null;
+  const clientContent = clientContentBundle?.content ?? (options.clientContentPath ? await readClientContent(options.clientContentPath) : null);
   const sourceManifestHashes = await collectSourceManifestHashes(summary, options.artifactsDir);
   const keywordManifestSha256 = summary.keyword_research ? await verifyKeywordBundle(summary.keyword_research, options.keywordBundleRoot ?? options.artifactsDir) : null;
   const outputDir = resolve(options.outputDir);
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
-  const clientIds = [...new Set(summary.scope.entries.map((entry) => entry.client_id).concat(summary.source_status.map((source) => source.client_id)))].sort();
   const rankBundle = options.rankMonitoringPath ? await readRankMonitoringBundle(options.rankMonitoringPath, clientIds) : null;
   const keyword = summary.keyword_research;
   const clientKeywordGroups = new Map<string, Array<{ group: PhraseGroup; rows: Array<Record<string, unknown>> }>>();
@@ -292,7 +294,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   await writeFile(join(outputDir, "index.html"), index, { encoding: "utf8", flag: "wx", mode: 0o600 });
   const files: Record<string, string | Buffer> = { "index.html": index };
   for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); }
-  const manifest = { schema_version: "1", source: resolve(options.agencyReportPath), agency_report_sha256: hashBytes(agencyReportBytes), source_manifest_sha256: sourceManifestHashes, keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
+  const manifest = { schema_version: "1", source: resolve(options.agencyReportPath), agency_report_sha256: hashBytes(agencyReportBytes), source_manifest_sha256: sourceManifestHashes, keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
   await writeFile(join(outputDir, "manifest.json"), canonicalJson(manifest), { encoding: "utf8", flag: "wx", mode: 0o600 });
-  return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + summary.accepted_bundles.length + (keywordManifestSha256 ? 1 : 0) + (rankBundle ? 1 : 0) };
+  return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + summary.accepted_bundles.length + (keywordManifestSha256 ? 1 : 0) + (rankBundle ? 1 : 0) + (clientContentBundle ? 1 : 0) };
 }

@@ -257,3 +257,19 @@ auth or schema is unknown.
   occurred.
 - Source registry extension is proven by a focused test for unavailable rank
   and visibility entries; full local gates remain green.
+
+## Manifest-bound operator inputs — 2026-08-03
+
+- Client actions/glossary can now be packed through `--pack-client-content`
+  into a mode-restricted `client-content.json` + `manifest.json` bundle.
+- SERPROBOT-compatible normalized rank snapshots can now be packed through
+  `--pack-rank-monitoring`; delivery verifies every declared byte and the
+  client identity before rendering.
+- Monthly scheduling accepts `--client-content-bundle`; delivery records its
+  manifest hash and counts it among verified inputs.
+- These are import seams, not proof of a SERPROBOT API connection. No
+  provider call or rerun was made; the official connector/API contract still
+  needs operator-provided credentials and a confirmed project/schema before a
+  live adapter is implemented.
+- Local proof: `npm test` passes with 96 TypeScript tests and 3 context tests;
+  strict build and `git diff --check` pass.

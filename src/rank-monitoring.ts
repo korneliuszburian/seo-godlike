@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { sha256 } from "./serialize.js";
+import { canonicalJson, sha256 } from "./serialize.js";
 
 export interface RankRow { keyword: string; position: number | null; previous_position: number | null; search_engine: string; location: string | null; url: string | null; }
 export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; rows: RankRow[]; }
@@ -26,4 +26,14 @@ export async function readRankMonitoringBundle(bundleDir: string, expectedClient
   const snapshot = parseRankMonitoringSnapshot(JSON.parse(reportBytes.toString("utf8")) as unknown);
   if (!expectedClientIds.includes(snapshot.client_id)) throw new Error("rank monitoring client identity mismatch");
   return { snapshot, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
+}
+
+export async function writeRankMonitoringBundle(inputPath: string, outputDir: string): Promise<{ snapshot: RankMonitoringSnapshot; manifest_sha256: string }> {
+  const snapshot = parseRankMonitoringSnapshot(JSON.parse(await readFile(inputPath, "utf8")) as unknown);
+  const report = canonicalJson(snapshot);
+  await mkdir(outputDir, { recursive: false, mode: 0o700 });
+  const manifest = canonicalJson({ schema_version: "1", provider: "serprobot", client_id: snapshot.client_id, files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
+  await writeFile(join(outputDir, "report.json"), report, { encoding: "utf8", flag: "wx", mode: 0o600 });
+  await writeFile(join(outputDir, "manifest.json"), manifest, { encoding: "utf8", flag: "wx", mode: 0o600 });
+  return { snapshot, manifest_sha256: sha256(manifest) };
 }

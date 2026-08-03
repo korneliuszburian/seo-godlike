@@ -1,4 +1,6 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join, resolve, sep } from "node:path";
+import { canonicalJson, sha256 } from "./serialize.js";
 
 export type ClientActionType = "sponsored_article" | "forum_marketing" | "nap_listing" | "on_site" | "other";
 export type ClientActionStatus = "planned" | "in_progress" | "published" | "paused" | "cancelled";
@@ -17,6 +19,7 @@ export interface ClientAction {
 export interface GlossaryEntry { term: string; explanation: string; }
 export interface ClientContact { name: string; email: string | null; phone: string | null; }
 export interface ClientContent { schema_version: "1"; client_id: string; actions: ClientAction[]; glossary: GlossaryEntry[]; contact: ClientContact | null; }
+export interface ClientContentBundle { content: ClientContent; manifest_sha256: string; }
 
 function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function string(value: unknown, label: string): string { if (typeof value !== "string" || value.trim() === "") throw new Error(`client content ${label} must be a non-empty string`); return value; }
@@ -41,3 +44,39 @@ export function parseClientContent(value: unknown): ClientContent {
   return { schema_version: "1", client_id: clientId, actions, glossary, contact };
 }
 export async function readClientContent(path: string): Promise<ClientContent> { return parseClientContent(JSON.parse(await readFile(path, "utf8")) as unknown); }
+
+/**
+ * Read operator-managed content only after the adjacent manifest has verified
+ * every declared byte. The direct JSON reader remains for local compatibility;
+ * production delivery should pass a bundle directory through this seam.
+ */
+export async function readClientContentBundle(bundleDir: string, expectedClientIds: readonly string[]): Promise<ClientContentBundle> {
+  const root = resolve(bundleDir);
+  const manifestBytes = await readFile(join(root, "manifest.json"));
+  const manifest = JSON.parse(manifestBytes.toString("utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
+  if (!manifest.files || Object.keys(manifest.files).length === 0) throw new Error("invalid client content manifest");
+  const contents = new Map<string, Buffer>();
+  for (const [name, entry] of Object.entries(manifest.files)) {
+    if (!name || name.startsWith("/") || name.includes("..") || name.includes("\\") || !entry || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number") throw new Error(`unsafe client content manifest entry '${name}'`);
+    const file = resolve(root, name);
+    if (file !== root && !file.startsWith(`${root}${sep}`)) throw new Error(`client content manifest entry escapes bundle: ${name}`);
+    const bytes = await readFile(file);
+    if (bytes.byteLength !== entry.bytes || sha256(bytes.toString("utf8")) !== entry.sha256) throw new Error(`client content manifest hash mismatch: ${name}`);
+    contents.set(name, bytes);
+  }
+  const report = contents.get("client-content.json") ?? contents.get("report.json");
+  if (!report) throw new Error("client content bundle must declare client-content.json or report.json");
+  const content = parseClientContent(JSON.parse(report.toString("utf8")) as unknown);
+  if (!expectedClientIds.includes(content.client_id)) throw new Error(`client content identity mismatch: ${content.client_id}`);
+  return { content, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
+}
+
+export async function writeClientContentBundle(inputPath: string, outputDir: string): Promise<ClientContentBundle> {
+  const content = parseClientContent(JSON.parse(await readFile(resolve(inputPath), "utf8")) as unknown);
+  const report = canonicalJson(content);
+  await mkdir(resolve(outputDir), { recursive: false, mode: 0o700 });
+  const manifest = canonicalJson({ schema_version: "1", provider: "operator-managed-content", client_id: content.client_id, files: { "client-content.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
+  await writeFile(join(resolve(outputDir), "client-content.json"), report, { encoding: "utf8", flag: "wx", mode: 0o600 });
+  await writeFile(join(resolve(outputDir), "manifest.json"), manifest, { encoding: "utf8", flag: "wx", mode: 0o600 });
+  return { content, manifest_sha256: sha256(manifest) };
+}

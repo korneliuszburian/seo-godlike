@@ -24,6 +24,8 @@ import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeClientDelivery } from "./client-delivery.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
+import { writeClientContentBundle } from "./client-content.js";
+import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -196,6 +198,16 @@ async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  if (process.argv.includes("--pack-client-content")) {
+    const result = await writeClientContentBundle(argument("--input"), argument("--output"));
+    process.stdout.write(`${JSON.stringify({ client_id: result.content.client_id, manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--pack-rank-monitoring")) {
+    const result = await writeRankMonitoringBundle(argument("--input"), argument("--output"));
+    process.stdout.write(`${JSON.stringify({ client_id: result.snapshot.client_id, rows: result.snapshot.rows.length, manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
+    return;
+  }
   if (process.argv.includes("--codex-manager")) {
     const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
     const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
@@ -222,7 +234,7 @@ async function main(): Promise<void> {
     return;
   }
   if (process.argv.includes("--client-delivery")) {
-    const result = await writeClientDelivery({ agencyReportPath: argument("--agency-report-json"), artifactsDir: argument("--artifacts-dir"), outputDir: argument("--output"), renderPdf: process.argv.includes("--pdf"), clientContentPath: optionalArgument("--client-content"), rankMonitoringPath: optionalArgument("--rank-monitoring"), keywordBundleRoot: optionalArgument("--keyword-bundle-root") });
+    const result = await writeClientDelivery({ agencyReportPath: argument("--agency-report-json"), artifactsDir: argument("--artifacts-dir"), outputDir: argument("--output"), renderPdf: process.argv.includes("--pdf"), clientContentPath: optionalArgument("--client-content"), clientContentBundlePath: optionalArgument("--client-content-bundle"), rankMonitoringPath: optionalArgument("--rank-monitoring"), keywordBundleRoot: optionalArgument("--keyword-bundle-root") });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
@@ -258,6 +270,7 @@ async function main(): Promise<void> {
     const deliveryOutput = optionalArgument("--delivery-output");
     if (deliveryOutput && !agencyReportOutput) throw new Error("--delivery-output requires --agency-report-output");
     const clientContentPath = optionalArgument("--client-content");
+    const clientContentBundlePath = optionalArgument("--client-content-bundle");
     const rankMonitoringPath = optionalArgument("--rank-monitoring");
     let generatedReport: string | undefined;
     let generatedDelivery: string | undefined;
@@ -265,7 +278,7 @@ async function main(): Promise<void> {
       const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"));
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
-        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, rankMonitoringPath, keywordBundleRoot: optionalArgument("--keyword-bundle-root") });
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath, keywordBundleRoot: optionalArgument("--keyword-bundle-root") });
         generatedDelivery = resolve(deliveryOutput);
       }
       process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);
@@ -301,6 +314,7 @@ async function main(): Promise<void> {
         reportDir: optionalArgument("--agency-report-root") ?? "artifacts/reports",
         deliveryDir: optionalArgument("--delivery-root") ?? "artifacts/delivery",
         clientContentPath: optionalArgument("--client-content"),
+        clientContentBundlePath: optionalArgument("--client-content-bundle"),
         rankMonitoringPath: optionalArgument("--rank-monitoring"),
         keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
         lockPath: optionalArgument("--lock-file"),
