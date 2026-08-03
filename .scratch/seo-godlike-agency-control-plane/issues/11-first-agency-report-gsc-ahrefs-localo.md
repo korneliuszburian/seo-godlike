@@ -1257,3 +1257,6 @@ auth or schema is unknown.
 - Proof passes with 158 TypeScript tests + 3 context tests, build, zero high
   audit vulnerabilities and `git diff --check`. No provider request, secret
   read or Ahrefs rerun occurred.
+
+- Fixed point `d2c1330` also accepts `--agency-run-record` on standalone
+  delivery, preserving the read-only execution trace in the output manifest.
