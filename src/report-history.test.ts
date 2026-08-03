@@ -323,7 +323,7 @@ test("schedule rejects unsafe client id path segments", () => {
 });
 
 test("monthly agency schedule runs the complete report and delivery pipeline", () => {
-  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles", keywordResearch: true, allowEstimatedBudget: true, keywordCountry: "pl", ahrefsDate: "2026-07-29", ahrefsCountry: "pl", keywordMaxRequests: "4", keywordMaxApiUnits: "200" });
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", rankMonitoringRoot: "artifacts/rank-exports", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles", keywordResearch: true, allowEstimatedBudget: true, keywordCountry: "pl", ahrefsDate: "2026-07-29", ahrefsCountry: "pl", keywordMaxRequests: "4", keywordMaxApiUnits: "200" });
   assert.match(entry, /^47 3 1 \* \* /);
   assert.match(entry, /install -d -m 700 'artifacts\/analysis' 'artifacts\/reports' 'artifacts\/delivery'/);
   assert.match(entry, /--agency-run/);
@@ -355,6 +355,7 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.match(entry, /client-content\.json/);
   assert.match(entry, /--client-content-bundle/);
   assert.match(entry, /client-content-bundle/);
+  assert.match(entry, /--rank-monitoring-root/);
   assert.match(entry, /--keyword-bundle/);
   assert.match(entry, /keyword-bundles\/report/);
   assert.match(entry, /--keyword-input/);

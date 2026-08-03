@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { canonicalJson, sha256 } from "./serialize.js";
 
@@ -51,6 +51,34 @@ export async function readRankMonitoringBundle(bundleDir: string, expectedClient
   const snapshots = parseRankMonitoringCollection(JSON.parse(reportBytes.toString("utf8")) as unknown);
   for (const snapshot of snapshots) if (!expectedClientIds.includes(snapshot.client_id)) throw new Error(`rank monitoring client identity mismatch: ${snapshot.client_id}`);
   return { snapshot: snapshots[0]!, snapshots, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
+}
+
+export async function resolveLatestRankMonitoringBundle(rootDir: string, expectedClientIds: readonly string[]): Promise<string> {
+  if (expectedClientIds.length === 0) throw new Error("rank monitoring root requires at least one expected client");
+  const candidates: Array<{ path: string; bundle: RankMonitoringBundle }> = [];
+  async function inspect(directory: string): Promise<void> {
+    let entries;
+    try { entries = await readdir(directory, { withFileTypes: true }); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+    const manifest = entries.find((entry) => entry.isFile() && entry.name === "manifest.json");
+    if (manifest) {
+      try {
+        const bundle = await readRankMonitoringBundle(directory, expectedClientIds);
+        const ids = new Set(bundle.snapshots.map((snapshot) => snapshot.client_id));
+        if (expectedClientIds.every((clientId) => ids.has(clientId))) candidates.push({ path: directory, bundle });
+      } catch (error) { throw error; }
+    }
+    for (const entry of entries.filter((item) => item.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) await inspect(join(directory, entry.name));
+  }
+  await inspect(rootDir);
+  candidates.sort((a, b) => {
+    const aCaptured = Math.max(...a.bundle.snapshots.map((snapshot) => Date.parse(snapshot.captured_at)));
+    const bCaptured = Math.max(...b.bundle.snapshots.map((snapshot) => Date.parse(snapshot.captured_at)));
+    return bCaptured - aCaptured || b.bundle.snapshots[0]!.date_range.end.localeCompare(a.bundle.snapshots[0]!.date_range.end) || a.path.localeCompare(b.path);
+  });
+  const selected = candidates[0];
+  if (!selected) throw new Error(`no complete rank monitoring bundle found for clients: ${expectedClientIds.join(", ")}`);
+  return selected.path;
 }
 
 export async function writeRankMonitoringBundle(inputPath: string, outputDir: string): Promise<RankMonitoringBundle> {

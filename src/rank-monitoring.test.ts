@@ -4,7 +4,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { readRankMonitoringBundle, writeRankMonitoringBundle } from "./rank-monitoring.js";
+import { readRankMonitoringBundle, resolveLatestRankMonitoringBundle, writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { sha256 } from "./serialize.js";
 
 test("rank monitoring bundle verifies identity and deterministic row order", async () => {
@@ -58,4 +58,31 @@ test("rank monitoring collection keeps multiple client snapshots in one manifest
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("rank monitoring root selects the newest complete manifest-bound export", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-"));
+  try {
+    const snapshot = (capturedAt: string, client_id: string) => ({ schema_version: "1", provider: "serprobot", client_id, captured_at: capturedAt, date_range: { start: "2026-07-01", end: capturedAt.slice(0, 10) }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [] });
+    const oldInput = join(root, "old.json");
+    const newInput = join(root, "new.json");
+    await writeFile(oldInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [snapshot("2026-07-15T00:00:00.000Z", "bodymove")] }));
+    await writeFile(newInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [snapshot("2026-08-03T00:00:00.000Z", "bodymove")] }));
+    await mkdir(join(root, "exports"));
+    await writeRankMonitoringBundle(oldInput, join(root, "exports", "old"));
+    await writeRankMonitoringBundle(newInput, join(root, "exports", "new"));
+    assert.equal(await resolveLatestRankMonitoringBundle(join(root, "exports"), ["bodymove"]), join(root, "exports", "new"));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank monitoring root fails instead of silently falling back after a matching export is tampered", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-tampered-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [] }));
+    await mkdir(join(root, "exports"));
+    await writeRankMonitoringBundle(input, join(root, "exports", "latest"));
+    await writeFile(join(root, "exports", "latest", "report.json"), "tampered", "utf8");
+    await assert.rejects(resolveLatestRankMonitoringBundle(join(root, "exports"), ["bodymove"]), /rank monitoring manifest hash mismatch/);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });

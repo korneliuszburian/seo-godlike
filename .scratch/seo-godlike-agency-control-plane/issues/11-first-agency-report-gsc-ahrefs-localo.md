@@ -932,3 +932,18 @@ auth or schema is unknown.
   to preserve an explicit operator override across months.
 - Schedule proof asserts both flags are emitted when configured; no cron,
   provider request or production report rerun was performed.
+
+## Recurring rank-export selection — 2026-08-03
+
+- Monthly agency scheduling now supports `--rank-monitoring-root`. The local
+  resolver scans manifest-bound SERPROBOT exports, requires a complete snapshot
+  for every registered SERPROBOT client, and deterministically selects the
+  newest captured export.
+- A tampered candidate fails closed instead of silently falling back to older
+  rank data. The existing exact `--rank-monitoring` bundle path remains
+  supported for one-off/operator runs.
+- This improves recurring local automation but is not a live SERPROBOT API
+  connector: exports still enter through the documented operator/Looker source
+  boundary. No provider request, credential read or production rerun occurred.
+- Focused and full local proof now passes with 137 TypeScript tests + 3 context
+  tests, build, zero high audit vulnerabilities and `git diff --check`.

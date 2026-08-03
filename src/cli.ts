@@ -26,7 +26,7 @@ import { writeClientDelivery } from "./client-delivery.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 import { writeClientContentBundle } from "./client-content.js";
-import { writeRankMonitoringBundle } from "./rank-monitoring.js";
+import { resolveLatestRankMonitoringBundle, writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { writeRankHistoryDashboard } from "./rank-history.js";
 
 function argument(name: string): string {
@@ -280,6 +280,11 @@ async function main(): Promise<void> {
     const scope = buildScopePlan(registry, capabilities);
     const ranges = calculateDateRanges();
     const rankMonitoringPath = optionalArgument("--rank-monitoring");
+    const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
+    if (rankMonitoringPath && rankMonitoringRoot) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
+    const resolvedRankMonitoringPath = rankMonitoringRoot
+      ? await resolveLatestRankMonitoringBundle(rankMonitoringRoot, [...new Set(sourceRegistry.sources.filter((source) => source.provider === "serprobot").map((source) => source.client_id))])
+      : rankMonitoringPath;
     const keywordInputPath = optionalArgument("--keyword-input");
     const existingKeywordBundlePath = optionalArgument("--keyword-bundle");
     const keywordResearchOutputPath = optionalArgument("--keyword-research-output") ?? (process.argv.includes("--keyword-research") ? join(outputRoot, "keyword-research") : undefined);
@@ -296,7 +301,7 @@ async function main(): Promise<void> {
       if (entry.provider === "google-analytics") return { id, status: "ready" as const, run: async () => { if (!oauthClientPath) throw new Error("missing --oauth-client for Google Analytics"); await runSingleGa4Analytics({ oauthClientPath, propertyId: entry.property_id, clientId: entry.client_id, registry, capabilities, outputDir }); } };
       return { id, status: "ready" as const, run: async () => runSingleAhrefsAnalytics({ clientId: entry.client_id, propertyId: entry.property_id, date: ahrefsDate, country: ahrefsCountry, registry, capabilities, outputDir }) };
     });
-    const sourceTasks = buildExternalSourceTasks(sourceRegistry, rankMonitoringPath);
+    const sourceTasks = buildExternalSourceTasks(sourceRegistry, resolvedRankMonitoringPath);
     const keywordTasks = keywordResearchOutputPath && keywordInputPath ? [{
       id: keywordResearchTaskId as string,
       status: "ready" as const,
@@ -325,10 +330,10 @@ async function main(): Promise<void> {
     if (agencyReportOutput) {
       const keywordBundlePath = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? keywordResearchOutputPath : existingKeywordBundlePath;
       const keywordBundleRoot = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? outputRoot : optionalArgument("--keyword-bundle-root");
-      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, rankMonitoringPath);
+      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
-        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath, keywordBundleRoot, agencyRunRecordPath: join(outputRoot, "agency-run.json") });
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath: resolvedRankMonitoringPath, keywordBundleRoot, agencyRunRecordPath: join(outputRoot, "agency-run.json") });
         generatedDelivery = resolve(deliveryOutput);
       }
       process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);
@@ -368,6 +373,7 @@ async function main(): Promise<void> {
         clientContentPath: optionalArgument("--client-content"),
         clientContentBundlePath: optionalArgument("--client-content-bundle"),
         rankMonitoringPath: optionalArgument("--rank-monitoring"),
+        rankMonitoringRoot: optionalArgument("--rank-monitoring-root"),
         keywordBundlePath: optionalArgument("--keyword-bundle"),
         keywordInputPath: optionalArgument("--keyword-input"),
         keywordBundleRoot: optionalArgument("--keyword-bundle-root"),

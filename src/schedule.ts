@@ -46,6 +46,7 @@ export interface AgencyScheduleOptions {
   clientContentPath?: string;
   clientContentBundlePath?: string;
   rankMonitoringPath?: string;
+  rankMonitoringRoot?: string;
   keywordBundlePath?: string;
   keywordInputPath?: string;
   keywordBundleRoot?: string;
@@ -81,6 +82,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     ...(options.clientContentPath ? ["--client-content", shellQuote(options.clientContentPath)] : []),
     ...(options.clientContentBundlePath ? ["--client-content-bundle", shellQuote(options.clientContentBundlePath)] : []),
     ...(options.rankMonitoringPath ? ["--rank-monitoring", shellQuote(options.rankMonitoringPath)] : []),
+    ...(options.rankMonitoringRoot ? ["--rank-monitoring-root", shellQuote(options.rankMonitoringRoot)] : []),
     ...(options.keywordBundlePath ? ["--keyword-bundle", shellQuote(options.keywordBundlePath)] : []),
     ...(options.keywordInputPath ? ["--keyword-input", shellQuote(options.keywordInputPath)] : []),
     ...(options.keywordBundleRoot ? ["--keyword-bundle-root", shellQuote(options.keywordBundleRoot)] : []),
