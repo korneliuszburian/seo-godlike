@@ -119,6 +119,13 @@ function formatNumber(value: number | null): string { return value === null ? "�
 function formatPercent(value: number | null): string {
   return value === null ? "—" : `${new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value * 100)}%`;
 }
+function formatAhrefsPercent(value: number | null): string {
+  if (value === null) return "—";
+  // Ahrefs profile rows expose this field in hundredths of a percent (e.g. -230 = -2.30%).
+  // Preserve older normalized fixtures that already carry a ratio such as 0.14.
+  const percent = Math.abs(value) > 1 ? value / 100 : value * 100;
+  return `${new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(percent)}%`;
+}
 function formatDecimal(value: number | null): string { return value === null ? "—" : new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value); }
 function parseDay(value: string): number | null { const time = Date.parse(`${value}T00:00:00Z`); return Number.isFinite(time) ? time : null; }
 function hasAdjacentPeriods(metric: BundleMetric): boolean {
@@ -206,7 +213,7 @@ function ahrefsDetailSection(metric: BundleMetric): string {
   const render = (values: unknown[]) => `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`;
   const pagesHtml = pages.map((row) => {
     const trafficPercent = finite(rowValue(row, "traffic_diff_percent"));
-    return render([rowValue(row, "url", "raw_url"), rowValue(row, "sum_traffic"), rowValue(row, "traffic_diff"), trafficPercent === null ? rowValue(row, "traffic_diff_percent") : formatPercent(trafficPercent), rowValue(row, "keywords"), rowValue(row, "top_keyword"), rowValue(row, "top_keyword_best_position"), rowValue(row, "top_keyword_best_position_diff"), rowValue(row, "referring_domains"), rowValue(row, "ur")]);
+    return render([rowValue(row, "url", "raw_url"), rowValue(row, "sum_traffic"), rowValue(row, "traffic_diff"), trafficPercent === null ? rowValue(row, "traffic_diff_percent") : formatAhrefsPercent(trafficPercent), rowValue(row, "keywords"), rowValue(row, "top_keyword"), rowValue(row, "top_keyword_best_position"), rowValue(row, "top_keyword_best_position_diff"), rowValue(row, "referring_domains"), rowValue(row, "ur")]);
   }).join("");
   const keywordsHtml = keywords.map((row) => render([rowValue(row, "keyword"), rowValue(row, "keyword_country"), rowValue(row, "best_position"), rowValue(row, "best_position_diff"), rowValue(row, "best_position_set"), rowValue(row, "best_position_url"), rowValue(row, "sum_traffic"), rowValue(row, "sum_traffic_prev"), rowValue(row, "volume"), rowValue(row, "keyword_difficulty"), intentLabels(row), rowList(row, "serp_features"), rowValue(row, "status")])).join("");
   const competitorsHtml = competitors.map((row) => render([rowValue(row, "competitor_domain"), rowValue(row, "domain_rating"), rowValue(row, "keywords_common"), rowValue(row, "keywords_target"), rowValue(row, "keywords_competitor"), rowValue(row, "share"), rowValue(row, "traffic"), rowValue(row, "traffic_diff"), rowValue(row, "value")])).join("");
@@ -376,7 +383,7 @@ function appendClientContent(html: string, content: ClientContent | null, rankMo
     ? `<section class="section"><div class="eyebrow">DZIAŁANIA DLA STRONY</div><h2>Wykonane i zaplanowane działania</h2>${content ? `<p class="muted">Rejestr działań pochodzi z jawnego inputu operatora; pozycje nie są wywnioskowane z metryk.</p><div class="table-wrap"><table><thead><tr><th>Okres</th><th>Typ</th><th>Status</th><th>Opis</th><th>Adres</th></tr></thead><tbody>${actions || `<tr><td colspan="5" class="no-data">Brak wpisów dla tego okresu.</td></tr>`}</tbody></table></div>${contact}` : `<p class="muted"><span class="tag">Unavailable · brak rejestru działań</span> Nie dostarczono manifest-bound rejestru działań off-site/on-site. Nie wywnioskujemy działań z metryk.</p>`}</section>${content ? `<section class="section"><div class="eyebrow">PRZYDATNE POJĘCIA</div><h2>Słownik raportu</h2><div class="table-wrap"><table><thead><tr><th>Pojęcie</th><th>Wyjaśnienie</th></tr></thead><tbody>${glossary || `<tr><td colspan="2" class="no-data">Brak wpisów słownika.</td></tr>`}</tbody></table></div></section>` : ""}`
     : "";
   const section = `${historySection(history)}${rankSection}${actionsSection}`;
-  return html.replace("</section></div></main></body></html>", `${section}</section></div></main></body></html>`);
+  return html.replace("</div></main></body></html>", `${section}</div></main></body></html>`);
 }
 
 function emailDraft(unit: DeliveryUnit, generatedAt: string, htmlPath: string, pdfPath: string | null): string {
