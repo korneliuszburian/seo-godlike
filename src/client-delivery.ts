@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { access, chmod, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
 import { AgencyReportSummary, CrossSourceContextEntry } from "./agency-report.js";
@@ -53,6 +53,8 @@ export interface ClientDeliveryOptions {
   rankMonitoringRoot?: string;
   keywordBundleRoot?: string;
   agencyRunRecordPath?: string;
+  /** Test seam only; the CLI always uses the isolated renderer below. */
+  pdfRenderer?: (htmlPath: string, pdfPath: string) => Promise<void>;
 }
 
 export interface ClientDeliveryResult {
@@ -415,34 +417,66 @@ function appendClientContent(html: string, content: ClientContent | null, rankMo
   return html.replace("<!-- supplements -->", `${section}<!-- supplements -->`);
 }
 
-function emailDraft(unit: DeliveryUnit, generatedAt: string, htmlPath: string, pdfPath: string | null): string {
+function base64Lines(bytes: Buffer): string {
+  return bytes.toString("base64").replace(/.{1,76}/g, "$&\r\n").trimEnd();
+}
+
+function plainTextValue(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").trim();
+}
+
+function emailDraft(unit: DeliveryUnit, generatedAt: string, htmlPath: string, pdfPath: string | null, htmlContent: string, pdfContent: Buffer | null): string {
   const subject = `Raport SEO — ${headerValue(unit.title)}`;
   const recipient = unit.content?.contact?.email ? `To: ${headerValue(unit.content.contact.email)}\r\n` : "";
   const currentPeriod = unit.metrics.find((metric) => metric.current_range)?.current_range;
   const sourceLabels = unit.sources.map((source) => `${providerLabel(source.provider)}: ${source.status === "ready" ? "Dostępne" : source.status === "unavailable" ? "Niedostępne" : "Zablokowane"}`).join(", ") || "Brak podłączonych źródeł";
   const gscComparisons = unit.metrics.filter((metric) => metric.provider === "google-search-console").map((metric) => `${metric.property_id}: kliknięcia ${comparisonText(metric, "clicks", "count")}; wyświetlenia ${comparisonText(metric, "impressions", "count")}; CTR ${comparisonText(metric, "ctr", "ratio")}; pozycja ${comparisonText(metric, "position", "position")}`);
-  const attachments = [htmlPath, ...(pdfPath ? [pdfPath] : [])].join(", ");
-  return [
-    `Subject: ${subject}`,
-    recipient.trimEnd(),
-    "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "X-SEO-Godlike-Delivery: draft-only",
-    "",
+  const attachmentList = [htmlPath, ...(pdfPath ? [pdfPath] : [])].join(", ");
+  const titleText = plainTextValue(unit.title);
+  const sourceText = plainTextValue(sourceLabels);
+  const comparisonTextValue = plainTextValue(gscComparisons.join(" | "));
+  const body = [
     `Dzień dobry,`,
     "",
-    `przesyłamy przygotowany raport SEO dla: ${unit.title}.`,
+    `przesyłamy przygotowany raport SEO dla: ${titleText}.`,
     currentPeriod ? `Okres danych: ${currentPeriod.start} — ${currentPeriod.end}.` : "Okres danych: brak porównywalnego zakresu.",
-    `Status źródeł: ${sourceLabels}.`,
-    gscComparisons.length ? `Porównanie GSC: ${gscComparisons.join(" | ")}.` : "Porównanie GSC: brak porównywalnej bazy.",
+    `Status źródeł: ${sourceText}.`,
+    comparisonTextValue ? `Porównanie GSC: ${comparisonTextValue}.` : "Porównanie GSC: brak porównywalnej bazy.",
     "",
     "Raport jest oparty na zweryfikowanych, lokalnych danych źródłowych. Wartości Ahrefs są estymacjami dostawcy, a brak podłączonego źródła nie oznacza wartości zero.",
     "",
-    `Pliki w pakiecie: ${attachments}.`,
+    `Pliki w pakiecie: ${attachmentList}.`,
     "",
     "Pozdrawiamy,",
     "Rekurencja.com",
     `Wygenerowano: ${generatedAt}`,
+  ].join("\r\n");
+  const boundary = `seo-godlike-${safeSegment(unit.id)}-report`;
+  const attachmentFiles = [
+    { filename: basename(htmlPath), contentType: "text/html", bytes: Buffer.from(htmlContent, "utf8") },
+    ...(pdfPath && pdfContent ? [{ filename: basename(pdfPath), contentType: "application/pdf", bytes: pdfContent }] : []),
+  ];
+  return [
+    `Subject: ${subject}`,
+    ...(recipient ? [recipient.trimEnd()] : []),
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary=\"${boundary}\"`,
+    "X-SEO-Godlike-Delivery: draft-only",
+    "",
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    body,
+    ...attachmentFiles.flatMap((attachment) => [
+      `--${boundary}`,
+      `Content-Type: ${attachment.contentType}`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename=\"${headerValue(attachment.filename)}\"`,
+      "",
+      base64Lines(attachment.bytes),
+    ]),
+    `--${boundary}--`,
     "",
   ].join("\r\n");
 }
@@ -477,7 +511,7 @@ async function renderPdf(htmlPath: string, pdfPath: string): Promise<void> {
 
 export async function writeClientDelivery(options: ClientDeliveryOptions): Promise<ClientDeliveryResult> {
   if (!options.artifactsDir) throw new Error("client delivery requires artifactsDir");
-  if (options.renderPdf) await assertPdfRendererAvailable();
+  if (options.renderPdf && !options.pdfRenderer) await assertPdfRendererAvailable();
   const summary = await readAgencyReport(options.agencyReportPath, options.artifactsDir);
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   const resolvedRankMonitoringPath = options.rankMonitoringRoot
@@ -555,12 +589,13 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
     let pdf: string | null = null;
     if (options.renderPdf) {
       pdf = join(unitDir, `${safeSegment(unit.id)}-seo-report.pdf`);
-      await renderPdf(htmlPath, pdf);
+      await (options.pdfRenderer ?? renderPdf)(htmlPath, pdf);
     }
     const htmlRelative = relative(outputDir, htmlPath);
     const pdfRelative = pdf ? relative(outputDir, pdf) : null;
     const emailRelative = `${safeSegment(unit.id)}/${safeSegment(unit.id)}-seo-report.eml`;
-    await writeFile(join(outputDir, emailRelative), emailDraft(unit, generatedAt, htmlRelative, pdfRelative), { encoding: "utf8", flag: "wx", mode: 0o600 });
+    const pdfContent = pdf ? await readFile(pdf) : null;
+    await writeFile(join(outputDir, emailRelative), emailDraft(unit, generatedAt, htmlRelative, pdfRelative, html, pdfContent), { encoding: "utf8", flag: "wx", mode: 0o600 });
     resultUnits.push({ id: unit.id, kind: unit.kind, html: htmlRelative, pdf: pdfRelative, email: emailRelative });
   }
   const index = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SEO intelligence — raporty</title><style>:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#eef3f2;color:#182431;font:14px/1.55 Inter,Arial,sans-serif}.shell{max-width:1180px;margin:auto;padding:34px 28px 110px}.topline{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:70px}.brand{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#31545d;font-weight:800}.badge{border:1px solid #cfe0dc;border-radius:99px;padding:6px 11px;color:#50716f;background:#f8fbfa;font-size:11px}.hero{max-width:720px}.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#4e8d72;font-weight:800}.hero h1{font-size:clamp(40px,7vw,78px);line-height:.95;letter-spacing:-.06em;margin:18px 0;color:#12384a}.hero p{font-size:18px;color:#607379;max-width:620px}.dashboard{display:grid;grid-template-columns:1.4fr .9fr;gap:18px;margin-top:58px}.panel{background:#fff;border:1px solid #dce7e8;border-radius:18px;padding:22px;box-shadow:0 14px 35px rgba(24,36,49,.05)}.panel h2{font-size:20px;margin:0 0 6px;color:#12384a}.panel p{color:#718187;margin-top:0}.units{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.unit{display:flex;align-items:center;gap:13px;padding:13px;border:1px solid #e0eaea;border-radius:14px;text-decoration:none;color:#182431}.unit:hover,.unit:focus{border-color:#79b78e;transform:translateY(-1px)}.dot{display:grid;place-items:center;flex:none;width:42px;height:42px;border-radius:50%;background:#123d52;color:#fff;font-size:12px;font-weight:800}.unit strong{display:block}.unit small{color:#708187}.actions{display:flex;gap:10px;flex-wrap:wrap}.actions a{color:#176b70;font-weight:700}.footer{margin-top:52px;color:#7b888e;font-size:11px}@media(max-width:760px){.shell{padding:22px 16px 90px}.topline{margin-bottom:42px}.dashboard{grid-template-columns:1fr}.hero h1{font-size:52px}.hero p{font-size:16px}}
@@ -568,7 +603,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   await writeFile(join(outputDir, "index.html"), index, { encoding: "utf8", flag: "wx", mode: 0o600 });
   const files: Record<string, string | Buffer> = { "index.html": index };
   for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); files[unit.email] = await readFile(join(outputDir, unit.email), "utf8"); }
-  const manifest = { schema_version: "1", source: "agency-report.json", agency_report_sha256: hashBytes(agencyReportBytes), agency_run_record_sha256: agencyRunRecord?.sha256 ?? null, source_manifest_sha256: sourceManifestHashes, history_manifest_sha256: [...new Set(historyEntries.map((entry) => entry.manifest_sha256))].sort(), keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
+  const manifest = { schema_version: "1", source: "agency-report.json", agency_report_sha256: hashBytes(agencyReportBytes), agency_run_record_sha256: agencyRunRecord?.sha256 ?? null, source_manifest_sha256: sourceManifestHashes, history_manifest_sha256: [...new Set(historyEntries.map((entry) => entry.manifest_sha256))].sort(), keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? options.pdfRenderer ? "renderer_custom" : "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
   await writeFile(join(outputDir, "manifest.json"), canonicalJson(manifest), { encoding: "utf8", flag: "wx", mode: 0o600 });
   const verifiedManifestHashes = new Set<string>([
     ...Object.values(sourceManifestHashes),

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
@@ -77,9 +77,31 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const email = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.eml"), "utf8");
     assert.match(email, /^To: operator@example\.test/m);
     assert.match(email, /X-SEO-Godlike-Delivery: draft-only/);
+    assert.match(email, /Content-Type: multipart\/mixed; boundary="seo-godlike-bodymove-report"/);
+    assert.match(email, /Content-Disposition: attachment; filename="bodymove-seo-report\.html"/);
     assert.match(email, /bodymove-seo-report\.html/);
     assert.match(email, /Porównanie GSC: .*kliknięcia 5 → 10/);
+    const domainEmail = await readFile(join(root, "delivery", "domain-other.pl", "domain-other.pl-seo-report.eml"), "utf8");
+    assert.equal(domainEmail.split("\r\n", 1)[0], "Subject: Raport SEO — other.pl");
     assert.match(await readFile(join(root, "delivery", "index.html"), "utf8"), /Draft email/);
+
+    const pdfDelivery = join(root, "pdf-delivery");
+    await writeClientDelivery({
+      agencyReportPath: agencyPath,
+      artifactsDir: artifacts,
+      outputDir: pdfDelivery,
+      renderPdf: true,
+      pdfRenderer: async (_htmlPath, pdfPath) => {
+        await writeFile(pdfPath, Buffer.from("%PDF-fake-bodymove", "ascii"), { flag: "wx", mode: 0o600 });
+        await chmod(pdfPath, 0o600);
+      },
+    });
+    const pdfEmail = await readFile(join(pdfDelivery, "bodymove", "bodymove-seo-report.eml"), "utf8");
+    assert.match(pdfEmail, /Content-Disposition: attachment; filename="bodymove-seo-report\.pdf"/);
+    const encodedPdf = pdfEmail.split('Content-Disposition: attachment; filename="bodymove-seo-report.pdf"\r\n')[1]!.split("\r\n--seo-godlike-bodymove-report")[0]!.replaceAll("\r\n", "");
+    assert.equal(Buffer.from(encodedPdf, "base64").toString("ascii"), "%PDF-fake-bodymove");
+    const pdfManifest = JSON.parse(await readFile(join(pdfDelivery, "manifest.json"), "utf8")) as { execution: { network_policy: string } };
+    assert.equal(pdfManifest.execution.network_policy, "renderer_custom");
     const nonAdjacentReport = bundleReport.replace('"start":"2026-06-03","end":"2026-06-30"', '"start":"2026-05-01","end":"2026-05-28"');
     const nonAdjacentManifest = manifest({ "report.json": nonAdjacentReport });
     await writeFile(join(bundle, "report.json"), nonAdjacentReport);
