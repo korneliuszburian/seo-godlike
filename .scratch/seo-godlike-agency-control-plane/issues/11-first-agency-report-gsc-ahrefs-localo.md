@@ -326,6 +326,20 @@ auth or schema is unknown.
   `/tmp/seo-godlike-second-opinion-7ec440b.json`; it contains no credentials or
   provider payloads. A fresh review is required after this repair.
 
+## Review follow-up disposition — 2026-08-03
+
+- Fresh OpenCode review of `0958d41` remained partial because its bounded step
+  cap stopped before the full ledger and gates. It identified two concrete
+  parser risks, both now repaired locally: unmarked text before the first URL
+  is rejected, and comma-containing phrases are rejected before `fetch` so the
+  provider request cannot silently change phrase boundaries.
+- The review's hash concern was checked against `src/serialize.ts`: the
+  manifest-producing text artifacts and their verifier both use UTF-8 text
+  bytes; no mismatch was reproduced. It remains deferred as a future shared
+  byte-verifier cleanup, not an accepted blocker.
+- Focused keyword proof now passes with 9 tests; full local gates are being
+  rerun after this repair. No provider call or rerun was made.
+
 ## Delivery automation follow-up — 2026-08-03
 
 - Monthly cron now forwards `--artifacts-dir`, keeping scheduled agency runs

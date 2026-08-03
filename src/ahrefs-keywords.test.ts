@@ -20,6 +20,11 @@ test("phrase parser does not treat ordinary phrases as implicit notes", () => {
   assert.deepEqual(input.notes, ["example.pl: operator context"]);
 });
 
+test("phrase parser rejects an unmarked line before the first URL", () => {
+  assert.throws(() => parsePhraseInput("operator context\nhttps://example.pl/\nfraza"), /must declare a URL before phrases/);
+  assert.deepEqual(parsePhraseInput("# note: operator context\nhttps://example.pl/\nfraza").notes, ["operator context"]);
+});
+
 test("keyword query sends one bounded Keywords Explorer request", async () => {
   let requested: URL | undefined;
   const fetchImpl: typeof fetch = async (input) => {
@@ -42,6 +47,12 @@ test("keyword query rejects uppercase country before network", async () => {
     return new Response("{}", { status: 200 });
   };
   await assert.rejects(() => queryAhrefsKeywordOverview("test-key", ["fraza"], "PL", fetchImpl), /invalid Ahrefs keyword country 'PL'/);
+  assert.equal(calls, 0);
+});
+
+test("keyword query rejects comma-containing phrases before network", async () => {
+  let calls = 0;
+  await assert.rejects(() => queryAhrefsKeywordOverview("test-key", ["fraza, druga"], "pl", async () => { calls += 1; return new Response("{}"); }), /must not contain commas/);
   assert.equal(calls, 0);
 });
 

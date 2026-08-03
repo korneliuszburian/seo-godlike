@@ -69,12 +69,13 @@ export function parsePhraseInput(text: string): PhraseInput {
       groups.push(current);
       continue;
     }
-    if (!current || /^#\s*note\s*:/i.test(line)) {
-      const note = current ? line.replace(/^#\s*note\s*:\s*/i, "") : line;
+    if (/^#\s*note\s*:/i.test(line)) {
+      const note = line.replace(/^#\s*note\s*:\s*/i, "");
       if (!note) continue;
       notes.push(current ? `${current.host}: ${note}` : note);
       continue;
     }
+    if (!current) throw new Error(`phrase input must declare a URL before phrases or use '# note:': ${line}`);
     current.phrases.push(line);
   }
   for (const group of groups) {
@@ -110,6 +111,7 @@ export async function queryAhrefsKeywordOverview(
 ): Promise<string> {
   assertCountry(country);
   if (phrases.length === 0 || phrases.length > MAX_PHRASES_PER_REQUEST) throw new Error(`invalid phrase count: ${phrases.length}`);
+  if (phrases.some((phrase) => phrase.includes(","))) throw new Error("phrases must not contain commas");
   const url = new URL(AHREFS_KEYWORDS_OVERVIEW_URL);
   url.searchParams.set("country", country);
   url.searchParams.set("keywords", phrases.join(","));
