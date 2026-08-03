@@ -858,3 +858,7 @@ auth or schema is unknown.
 - Focused schedule/history proof: 20 tests pass; full local proof remains 124
   TypeScript tests + 3 context tests, build, zero high audit vulnerabilities
   and `git diff --check`. No provider request or report rerun was performed.
+- The follow-up hardening keeps the history/status block behind a successful
+  root preparation step, so a failed `install -d` cannot run history commands
+  with an empty run timestamp. Schedule assertions cover agency, history and
+  rank-history exit propagation.
