@@ -54,6 +54,18 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.match(email, /bodymove-seo-report\.html/);
     assert.match(email, /Porównanie GSC: .*kliknięcia 5 → 10/);
     assert.match(await readFile(join(root, "delivery", "index.html"), "utf8"), /Draft email/);
+    const nonAdjacentReport = bundleReport.replace('"start":"2026-06-03","end":"2026-06-30"', '"start":"2026-05-01","end":"2026-05-28"');
+    const nonAdjacentManifest = manifest({ "report.json": nonAdjacentReport });
+    await writeFile(join(bundle, "report.json"), nonAdjacentReport);
+    await writeFile(join(bundle, "manifest.json"), nonAdjacentManifest);
+    const nonAdjacentSummary = { ...summary, accepted_bundles: summary.accepted_bundles.map((item) => ({ ...item, manifest_sha256: hash(nonAdjacentManifest) })) };
+    const nonAdjacentText = JSON.stringify(nonAdjacentSummary);
+    await writeFile(agencyPath, nonAdjacentText);
+    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": nonAdjacentText }));
+    await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "non-adjacent-delivery") });
+    assert.match(await readFile(join(root, "non-adjacent-delivery", "bodymove", "bodymove-seo-report.html"), "utf8"), /Brak porównywalnej bazy/);
+    await writeFile(join(bundle, "report.json"), bundleReport);
+    await writeFile(join(bundle, "manifest.json"), bundleManifest);
     const ambiguousSummary = { ...summary, scope: { ...summary.scope, entries: [...summary.scope.entries, { client_id: "other-client", client_display_name: "Other", property_id: "https://bodymove.pl/", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] } };
     const ambiguousText = JSON.stringify(ambiguousSummary);
     await writeFile(agencyPath, ambiguousText);
