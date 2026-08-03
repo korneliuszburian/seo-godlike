@@ -42,6 +42,7 @@ export interface HistoryComparison {
 
 export interface HistoryEntry {
   bundle_path: string;
+  manifest_sha256: string;
   report_path: string;
   run_id: string;
   client_id: string;
@@ -146,6 +147,7 @@ async function readVerifiedBundle(manifestPath: string, artifactsDir: string): P
   if (!report) return null;
   return {
     bundle_path: relative(artifactsDir, bundleDir) || ".",
+    manifest_sha256: sha256(await readFile(manifestPath)),
     report_path: relative(artifactsDir, join(bundleDir, "report.md")),
     run_id: report.run_id,
     client_id: report.client_id,
@@ -252,9 +254,9 @@ function markdown(summary: HistorySummary): string {
       ...summary.skipped_bundles.map((bundlePath) => `- ${bundlePath}`),
     ] : []),
     "",
-    "| Okres | Klient | Właściwość | Kliknięcia | Wyświetlenia | CTR | Pozycja | Delta kliknięć | Delta pozycji | Bundle |",
-    "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
-    ...summary.periods.map((entry) => `| ${entry.period.start} — ${entry.period.end} | ${entry.client_display_name} | ${entry.property_id} | ${entry.metrics.clicks} | ${entry.metrics.impressions} | ${percent(entry.metrics.ctr)} | ${entry.metrics.position.toFixed(2)} | ${entry.comparison?.clicks_delta ?? "—"} | ${entry.comparison?.position_delta.toFixed(2) ?? "—"} | ${entry.bundle_path} |`),
+    "| Okres | Klient | Właściwość | Kliknięcia | Wyświetlenia | CTR | Pozycja | Delta kliknięć | Delta pozycji | Bundle | Manifest SHA-256 |",
+    "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+    ...summary.periods.map((entry) => `| ${entry.period.start} — ${entry.period.end} | ${entry.client_display_name} | ${entry.property_id} | ${entry.metrics.clicks} | ${entry.metrics.impressions} | ${percent(entry.metrics.ctr)} | ${entry.metrics.position.toFixed(2)} | ${entry.comparison?.clicks_delta ?? "—"} | ${entry.comparison?.position_delta.toFixed(2) ?? "—"} | ${entry.bundle_path} | ${entry.manifest_sha256} |`),
     "",
   ].join("\n");
 }
@@ -275,6 +277,7 @@ function html(summary: HistorySummary): string {
     String(entry.comparison?.clicks_delta ?? "—"),
     String(entry.comparison?.position_delta.toFixed(2) ?? "—"),
     entry.bundle_path,
+    entry.manifest_sha256,
   ].map(htmlEscape).map((value) => `<td>${value}</td>`).join(""));
   const skipped = summary.skipped_bundles.length === 0 ? "" : `<h2>Skipped bundles</h2><ul>${summary.skipped_bundles.map((path) => `<li><code>${htmlEscape(path)}</code></li>`).join("")}</ul>`;
   return [
@@ -284,7 +287,7 @@ function html(summary: HistorySummary): string {
     `<p>Zweryfikowane pakiety analityczne: ${summary.bundle_count}; kliknięcia: ${summary.totals.clicks}; wyświetlenia: ${summary.totals.impressions}</p>`,
     "<p>Delta jest liczona względem poprzedniego niepokrywającego się okresu tej samej właściwości. Ujemna delta pozycji oznacza poprawę, ponieważ niższa pozycja jest lepsza.</p>",
     skipped,
-    "<div class=\"table-wrap\"><table><thead><tr><th>Okres</th><th>Klient</th><th>Właściwość</th><th>Kliknięcia</th><th>Wyświetlenia</th><th>CTR</th><th>Pozycja</th><th>Delta kliknięć</th><th>Delta pozycji</th><th>Bundle</th></tr></thead><tbody>",
+    "<div class=\"table-wrap\"><table><thead><tr><th>Okres</th><th>Klient</th><th>Właściwość</th><th>Kliknięcia</th><th>Wyświetlenia</th><th>CTR</th><th>Pozycja</th><th>Delta kliknięć</th><th>Delta pozycji</th><th>Bundle</th><th>Manifest SHA-256</th></tr></thead><tbody>",
     ...rows.map((row) => `<tr>${row}</tr>`),
     "</tbody></table></div>",
     "</body></html>",
@@ -300,8 +303,8 @@ export async function writeHistoryDashboard(artifactsDir: string, outputDir: str
   const history = await readHistory(artifactsDir);
   const summary = summarizeHistory(history.entries, history.skippedBundles);
   await mkdir(outputDir, { recursive: false });
-  await writeExclusive(join(outputDir, "executive-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
-  await writeExclusive(join(outputDir, "executive-summary.md"), markdown(summary));
-  await writeExclusive(join(outputDir, "executive-summary.html"), html(summary));
+  const files = { "executive-summary.json": `${JSON.stringify(summary, null, 2)}\n`, "executive-summary.md": markdown(summary), "executive-summary.html": html(summary) };
+  for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
+  await writeExclusive(join(outputDir, "manifest.json"), JSON.stringify({ schema_version: "1", source_artifacts_dir: resolve(artifactsDir), files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: sha256(Buffer.from(content)), bytes: Buffer.byteLength(content) }])) }, null, 2) + "\n");
   return summary;
 }

@@ -571,3 +571,13 @@ auth or schema is unknown.
   tests + 3 context tests, `npm audit --omit=dev --audit-level=high`, and
   `git diff --check`. No provider request, rerun, credential read or artifact
   regeneration was performed.
+
+## History provenance follow-up — 2026-08-03
+
+- The recurring analytics-history dashboard now emits its own hash-bound
+  `manifest.json` for `executive-summary.json`, Markdown and HTML outputs.
+- Each history period now retains the SHA-256 of the verified source bundle
+  manifest, so a monthly comparison can be traced back to the exact accepted
+  evidence rather than only to a path.
+- Focused history proof verifies dashboard file hashes and bytes; no provider
+  request, rerun or generated production report was performed.

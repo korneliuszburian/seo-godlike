@@ -77,6 +77,13 @@ test("history aggregates two bundles chronologically and writes deterministic da
   assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /2026-06-01/);
   assert.match(await readFile(join(output, "executive-summary.html"), "utf8"), /<table>/);
   assert.equal(JSON.parse(await readFile(join(output, "executive-summary.json"), "utf8")).bundle_count, 2);
+  const dashboardManifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, { sha256: string; bytes: number }> };
+  assert.deepEqual(Object.keys(dashboardManifest.files).sort(), ["executive-summary.html", "executive-summary.json", "executive-summary.md"]);
+  for (const [name, expected] of Object.entries(dashboardManifest.files)) {
+    const bytes = await readFile(join(output, name));
+    assert.equal(bytes.byteLength, expected.bytes);
+    assert.equal(sha256(bytes), expected.sha256);
+  }
   assert.deepEqual(await findPreviousBundleLinks(root, join(root, "new-run")), ["../earlier/report.md", "../later/report.md"]);
   await rm(root, { recursive: true, force: true });
 });
