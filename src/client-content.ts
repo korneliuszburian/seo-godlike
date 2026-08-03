@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve, sep } from "node:path";
+import { join, resolve } from "node:path";
+import { resolveExistingInside } from "./path-confinement.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 
 export type ClientActionType = "sponsored_article" | "forum_marketing" | "nap_listing" | "on_site" | "other";
@@ -82,8 +83,7 @@ export async function readClientContentBundle(bundleDir: string, expectedClientI
   const files = new Map<string, Buffer>();
   for (const [name, entry] of Object.entries(manifest.files)) {
     if (!name || name.startsWith("/") || name.includes("..") || name.includes("\\") || !entry || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number") throw new Error(`unsafe client content manifest entry '${name}'`);
-    const file = resolve(root, name);
-    if (file !== root && !file.startsWith(`${root}${sep}`)) throw new Error(`client content manifest entry escapes bundle: ${name}`);
+    const file = await resolveExistingInside(root, name, "client content manifest entry");
     const bytes = await readFile(file);
     if (bytes.byteLength !== entry.bytes || sha256(bytes.toString("utf8")) !== entry.sha256) throw new Error(`client content manifest hash mismatch: ${name}`);
     files.set(name, bytes);

@@ -11,6 +11,7 @@ import { ClientContent, readClientContent, readClientContentBundle } from "./cli
 import { RANK_MONITORING_SOURCE_LABEL, RankMonitoringSnapshot, rankMonitoringClientIds, readRankMonitoringBundle, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot } from "./rank-monitoring.js";
 import { ProviderHistoryEntry, readProviderHistory } from "./provider-history.js";
 import { AgencyRunRecord, assertAgencyReadOnlyPolicy } from "./agency-run.js";
+import { resolveExistingInside, resolveInside } from "./path-confinement.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -112,19 +113,6 @@ function hashBytes(value: string | Buffer): string { return createHash("sha256")
 function normalizePdfMetadata(bytes: Buffer): Buffer {
   const text = bytes.toString("latin1").replace(/\/ModDate \(D:\d{14}[+-]\d{2}'\d{2}'\)/g, "/ModDate (D:20260101000000+00'00')");
   return Buffer.from(text, "latin1");
-}
-function resolveInside(root: string, child: string, label: string): string {
-  if (!child || child.startsWith("/") || child.includes("\\")) throw new Error(`${label} must be a relative path`);
-  const resolvedRoot = resolve(root);
-  const resolvedChild = resolve(resolvedRoot, child);
-  if (resolvedChild !== resolvedRoot && !resolvedChild.startsWith(`${resolvedRoot}${sep}`)) throw new Error(`${label} escapes its root`);
-  return resolvedChild;
-}
-async function resolveExistingInside(root: string, child: string, label: string): Promise<string> {
-  const lexical = resolveInside(root, child, label);
-  const [realRoot, realChild] = await Promise.all([realpath(resolve(root)), realpath(lexical)]);
-  if (realChild !== realRoot && !realChild.startsWith(`${realRoot}${sep}`)) throw new Error(`${label} escapes its root through a symlink`);
-  return realChild;
 }
 function metricValue(metric: BundleMetric, field: string): number | null { return finite(metric.current[field]); }
 function formatNumber(value: number | null): string { return value === null ? "—" : new Intl.NumberFormat("pl-PL").format(value); }
@@ -524,7 +512,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   await writeFile(join(outputDir, "index.html"), index, { encoding: "utf8", flag: "wx", mode: 0o600 });
   const files: Record<string, string | Buffer> = { "index.html": index };
   for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); files[unit.email] = await readFile(join(outputDir, unit.email), "utf8"); }
-  const manifest = { schema_version: "1", source: resolve(options.agencyReportPath), agency_report_sha256: hashBytes(agencyReportBytes), agency_run_record_sha256: agencyRunRecord?.sha256 ?? null, source_manifest_sha256: sourceManifestHashes, history_manifest_sha256: [...new Set(historyEntries.map((entry) => entry.manifest_sha256))].sort(), keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
+  const manifest = { schema_version: "1", source: "agency-report.json", agency_report_sha256: hashBytes(agencyReportBytes), agency_run_record_sha256: agencyRunRecord?.sha256 ?? null, source_manifest_sha256: sourceManifestHashes, history_manifest_sha256: [...new Set(historyEntries.map((entry) => entry.manifest_sha256))].sort(), keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
   await writeFile(join(outputDir, "manifest.json"), canonicalJson(manifest), { encoding: "utf8", flag: "wx", mode: 0o600 });
   const verifiedManifestHashes = new Set<string>([
     ...Object.values(sourceManifestHashes),

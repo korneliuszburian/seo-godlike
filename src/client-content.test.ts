@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -44,6 +44,22 @@ test("client content bundle verifies bytes and client identity before delivery",
     await assert.rejects(readClientContentBundle(root, ["other"]), /identity mismatch/);
     await writeFile(join(root, "client-content.json"), `${content} `);
     await assert.rejects(readClientContentBundle(root, ["bodymove"]), /manifest hash mismatch/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("client content bundle rejects a manifest file symlink escaping the bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-client-content-symlink-"));
+  try {
+    const content = JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [], glossary: [], contact: null });
+    const outside = join(root, "outside.json");
+    const bundle = join(root, "bundle");
+    await mkdir(bundle);
+    await writeFile(outside, content);
+    await symlink(outside, join(bundle, "client-content.json"));
+    await writeFile(join(bundle, "manifest.json"), JSON.stringify({ files: { "client-content.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } }));
+    await assert.rejects(readClientContentBundle(bundle, ["bodymove"]), /escapes its root through a symlink/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

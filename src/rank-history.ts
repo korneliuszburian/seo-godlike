@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { RankMonitoringSnapshot, readRankMonitoringBundle } from "./rank-monitoring.js";
+import { resolveExistingInside } from "./path-confinement.js";
 
 export interface RankHistoryEntry {
   bundle_path: string;
@@ -54,10 +55,10 @@ async function manifestPaths(root: string): Promise<string[]> {
 }
 
 async function readRankBundleIfPresent(manifestPath: string, artifactsDir: string, expectedClientIds: readonly string[]): Promise<RankHistoryEntry[]> {
-  const bundleDir = resolve(manifestPath, "..");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { files?: Record<string, unknown> };
+  const bundleDir = await resolveExistingInside(artifactsDir, relative(resolve(artifactsDir), resolve(manifestPath, "..")), "rank history bundle");
+  const manifest = JSON.parse(await readFile(join(bundleDir, "manifest.json"), "utf8")) as { files?: Record<string, unknown> };
   if (!isRecord(manifest.files) || !("report.json" in manifest.files)) return [];
-  const report = JSON.parse(await readFile(join(bundleDir, "report.json"), "utf8")) as unknown;
+  const report = JSON.parse(await readFile(await resolveExistingInside(bundleDir, "report.json", "rank history report"), "utf8")) as unknown;
   if (!isRecord(report) || report.provider !== "serprobot") return [];
   const verified = await readRankMonitoringBundle(bundleDir, expectedClientIds);
   return verified.snapshots.map((snapshot) => ({

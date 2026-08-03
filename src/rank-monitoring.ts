@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { canonicalJson, sha256 } from "./serialize.js";
+import { resolveExistingInside } from "./path-confinement.js";
 
 export interface RankRow { keyword: string; position: number | null; previous_position: number | null; search_engine: string; location: string | null; device: string | null; url: string | null; }
 export interface RankMonitoringSourceConfig { project_id: string; search_engine: string; location: string | null; device: string | null; }
@@ -54,11 +55,12 @@ function parseRankMonitoringCollection(value: unknown): RankMonitoringSnapshot[]
 }
 
 export async function readRankMonitoringBundle(bundleDir: string, expectedClientIds: readonly string[]): Promise<RankMonitoringBundle> {
-  const manifestBytes = await readFile(join(bundleDir, "manifest.json"));
+  const safeBundleDir = await resolveExistingInside(resolve(bundleDir), ".", "rank monitoring bundle");
+  const manifestBytes = await readFile(join(safeBundleDir, "manifest.json"));
   const manifest = JSON.parse(manifestBytes.toString("utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
   const entry = manifest.files?.["report.json"];
   if (!entry || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number") throw new Error("invalid rank monitoring manifest");
-  const reportBytes = await readFile(join(bundleDir, "report.json"));
+  const reportBytes = await readFile(await resolveExistingInside(safeBundleDir, "report.json", "rank monitoring report"));
   if (reportBytes.byteLength !== entry.bytes || sha256(reportBytes.toString("utf8")) !== entry.sha256) throw new Error("rank monitoring manifest hash mismatch");
   const snapshots = parseRankMonitoringCollection(JSON.parse(reportBytes.toString("utf8")) as unknown);
   for (const snapshot of snapshots) if (!expectedClientIds.includes(snapshot.client_id)) throw new Error(`rank monitoring client identity mismatch: ${snapshot.client_id}`);

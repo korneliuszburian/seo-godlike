@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,6 +17,20 @@ test("rank monitoring bundle verifies identity and deterministic row order", asy
     assert.deepEqual(result.snapshot.rows.map((row) => row.keyword), ["alpha", "zeta"]);
     assert.equal(result.snapshot.source_config?.project_id, "123");
     await assert.rejects(readRankMonitoringBundle(root, ["other"]), /identity mismatch/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank monitoring bundle rejects a manifest report symlink escaping the bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-symlink-"));
+  try {
+    const report = JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [] });
+    const outside = join(root, "outside-report.json");
+    const bundle = join(root, "bundle");
+    await mkdir(bundle);
+    await writeFile(outside, report);
+    await symlink(outside, join(bundle, "report.json"));
+    await writeFile(join(bundle, "manifest.json"), JSON.stringify({ files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } }));
+    await assert.rejects(readRankMonitoringBundle(bundle, ["bodymove"]), /escapes its root through a symlink/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
