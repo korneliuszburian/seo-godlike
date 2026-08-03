@@ -76,6 +76,13 @@ function normalizeGeneratedAt(value: unknown): string {
   return date.toISOString();
 }
 
+function normalizeDateOnly(value: unknown, field: string): string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`invalid ${field}`);
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error(`invalid ${field}`);
+  return value;
+}
+
 function reportEntry(value: unknown, bundlePath: string, manifestSha256: string): PackageEntry {
   if (!isRecord(value) || typeof value.run_id !== "string" || typeof value.client_id !== "string" || typeof value.client_display_name !== "string" || typeof value.generated_at !== "string" || !Array.isArray(value.property_refs) || typeof value.property_refs[0] !== "string" || typeof value.provider !== "string" || typeof value.operation !== "string" || value.evidence_manifest_ref !== "manifest.json" || typeof value.canonical_json_hash !== "string" || !isRecord(value.analytics)) throw new Error("reportability metadata is incomplete");
   const pair = value.provider === "google-search-console" && value.operation === "search_analytics.query"
@@ -87,7 +94,10 @@ function reportEntry(value: unknown, bundlePath: string, manifestSha256: string)
       : null;
   if (!pair || typeof pair.value !== "number" || !Number.isFinite(pair.value) || pair.value < 0) throw new Error("unsupported or invalid provider analytics shape");
   const range = value.analytics.current_date_range;
-  if (!isRecord(range) || typeof range.start !== "string" || typeof range.end !== "string") throw new Error("invalid current date range");
+  if (!isRecord(range)) throw new Error("invalid current date range");
+  const start = normalizeDateOnly(range.start, "current date range start");
+  const end = normalizeDateOnly(range.end, "current date range end");
+  if (start > end) throw new Error("invalid current date range order");
   return {
     bundle_path: bundlePath,
     manifest_sha256: manifestSha256,
@@ -99,7 +109,7 @@ function reportEntry(value: unknown, bundlePath: string, manifestSha256: string)
     operation: pair.operation,
     metric_id: pair.metric_id,
     value: pair.value,
-    period: { start: range.start, end: range.end },
+    period: { start, end },
     generated_at: normalizeGeneratedAt(value.generated_at),
   };
 }

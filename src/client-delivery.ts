@@ -111,6 +111,16 @@ function providerLabel(provider: string): string {
     semstorm: "Semstorm",
   } as Record<string, string>)[provider] ?? provider;
 }
+function sourceStatusInterpretation(source: AgencyReportSummary["source_status"][number]): string {
+  if (source.status === "unavailable" && source.reason === "Ahrefs snapshot is older than the selected Google Search Console observation period") return "Dane nieaktualne — snapshot Ahrefs jest starszy niż wybrany okres Google Search Console";
+  if (source.status === "unavailable") return "Niedostępne — źródło niepodłączone";
+  if (source.status === "ready") return "Dostępne — dane zweryfikowane";
+  return "Zablokowane — wymaga wyjaśnienia";
+}
+function sourceReasonLabel(source: AgencyReportSummary["source_status"][number]): string {
+  if (source.reason === "Ahrefs snapshot is older than the selected Google Search Console observation period") return "Snapshot Ahrefs jest starszy niż wybrany okres Google Search Console; dane nie są używane w tym raporcie.";
+  return source.reason ?? "Dane zweryfikowane";
+}
 function actionTypeLabel(type: string): string {
   return ({ sponsored_article: "Artykuł sponsorowany", forum_marketing: "Marketing szeptany", nap_listing: "Wizytówka NAP", on_site: "Działanie na stronie", other: "Inne" } as Record<string, string>)[type] ?? type;
 }
@@ -375,7 +385,7 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string, clientLinks: UnitNavi
   const contextRows = unit.context.map((entry) => `<tr><td>${escapeHtml(entry.key_type)}</td><td><span class="tag">${escapeHtml(entry.join_type)}</span></td><td>${escapeHtml(entry.key)}</td><td>${formatNumber(entry.gsc?.clicks ?? null)}</td><td>${formatNumber(entry.gsc?.impressions ?? null)}</td><td>${formatNumber(entry.ahrefs?.estimated_traffic ?? null)}</td></tr>`).join("");
   const signalRows = unit.insights.map((insight) => `<tr><td>${escapeHtml(insight.kind)}</td><td>${escapeHtml(insight.key)}</td><td>${escapeHtml(insight.evidence)}</td><td>${escapeHtml(insight.severity)}</td></tr>`).join("");
   const keywordRows = unit.keywordGroups.flatMap(({ group, rows }) => rows.map((row) => `<tr><td>${escapeHtml(group.host)}</td><td>${escapeHtml(row.keyword)}</td><td>${escapeHtml(row.volume)}</td><td>${escapeHtml(row.clicks)}</td><td>${escapeHtml(row.difficulty)}</td><td>${escapeHtml(row.traffic_potential)}</td><td>${escapeHtml(row.parent_topic)}</td><td>${escapeHtml(row.parent_volume)}</td></tr>`)).join("");
-  const sourceRows = unit.sources.map((source) => `<tr><td>${escapeHtml(providerLabel(source.provider))}</td><td>${escapeHtml(source.status === "unavailable" ? "Niedostępne — źródło niepodłączone" : source.status === "ready" ? "Dostępne" : "Zablokowane")}</td><td>${escapeHtml(source.reason ?? "Dane zweryfikowane")}</td></tr>`).join("");
+  const sourceRows = unit.sources.map((source) => `<tr><td>${escapeHtml(providerLabel(source.provider))}</td><td>${escapeHtml(sourceStatusInterpretation(source))}</td><td>${escapeHtml(sourceReasonLabel(source))}</td></tr>`).join("");
   let keywordSection = unit.keywordGroups.length ? `<section class="page-break wide-table"><div class="eyebrow">ANALIZA FRAZ</div><h2>Dane fraz kluczowych</h2><p class="muted">Estimated — Ahrefs Keywords Explorer. Wszystkie zwrócone wiersze są pokazane; to nie jest pełna inwentaryzacja fraz.</p><div class="table-wrap"><table><thead><tr><th>Domena</th><th>Fraza</th><th>Szac. wyszukiwania / mies.</th><th>Szac. kliknięcia / mies.</th><th>Trudność KD</th><th>Szac. potencjał ruchu</th><th>Temat nadrzędny</th><th>Wolumen tematu</th></tr></thead><tbody>${keywordRows}</tbody></table></div></section>` : "";
   const ahrefsDetails = ahrefs.map(ahrefsDetailSection).join("");
   keywordSection += ahrefsDetails;

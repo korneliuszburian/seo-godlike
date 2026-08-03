@@ -243,6 +243,28 @@ test("report package is empty without manifests and rejects invalid reportabilit
   await rm(root, { recursive: true, force: true });
 });
 
+test("report package rejects non-date-only current periods at ingest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-package-date-test-"));
+  try {
+    await writeStrictBundle(root, "invalid-date", 4, "2026-07-28T08:00:00Z");
+    const directory = join(root, "invalid-date");
+    const report = JSON.parse(await readFile(join(directory, "report.json"), "utf8")) as Record<string, unknown>;
+    const analytics = report.analytics as Record<string, unknown>;
+    const range = analytics.current_date_range as Record<string, unknown>;
+    range.end = "2026-07-28T00:00:00.000Z";
+    const { canonical_json_hash: _hash, ...withoutHash } = report;
+    const content = canonicalJson({ ...withoutHash, canonical_json_hash: sha256(canonicalJson(withoutHash)) });
+    const request = await readFile(join(directory, "request.json"), "utf8");
+    await writeFile(join(directory, "report.json"), content, "utf8");
+    await writeFile(join(directory, "manifest.json"), canonicalJson({ schema_version: "1", run_id: report.run_id, files: { "report.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) }, "request.json": { sha256: sha256(request), bytes: Buffer.byteLength(request) } } }), "utf8");
+    const summary = await writeReportPackage(root, join(root, "package"));
+    assert.equal(summary.package_status, "partial");
+    assert.match(summary.rejected_bundles[0]?.reason ?? "", /invalid current date range end/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("report package rejects a manifest entry symlink escaping the bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-package-symlink-test-"));
   try {

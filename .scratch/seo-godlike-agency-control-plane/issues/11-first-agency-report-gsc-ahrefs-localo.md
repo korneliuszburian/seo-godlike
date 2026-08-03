@@ -1386,3 +1386,22 @@ auth or schema is unknown.
   credential read, or Ahrefs rerun occurred. Remaining deferred items are
   legacy percentage edge semantics, recurring-job installation, and live
   operator-gated providers.
+
+## Evidence semantics and freshness hardening — 2026-08-04
+
+- Fixed point `5cec71c` changes persisted Ahrefs claims from `confidence:
+  observed` to `confidence: estimated`, matching the rendered `Estimated —
+  Ahrefs` contract.
+- Standalone agency report selection now excludes an Ahrefs snapshot older than
+  the selected GSC observation period; the source is marked unavailable and no
+  cross-source join is composed. Equality at the GSC period boundary remains
+  accepted. Current evidence is not re-collected.
+- Follow-up polish validates report periods as date-only ISO values at package
+  ingest and renders stale-Ahrefs status/reason in Polish client delivery.
+- Proof: 166 TypeScript tests + 3 context tests, build, `npm audit --omit=dev
+  --audit-level=high` with zero vulnerabilities, and `git diff --check`.
+- OpenCode/DeepSeek non-interactive review of `5cec71c` found no blocker. The
+  review’s three follow-up observations were closed in the working tree: Polish
+  stale status, date-only ingest validation, and fresh-boundary acceptance
+  falsifier. No provider request, credential read, Ahrefs rerun, or report
+  regeneration occurred.
