@@ -26,6 +26,7 @@ import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 import { writeClientContentBundle } from "./client-content.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
+import { writeRankHistoryDashboard } from "./rank-history.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -314,6 +315,7 @@ async function main(): Promise<void> {
         reportDir: optionalArgument("--agency-report-root") ?? "artifacts/reports",
         deliveryDir: optionalArgument("--delivery-root") ?? "artifacts/delivery",
         historyDir: optionalArgument("--history-root"),
+        rankHistoryDir: optionalArgument("--rank-history-root"),
         clientContentPath: optionalArgument("--client-content"),
         clientContentBundlePath: optionalArgument("--client-content-bundle"),
         rankMonitoringPath: optionalArgument("--rank-monitoring"),
@@ -343,6 +345,11 @@ async function main(): Promise<void> {
     const artifactsDir = argument("--report-history");
     const outputDir = resolve(argument("--output"));
     const summary = await writeHistoryDashboard(resolve(artifactsDir), outputDir);
+    process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--rank-history")) {
+    const summary = await writeRankHistoryDashboard(argument("--rank-history"), argument("--output"));
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
     return;
   }

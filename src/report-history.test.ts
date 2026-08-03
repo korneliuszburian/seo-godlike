@@ -302,3 +302,8 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.match(entry, /--keyword-bundle-root 'artifacts\/keyword-bundles'/);
   assert.match(entry, /flock -n 'artifacts\/analysis\/\.agency-monthly\.lock'/);
 });
+
+test("monthly agency schedule can render rank history from existing snapshots", () => {
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", rankHistoryDir: "artifacts/reports/rank-history" });
+  assert.match(entry, /--rank-history 'artifacts\/analysis' --output 'artifacts\/reports\/rank-history'/);
+});
