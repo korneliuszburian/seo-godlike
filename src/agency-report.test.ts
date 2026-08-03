@@ -91,6 +91,7 @@ test("agency report excludes an Ahrefs snapshot older than the selected GSC peri
     const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", { sources: [] });
     const ahrefsStatus = summary.source_status.find((source) => source.provider === "ahrefs");
     assert.equal(ahrefsStatus?.status, "unavailable");
+    assert.equal(ahrefsStatus?.reason_code, "stale_snapshot");
     assert.match(ahrefsStatus?.reason ?? "", /older than the selected Google Search Console observation period/);
     assert.equal(summary.cross_source_context.length, 0);
     assert.equal(summary.report_status, "partial");

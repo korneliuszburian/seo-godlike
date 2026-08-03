@@ -1420,3 +1420,13 @@ auth or schema is unknown.
 - Fixed point is ready for operator external-review handoff. No provider
   request, credential read, Ahrefs rerun, report regeneration, or publication
   was performed during this proof.
+
+## Structured stale-source reason — 2026-08-04
+
+- The stale-Ahrefs report status now carries the typed `reason_code:
+  stale_snapshot`; client delivery uses that code rather than matching the
+  English evidence reason string.
+- Focused and full local proof passes with 166 TypeScript tests + 3 context
+  tests, build, zero high audit vulnerabilities, and `git diff --check`.
+- No provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.

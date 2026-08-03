@@ -112,13 +112,13 @@ function providerLabel(provider: string): string {
   } as Record<string, string>)[provider] ?? provider;
 }
 function sourceStatusInterpretation(source: AgencyReportSummary["source_status"][number]): string {
-  if (source.status === "unavailable" && source.reason === "Ahrefs snapshot is older than the selected Google Search Console observation period") return "Dane nieaktualne — snapshot Ahrefs jest starszy niż wybrany okres Google Search Console";
+  if (source.reason_code === "stale_snapshot") return "Dane nieaktualne — snapshot Ahrefs jest starszy niż wybrany okres Google Search Console";
   if (source.status === "unavailable") return "Niedostępne — źródło niepodłączone";
   if (source.status === "ready") return "Dostępne — dane zweryfikowane";
   return "Zablokowane — wymaga wyjaśnienia";
 }
 function sourceReasonLabel(source: AgencyReportSummary["source_status"][number]): string {
-  if (source.reason === "Ahrefs snapshot is older than the selected Google Search Console observation period") return "Snapshot Ahrefs jest starszy niż wybrany okres Google Search Console; dane nie są używane w tym raporcie.";
+  if (source.reason_code === "stale_snapshot") return "Snapshot Ahrefs jest starszy niż wybrany okres Google Search Console; dane nie są używane w tym raporcie.";
   return source.reason ?? "Dane zweryfikowane";
 }
 function actionTypeLabel(type: string): string {

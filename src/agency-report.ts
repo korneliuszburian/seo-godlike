@@ -9,6 +9,8 @@ import { parsePhraseInput, PhraseGroup } from "./ahrefs-keywords.js";
 import { RANK_MONITORING_SOURCE_LABEL, rankMonitoringClientIds, readRankMonitoringBundle, RankMonitoringSnapshot } from "./rank-monitoring.js";
 import { resolveExistingInside } from "./path-confinement.js";
 
+export type AgencyReportSourceReasonCode = "stale_snapshot";
+
 interface AgencyReportSourceStatus {
   source_id?: string;
   client_id: string;
@@ -16,6 +18,7 @@ interface AgencyReportSourceStatus {
   provider: string;
   status: "ready" | "unavailable" | "unsupported";
   reason: string | null;
+  reason_code?: AgencyReportSourceReasonCode;
   bundle_path: string | null;
 }
 
@@ -567,7 +570,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const propertyStatus = scope.entries.map((entry) => {
     const source: AgencyReportSourceStatus = { client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null };
     const accepted = acceptedBundleFor(source, packageSummary);
-    if (accepted && !ahrefsSnapshotFreshForGsc(accepted, packageSummary)) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", bundle_path: null };
+    if (accepted && !ahrefsSnapshotFreshForGsc(accepted, packageSummary)) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", reason_code: "stale_snapshot" as const, bundle_path: null };
     if (accepted) return { ...source, status: "ready" as const, reason: null, bundle_path: accepted.bundle_path };
     return source;
   });
