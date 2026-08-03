@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
@@ -98,6 +98,14 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     await writeFile(agencyPath, traversalText);
     await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": traversalText }));
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "traversal-delivery") }), /agency bundle_path escapes its root/);
+    const outsideBundle = join(root, "outside-bundle");
+    await mkdir(outsideBundle);
+    await symlink(outsideBundle, join(artifacts, "symlink-bundle"));
+    const symlinkSummary = { ...summary, accepted_bundles: summary.accepted_bundles.map((bundle) => ({ ...bundle, bundle_path: "symlink-bundle" })) };
+    const symlinkText = JSON.stringify(symlinkSummary);
+    await writeFile(agencyPath, symlinkText);
+    await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": symlinkText }));
+    await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "symlink-delivery") }), /bundle_path escapes its root through a symlink/);
     await writeFile(join(bundle, "report.json"), bundleReport);
     const keywordTraversalSummary = { ...summary, accepted_bundles: summary.accepted_bundles, keyword_research: { ...summary.keyword_research, bundle_path: "../outside" } };
     const keywordTraversalText = JSON.stringify(keywordTraversalSummary);

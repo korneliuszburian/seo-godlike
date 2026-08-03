@@ -619,3 +619,17 @@ auth or schema is unknown.
   operator-imported SERPROBOT snapshot; no live connector/API call was added.
   No provider request, credential read, Ahrefs rerun or generated production
   report rerun was performed.
+
+## Delivery symlink-boundary hardening — 2026-08-03
+
+- OpenCode/DeepSeek review of `eb05310` was again **partial** because its
+  bounded step budget ended before the full suite, but it identified a
+  concrete lexical-vs-real-path risk in delivery reads.
+- Client delivery now re-checks existing bundle roots and manifest files with
+  `realpath` against the resolved artifacts root. A symlinked bundle escaping
+  that root is rejected before evidence is consumed; the focused falsifier
+  covers this path.
+- Local proof after the hardening: 116 TypeScript tests + 3 context tests,
+  build, zero high audit vulnerabilities and `git diff --check`. No provider
+  request, credential read, Ahrefs rerun or generated production report rerun
+  was performed.

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
@@ -73,6 +73,12 @@ function resolveInside(root: string, child: string, label: string): string {
   const resolvedChild = resolve(resolvedRoot, child);
   if (resolvedChild !== resolvedRoot && !resolvedChild.startsWith(`${resolvedRoot}${sep}`)) throw new Error(`${label} escapes its root`);
   return resolvedChild;
+}
+async function resolveExistingInside(root: string, child: string, label: string): Promise<string> {
+  const lexical = resolveInside(root, child, label);
+  const [realRoot, realChild] = await Promise.all([realpath(resolve(root)), realpath(lexical)]);
+  if (realChild !== realRoot && !realChild.startsWith(`${realRoot}${sep}`)) throw new Error(`${label} escapes its root through a symlink`);
+  return realChild;
 }
 function metricValue(metric: BundleMetric, field: string): number | null { return finite(metric.current[field]); }
 function formatNumber(value: number | null): string { return value === null ? "—" : new Intl.NumberFormat("pl-PL").format(value); }
@@ -158,7 +164,7 @@ async function readVerifiedJsonBundle(bundleDir: string, expected: { client_id: 
   const files = new Map<string, string>();
   for (const [name, entry] of Object.entries(manifest.files)) {
     if (name.startsWith("/") || name.includes("..") || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number") throw new Error(`unsafe manifest entry '${name}'`);
-    const content = await readFile(join(bundleDir, name), "utf8");
+    const content = await readFile(await resolveExistingInside(bundleDir, name, "manifest entry"), "utf8");
     if (Buffer.byteLength(content) !== entry.bytes || sha256(content) !== entry.sha256) throw new Error(`manifest hash mismatch: ${bundleDir}/${name}`);
     files.set(name, content);
   }
@@ -212,7 +218,7 @@ async function readAgencyReport(path: string, artifactsDir: string): Promise<Age
 async function collectMetrics(summary: AgencyReportSummary, artifactsDir: string): Promise<BundleMetric[]> {
   const metrics: BundleMetric[] = [];
   for (const bundle of summary.accepted_bundles) {
-    const bundleDir = resolveInside(artifactsDir, bundle.bundle_path, "bundle_path");
+    const bundleDir = await resolveExistingInside(artifactsDir, bundle.bundle_path, "bundle_path");
     const report = await readVerifiedJsonBundle(bundleDir, bundle);
     const metric = extractMetric(report);
     if (metric) metrics.push(metric);
@@ -223,7 +229,7 @@ async function collectMetrics(summary: AgencyReportSummary, artifactsDir: string
 async function collectSourceManifestHashes(summary: AgencyReportSummary, artifactsDir: string): Promise<Record<string, string>> {
   const hashes: Record<string, string> = {};
   for (const bundle of summary.accepted_bundles) {
-    const bundleDir = resolveInside(artifactsDir, bundle.bundle_path, "bundle_path");
+    const bundleDir = await resolveExistingInside(artifactsDir, bundle.bundle_path, "bundle_path");
     const manifestPath = join(bundleDir, "manifest.json");
     hashes[bundle.bundle_path] = hashBytes(await readFile(manifestPath));
   }
@@ -231,16 +237,18 @@ async function collectSourceManifestHashes(summary: AgencyReportSummary, artifac
 }
 
 async function verifyKeywordBundle(keyword: NonNullable<AgencyReportSummary["keyword_research"]>, keywordBundleRoot: string): Promise<string> {
-  const root = resolve(keyword.bundle_path);
-  const artifactsRoot = resolve(keywordBundleRoot);
-  if (root !== artifactsRoot && !root.startsWith(`${artifactsRoot}${sep}`)) throw new Error("keyword bundle_path escapes keyword bundle root");
+  const lexicalRoot = resolve(keywordBundleRoot);
+  const lexicalBundle = resolve(lexicalRoot, keyword.bundle_path);
+  if (lexicalBundle !== lexicalRoot && !lexicalBundle.startsWith(`${lexicalRoot}${sep}`)) throw new Error("keyword bundle_path escapes keyword bundle root");
+  const [realRoot, root] = await Promise.all([realpath(lexicalRoot), realpath(lexicalBundle)]);
+  if (root !== realRoot && !root.startsWith(`${realRoot}${sep}`)) throw new Error("keyword bundle_path escapes keyword bundle root through a symlink");
   const manifestPath = join(root, "manifest.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
   if (!manifest.files || Object.keys(keyword.manifest_files).length === 0) throw new Error("keyword bundle manifest provenance is missing");
   for (const [name, expected] of Object.entries(keyword.manifest_files)) {
     const entry = manifest.files[name];
     if (!entry || entry.sha256 !== expected.sha256 || entry.bytes !== expected.bytes || name.startsWith("/") || name.includes("..")) throw new Error(`keyword bundle manifest provenance mismatch: ${name}`);
-    const bytes = await readFile(join(root, name));
+    const bytes = await readFile(await resolveExistingInside(root, name, "keyword manifest entry"));
     if (bytes.byteLength !== expected.bytes || hashBytes(bytes) !== expected.sha256) throw new Error(`keyword bundle hash mismatch: ${name}`);
   }
   return hashBytes(await readFile(manifestPath));
