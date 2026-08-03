@@ -42,3 +42,18 @@ test("readiness does not inspect credentials or call providers", () => {
   assert.deepEqual(readiness.blockers, ["no registered scope entries are available"]);
   assert.equal(readiness.policy_mode, "read_only");
 });
+
+test("readiness fails closed for ready external sources without a runnable input", () => {
+  const scope = buildScopePlan(registry, capabilities, "2026-08-03T00:00:00.000Z");
+  const readiness = buildAgencyReadiness(scope, {
+    sources: [
+      { source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "123", status: "ready", reason: null },
+      { source_id: "semstorm.bodymove", client_id: "bodymove", provider: "semstorm", target: "bodymove.pl", status: "ready", reason: null },
+    ],
+  }, { oauth_client_supplied: true, keyword_input_supplied: false, rank_monitoring_supplied: false, client_content_supplied: false }, "2026-08-03T00:00:00.000Z");
+  assert.equal(readiness.status, "partial");
+  assert.deepEqual(readiness.blockers.slice(-2), [
+    "bodymove:serprobot: --rank-monitoring or --rank-monitoring-root was not supplied",
+    "bodymove:semstorm: no agency-run executor is available for this external source",
+  ]);
+});
