@@ -368,6 +368,11 @@ function ahrefsSnapshotFreshForGsc(entry: ReportPackageSummary["accepted_bundles
   return !latestGscEnd || entry.period.end >= latestGscEnd;
 }
 
+function propertyHost(propertyId: string): string | null {
+  if (propertyId.startsWith("sc-domain:")) return propertyId.slice("sc-domain:".length).toLowerCase();
+  try { return new URL(propertyId).hostname.toLowerCase(); } catch { return null; }
+}
+
 function contextRows(summary: AgencyReportSummary): CrossSourceContextEntry[] {
   return rankedContext(summary.cross_source_context).slice(0, EXECUTIVE_CONTEXT_LIMIT);
 }
@@ -564,15 +569,23 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   await mkdir(resolvedOutput, { recursive: false, mode: 0o700 });
   const packageSummary = await writeReportPackage(resolvedArtifacts, join(resolvedOutput, "package"));
   const selectedGscPeriodEndsByClient = new Map<string, string[]>();
+  const selectedGscPeriodEndsByClientAndHost = new Map<string, string[]>();
   for (const entry of scope.entries.filter((candidate) => candidate.status === "ready" && candidate.provider === "google-search-console")) {
     const accepted = acceptedBundleFor({ client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null }, packageSummary);
-    if (accepted) selectedGscPeriodEndsByClient.set(entry.client_id, [...(selectedGscPeriodEndsByClient.get(entry.client_id) ?? []), accepted.period.end]);
+    if (accepted) {
+      selectedGscPeriodEndsByClient.set(entry.client_id, [...(selectedGscPeriodEndsByClient.get(entry.client_id) ?? []), accepted.period.end]);
+      const host = propertyHost(entry.property_id);
+      if (host) selectedGscPeriodEndsByClientAndHost.set(`${entry.client_id}\u0000${host}`, [...(selectedGscPeriodEndsByClientAndHost.get(`${entry.client_id}\u0000${host}`) ?? []), accepted.period.end]);
+    }
   }
   const propertyStatus = scope.entries.map((entry) => {
     const source: AgencyReportSourceStatus = { client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null };
     if (source.status !== "ready") return source;
     const accepted = acceptedBundleFor(source, packageSummary);
-    if (accepted && !ahrefsSnapshotFreshForGsc(accepted, selectedGscPeriodEndsByClient.get(source.client_id) ?? [])) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", reason_code: "stale_snapshot" as const, bundle_path: null };
+    const freshnessPeriods = source.provider === "ahrefs"
+      ? selectedGscPeriodEndsByClientAndHost.get(`${source.client_id}\u0000${propertyHost(source.property_id) ?? source.property_id.toLowerCase()}`) ?? selectedGscPeriodEndsByClient.get(source.client_id) ?? []
+      : [];
+    if (accepted && !ahrefsSnapshotFreshForGsc(accepted, freshnessPeriods)) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", reason_code: "stale_snapshot" as const, bundle_path: null };
     if (accepted) return { ...source, status: "ready" as const, reason: null, bundle_path: accepted.bundle_path };
     if (source.status === "ready") return { ...source, status: "unavailable" as const, reason: "No accepted evidence bundle was found for this source", reason_code: "missing_evidence_bundle" as const, bundle_path: null };
     return source;

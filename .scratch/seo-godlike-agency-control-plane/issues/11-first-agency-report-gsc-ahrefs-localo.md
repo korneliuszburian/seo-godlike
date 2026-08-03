@@ -1566,3 +1566,15 @@ auth or schema is unknown.
 - Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
+
+## Property-scoped freshness — 2026-08-04
+
+- Freshness now prefers the GSC period matching the Ahrefs target host for the
+  same client, instead of conservatively using the latest period across all of
+  that client's GSC properties. If no host match exists, it retains the
+  client-level fail-closed fallback.
+- A focused two-property falsifier covers a root GSC property and a later
+  Kraków subdomain period without downgrading the root Ahrefs snapshot.
+- Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.

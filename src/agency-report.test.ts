@@ -121,6 +121,7 @@ test("agency report scopes Ahrefs freshness to the same client", async () => {
     const artifacts = join(root, "artifacts");
     await mkdir(artifacts);
     await writeAgencySelectionBundle(artifacts, "gsc-bodymove", "2026-07-29T08:00:00.000Z", 2, { start: "2026-07-01", end: "2026-07-28" }, "bodymove", "sc-domain:bodymove.pl");
+    await writeAgencySelectionBundle(artifacts, "gsc-bodymove-krakow", "2026-07-29T08:00:00.000Z", 3, { start: "2026-08-01", end: "2026-08-28" }, "bodymove", "https://krakow.bodymove.pl/");
     await writeAgencySelectionBundle(artifacts, "gsc-other", "2026-07-29T08:00:00.000Z", 3, { start: "2026-08-01", end: "2026-08-28" }, "other", "sc-domain:other.pl");
     const registry: ClientRegistry = { clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "bodymove.pl", provider: "ahrefs", canonical_property: true }] }, { client_id: "other", display_name: "Other", properties: [{ property_id: "other.pl", provider: "ahrefs", canonical_property: true }] }] };
     const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "ahrefs.site-explorer.metrics", provider: "ahrefs", operation_id: "site-explorer.metrics", api_version: "v3", read_write: "read", state: "schema_verified" }] };
@@ -128,6 +129,7 @@ test("agency report scopes Ahrefs freshness to the same client", async () => {
     await runAhrefsAnalytics(ahrefsRequest, registry, capabilities, JSON.stringify({ metrics: { org_traffic: 10, org_keywords: 2, org_keywords_1_3: 1 } }), join(artifacts, "ahrefs-bodymove"));
     const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "ready", entries: [
       { client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "https://krakow.bodymove.pl/", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
       { client_id: "bodymove", client_display_name: "Bodymove", property_id: "bodymove.pl", provider: "ahrefs", status: "ready", reason: null, metrics: [] },
       { client_id: "other", client_display_name: "Other", property_id: "sc-domain:other.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
       { client_id: "other", client_display_name: "Other", property_id: "other.pl", provider: "ahrefs", status: "ready", reason: null, metrics: [] },
