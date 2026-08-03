@@ -1,6 +1,6 @@
 import { ClientRegistry, ExternalProvider, SourceRegistry } from "./domain.js";
 
-const SUPPORTED_EXTERNAL_PROVIDERS = new Set<ExternalProvider>(["localo", "google-analytics"]);
+const SUPPORTED_EXTERNAL_PROVIDERS = new Set<ExternalProvider>(["localo", "google-analytics", "serprobot", "semstorm"]);
 
 export function validateSourceRegistry(registry: SourceRegistry, clients: ClientRegistry): void {
   if (!registry || !Array.isArray(registry.sources)) throw new Error("invalid source registry");

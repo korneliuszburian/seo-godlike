@@ -1,5 +1,5 @@
 export type Provider = "google-search-console" | "google-analytics" | "ahrefs";
-export type ExternalProvider = "localo" | "google-analytics";
+export type ExternalProvider = "localo" | "google-analytics" | "serprobot" | "semstorm";
 export type Operation = "search_analytics.query" | "properties.runReport" | "site-explorer.metrics" | "site-explorer.profile" | "keywords-explorer.overview";
 export type MetricId = "gsc.clicks" | "gsc.impressions" | "gsc.ctr" | "gsc.position" | "ga4.sessions" | "ahrefs.org_traffic" | "ahrefs.org_keywords" | "ahrefs.org_keywords_top_3" | "ahrefs.top_pages" | "ahrefs.org_keywords_detail" | "ahrefs.org_competitors" | "ahrefs.keyword_metrics";
 

@@ -15,6 +15,22 @@
       "target": "bodymove.pl",
       "status": "unavailable",
       "reason": "managed Localo profile unavailable; discovery snapshot is not a canonical profile"
+    },
+    {
+      "source_id": "serprobot.bodymove",
+      "client_id": "bodymove",
+      "provider": "serprobot",
+      "target": null,
+      "status": "unavailable",
+      "reason": "SERPROBOT rank snapshot or API source has not been imported"
+    },
+    {
+      "source_id": "semstorm.bodymove",
+      "client_id": "bodymove",
+      "provider": "semstorm",
+      "target": null,
+      "status": "unavailable",
+      "reason": "Semstorm visibility export or API source has not been imported"
     }
   ]
 }

@@ -15,6 +15,15 @@ test("unavailable source may omit an unproven target", () => {
   assert.doesNotThrow(() => validateSourceRegistry(registry, clients));
 });
 
+test("unavailable rank and visibility sources are valid explicit registry entries", () => {
+  const clients: ClientRegistry = { clients: [{ client_id: "bodymove", properties: [] }] };
+  const registry: SourceRegistry = { sources: [
+    { source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: null, status: "unavailable", reason: "rank snapshot not imported" },
+    { source_id: "semstorm.bodymove", client_id: "bodymove", provider: "semstorm", target: null, status: "unavailable", reason: "visibility export not imported" },
+  ] };
+  assert.doesNotThrow(() => validateSourceRegistry(registry, clients));
+});
+
 test("ready source must have a target", () => {
   const registry: SourceRegistry = { sources: [{ source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: null, status: "ready", reason: null }] };
   assert.throws(() => validateSourceRegistry(registry, clients), /must declare target/);
