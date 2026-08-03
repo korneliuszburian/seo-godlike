@@ -255,7 +255,12 @@ async function main(): Promise<void> {
     const scope = buildScopePlan(registry, capabilities);
     const ranges = calculateDateRanges();
     const rankMonitoringPath = optionalArgument("--rank-monitoring");
-    await mkdir(outputRoot, { recursive: false });
+    await mkdir(outputRoot, { recursive: false, mode: 0o700 });
+    const keywordInputPath = optionalArgument("--keyword-input");
+    const existingKeywordBundlePath = optionalArgument("--keyword-bundle");
+    const keywordResearchOutputPath = optionalArgument("--keyword-research-output") ?? (process.argv.includes("--keyword-research") ? join(outputRoot, "keyword-research") : undefined);
+    if (keywordResearchOutputPath && !keywordInputPath) throw new Error("--keyword-research-output requires --keyword-input");
+    const keywordResearchTaskId = keywordResearchOutputPath ? `ahrefs:keywords-explorer:${keywordResearchOutputPath}` : null;
     const propertyTasks = scope.entries.map((entry) => {
       const id = `${entry.client_id}:${entry.provider}:${entry.property_id}`;
       if (entry.status !== "ready") return { id, status: "blocked" as const, reason: entry.reason };
@@ -265,7 +270,22 @@ async function main(): Promise<void> {
       return { id, status: "ready" as const, run: async () => runSingleAhrefsAnalytics({ clientId: entry.client_id, propertyId: entry.property_id, date: ahrefsDate, country: ahrefsCountry, registry, capabilities, outputDir }) };
     });
     const sourceTasks = buildExternalSourceTasks(sourceRegistry, rankMonitoringPath);
-    const result = await executeAgencyTasks([...propertyTasks, ...sourceTasks]);
+    const keywordTasks = keywordResearchOutputPath && keywordInputPath ? [{
+      id: keywordResearchTaskId as string,
+      status: "ready" as const,
+      run: async () => {
+        await writeAhrefsKeywordResearch({
+          inputPath: keywordInputPath,
+          outputDir: keywordResearchOutputPath,
+          capabilities,
+          country: optionalArgument("--keyword-country"),
+          maxRequests: optionalArgument("--keyword-max-requests") ? Number(optionalArgument("--keyword-max-requests")) : undefined,
+          maxApiUnits: optionalArgument("--keyword-max-api-units") ? Number(optionalArgument("--keyword-max-api-units")) : undefined,
+          allowEstimatedBudget: process.argv.includes("--allow-estimated-budget"),
+        });
+      },
+    }] : [];
+    const result = await executeAgencyTasks([...propertyTasks, ...sourceTasks, ...keywordTasks]);
     const finishedAt = new Date().toISOString();
     await writeAgencyRunRecord(outputRoot, { schema_version: "1", run_id: runId, started_at: startedAt, finished_at: finishedAt, policy_mode: "read_only", approval_boundary: "no_external_write_operations", retention_mode: "operator_managed", deletion_authority: "operator_only", result });
     const agencyReportOutput = optionalArgument("--agency-report-output");
@@ -276,10 +296,12 @@ async function main(): Promise<void> {
     let generatedReport: string | undefined;
     let generatedDelivery: string | undefined;
     if (agencyReportOutput) {
-      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), rankMonitoringPath);
+      const keywordBundlePath = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? keywordResearchOutputPath : existingKeywordBundlePath;
+      const keywordBundleRoot = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? outputRoot : optionalArgument("--keyword-bundle-root");
+      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, rankMonitoringPath);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
-        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath, keywordBundleRoot: optionalArgument("--keyword-bundle-root"), agencyRunRecordPath: join(outputRoot, "agency-run.json") });
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath, keywordBundleRoot, agencyRunRecordPath: join(outputRoot, "agency-run.json") });
         generatedDelivery = resolve(deliveryOutput);
       }
       process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);
@@ -322,6 +344,10 @@ async function main(): Promise<void> {
         keywordBundlePath: optionalArgument("--keyword-bundle"),
         keywordInputPath: optionalArgument("--keyword-input"),
         keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
+        keywordResearch: process.argv.includes("--keyword-research"),
+        keywordCountry: optionalArgument("--keyword-country"),
+        keywordMaxRequests: optionalArgument("--keyword-max-requests"),
+        keywordMaxApiUnits: optionalArgument("--keyword-max-api-units"),
         lockPath: optionalArgument("--lock-file"),
       })}\n`);
       return;

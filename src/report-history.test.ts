@@ -323,12 +323,15 @@ test("schedule rejects unsafe client id path segments", () => {
 });
 
 test("monthly agency schedule runs the complete report and delivery pipeline", () => {
-  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles" });
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles", keywordResearch: true, keywordCountry: "pl", keywordMaxRequests: "4", keywordMaxApiUnits: "200" });
   assert.match(entry, /^47 3 1 \* \* /);
   assert.match(entry, /--agency-run/);
   assert.match(entry, /--artifacts-dir 'artifacts\/analysis'/);
   assert.match(entry, /--agency-report-output 'artifacts\/reports'\/agency-report-\$\(date/);
   assert.match(entry, /--delivery-output 'artifacts\/delivery'\/client-delivery-\$\(date/);
+  assert.match(entry, /--keyword-research --keyword-research-output 'artifacts\/analysis'\/agency-run-\$\(date/);
+  assert.match(entry, /--allow-estimated-budget/);
+  assert.match(entry, /--keyword-max-api-units '200'/);
   assert.match(entry, /agency-report-\$\(date \+\\%Y\\%m\\%dT\\%H\\%M\\%S\)/);
   assert.match(entry, /&& node dist\/cli\.js --report-history 'artifacts\/analysis' --output 'artifacts\/reports'\/history-\$\(date/);
   assert.doesNotMatch(entry, /--output 'artifacts\/reports\/history-\$\(date/);
@@ -339,6 +342,10 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.match(entry, /--keyword-input 'fixtures\/keywords\.txt'/);
   assert.match(entry, /--keyword-bundle-root 'artifacts\/keyword-bundles'/);
   assert.match(entry, /flock -n 'artifacts\/analysis\/\.agency-monthly\.lock'/);
+});
+
+test("monthly keyword research refuses an input-less schedule", () => {
+  assert.throws(() => buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts", reportDir: "reports", deliveryDir: "delivery", keywordResearch: true }), /requires keywordInputPath/);
 });
 
 test("monthly agency schedule can render rank history from existing snapshots", () => {

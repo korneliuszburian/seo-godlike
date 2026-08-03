@@ -755,3 +755,27 @@ auth or schema is unknown.
 - Local proof: 118 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities and `git diff --check`. No provider request, credential
   read, Ahrefs rerun or generated production report rerun was performed.
+
+## Recurring Ahrefs Keywords Explorer automation — 2026-08-03
+
+- The monthly `--agency-run` path now supports explicit opt-in
+  `--keyword-research`. It requires `--keyword-input`, uses bounded
+  `--keyword-max-requests`/`--keyword-max-api-units`, and fails closed unless
+  `--allow-estimated-budget` is present before any credential or provider
+  access.
+- A successful keyword task feeds its new manifest-bound bundle into the
+  existing agency report and client delivery stages. The default monthly
+  schedule remains unchanged unless `keywordResearch: true` is explicitly
+  configured and an input file is supplied. Task failures remain visible in
+  `agency-run.json` and set the CLI exit code without aborting sibling tasks.
+- Keyword-research and agency-run output directories are created `0700`; the
+  generated files remain `0600`.
+- Local proof: 119 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun or generated production report rerun was performed.
+- OpenCode/DeepSeek bounded review fully inspected the new keyword automation
+  diff and returned no blocker in opt-in, budget or provenance logic. It found
+  and this slice fixed the missing `0700` keyword bundle directory mode. The
+  review was partial for older delivery/history modules because its step cap
+  was reached; those boundaries were already covered by earlier local proof
+  and bounded reviews.

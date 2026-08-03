@@ -167,7 +167,7 @@ export async function writeAhrefsKeywordResearch(options: KeywordResearchOptions
   const rawFiles = Object.fromEntries(rawResponses.map((response, index) => [`raw-response.${String(index + 1).padStart(3, "0")}.${response.host}.json`, response.content]));
   const files: Record<string, string> = { "request.json": canonicalJson(request), ...rawFiles, "report.json": canonicalJson(report), "report.md": markdown };
   const outputDir = resolve(options.outputDir);
-  await mkdir(outputDir, { recursive: false });
+  await mkdir(outputDir, { recursive: false, mode: 0o700 });
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
   await writeExclusive(join(outputDir, "manifest.json"), canonicalJson({ schema_version: "1", provider: "ahrefs", operation: "keywords-explorer.overview", files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: sha256(content), bytes: Buffer.byteLength(content) }])) }));
   return report;

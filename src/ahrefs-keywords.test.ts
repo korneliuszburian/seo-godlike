@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -76,6 +76,7 @@ test("keyword research writes a hash-bound deterministic bundle and refuses over
     const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({ keywords: [{ keyword: "fraza", volume: 100 }] }), { status: 200 });
     const report = await writeAhrefsKeywordResearch({ inputPath, outputDir, capabilities, apiKey: "test-key", allowEstimatedBudget: true, fetchImpl });
     assert.equal(report.groups[0]?.rows[0]?.keyword, "fraza");
+    assert.equal((await stat(outputDir)).mode & 0o777, 0o700);
     const manifest = JSON.parse(await readFile(join(outputDir, "manifest.json"), "utf8"));
     assert.equal(Object.keys(manifest.files).length, 4);
     const request = JSON.parse(await readFile(join(outputDir, "request.json"), "utf8"));
