@@ -1405,3 +1405,18 @@ auth or schema is unknown.
   stale status, date-only ingest validation, and fresh-boundary acceptance
   falsifier. No provider request, credential read, Ahrefs rerun, or report
   regeneration occurred.
+
+## Final fixed-point review — 2026-08-04
+
+- OpenCode/DeepSeek (`opencode-go/deepseek-v4-flash`, non-interactive,
+  read-only) reviewed `ce114f5`; no blockers. It independently reproduced
+  the normal persisted-artifact path and a tampered-but-rehashed stale Ahrefs
+  scenario: stale context becomes unavailable, is excluded from joins, and
+  the report becomes partial.
+- Deferred quality notes: replace the string-coupled stale reason with a
+  structured reason code; decide whether reverse staleness (old GSC versus
+  fresh Ahrefs) needs a policy; immutable historical bundles may retain the
+  former `confidence: observed` value because they are not rewritten.
+- Fixed point is ready for operator external-review handoff. No provider
+  request, credential read, Ahrefs rerun, report regeneration, or publication
+  was performed during this proof.
