@@ -31,3 +31,35 @@ export function buildDailyAnalyticsCron(options: ScheduleOptions): string {
   ].join(" ");
   return `17 3 * * * cd ${shellQuote(options.workingDirectory)} && ${command}`;
 }
+
+export interface AgencyScheduleOptions {
+  workingDirectory: string;
+  oauthClientPath: string;
+  registryPath: string;
+  capabilitiesPath: string;
+  sourceRegistryPath?: string;
+  artifactsDir: string;
+  reportDir: string;
+  deliveryDir: string;
+  clientContentPath?: string;
+  rankMonitoringPath?: string;
+  lockPath?: string;
+}
+
+export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
+  const lockPath = options.lockPath ?? `${options.artifactsDir}/.agency-monthly.lock`;
+  const stamp = "$(date +\\%Y\\%m)";
+  const output = `${shellQuote(options.artifactsDir)}/agency-run-${stamp}`;
+  const report = `${shellQuote(options.reportDir)}/agency-report-${stamp}`;
+  const delivery = `${shellQuote(options.deliveryDir)}/client-delivery-${stamp}`;
+  const command = [
+    "flock", "-n", shellQuote(lockPath), "node", "dist/cli.js", "--agency-run",
+    "--registry", shellQuote(options.registryPath), "--capabilities", shellQuote(options.capabilitiesPath),
+    "--oauth-client", shellQuote(options.oauthClientPath), "--output", output,
+    "--agency-report-output", report, "--delivery-output", delivery, "--pdf",
+    ...(options.sourceRegistryPath ? ["--source-registry", shellQuote(options.sourceRegistryPath)] : []),
+    ...(options.clientContentPath ? ["--client-content", shellQuote(options.clientContentPath)] : []),
+    ...(options.rankMonitoringPath ? ["--rank-monitoring", shellQuote(options.rankMonitoringPath)] : []),
+  ].join(" ");
+  return `17 3 1 * * cd ${shellQuote(options.workingDirectory)} && ${command}`;
+}

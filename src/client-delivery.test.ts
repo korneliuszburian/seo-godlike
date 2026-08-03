@@ -25,10 +25,15 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const agencyText = JSON.stringify(summary);
     await writeFile(agencyPath, agencyText);
     await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": agencyText }));
-    const result = await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery") });
+    const contentPath = join(root, "client-content.json");
+    await writeFile(contentPath, JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [{ action_id: "a-1", client_id: "bodymove", period: { start: "2026-07-01", end: "2026-07-01" }, type: "sponsored_article", status: "published", title: "Artykuł sponsorowany", target_url: "https://bodymove.pl/", published_at: "2026-07-01", notes: null }], glossary: [{ term: "CTR", explanation: "Współczynnik klikalności" }], contact: { name: "Operator", email: "operator@example.test", phone: null } }));
+    const result = await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery"), clientContentPath: contentPath });
     assert.deepEqual(result.units.map((unit) => [unit.kind, unit.id]), [["client", "bodymove"], ["domain", "domain-other.pl"]]);
     const clientHtml = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
     assert.match(clientHtml, /Observed — Google Search Console · sc-domain:bodymove\.pl · Kliknięcia/);
+    assert.match(clientHtml, /DZIAŁANIA DLA STRONY/);
+    assert.match(clientHtml, /Artykuł sponsorowany/);
+    assert.match(clientHtml, /Współczynnik klikalności/);
     assert.doesNotMatch(clientHtml, /other\.pl/);
     assert.match(await readFile(join(root, "delivery", "domain-other.pl", "domain-other.pl-seo-report.html"), "utf8"), /Przypisanie do klienta: oczekuje na potwierdzenie operatora/);
     await writeFile(join(bundle, "report.json"), `${bundleReport} `);

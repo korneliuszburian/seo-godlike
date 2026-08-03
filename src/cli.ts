@@ -14,7 +14,7 @@ import { findPreviousBundleLinks, writeHistoryDashboard } from "./report-history
 import { writeReportPackage } from "./report-package.js";
 import { discoverLocaloMcp, LOCALO_MCP_URL } from "./localo-mcp.js";
 import { buildAnalyticsRunId } from "./run-id.js";
-import { buildDailyAnalyticsCron } from "./schedule.js";
+import { buildDailyAnalyticsCron, buildMonthlyAgencyCron } from "./schedule.js";
 import { runSequentialBatch } from "./batch.js";
 import { buildScopePlan } from "./scope-plan.js";
 import { buildAgentRunPlan } from "./agent-plan.js";
@@ -222,7 +222,7 @@ async function main(): Promise<void> {
     return;
   }
   if (process.argv.includes("--client-delivery")) {
-    const result = await writeClientDelivery({ agencyReportPath: argument("--agency-report-json"), artifactsDir: argument("--artifacts-dir"), outputDir: argument("--output"), renderPdf: process.argv.includes("--pdf") });
+    const result = await writeClientDelivery({ agencyReportPath: argument("--agency-report-json"), artifactsDir: argument("--artifacts-dir"), outputDir: argument("--output"), renderPdf: process.argv.includes("--pdf"), clientContentPath: optionalArgument("--client-content"), rankMonitoringPath: optionalArgument("--rank-monitoring") });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
@@ -252,8 +252,26 @@ async function main(): Promise<void> {
     });
     const sourceTasks = sourceRegistry.sources.map((source) => ({ id: `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}`, status: source.status === "ready" ? "ready" as const : "blocked" as const, reason: source.reason ?? "external source is unavailable" }));
     const result = await executeAgencyTasks([...propertyTasks, ...sourceTasks]);
-    await writeAgencyRunRecord(outputRoot, { schema_version: "1", run_id: runId, started_at: startedAt, finished_at: new Date().toISOString(), policy_mode: "read_only", approval_boundary: "no_external_write_operations", retention_mode: "operator_managed", deletion_authority: "operator_only", result });
-    process.stdout.write(`${JSON.stringify({ scope_status: scope.status, ...result }, null, 2)}\n`);
+    const finishedAt = new Date().toISOString();
+    await writeAgencyRunRecord(outputRoot, { schema_version: "1", run_id: runId, started_at: startedAt, finished_at: finishedAt, policy_mode: "read_only", approval_boundary: "no_external_write_operations", retention_mode: "operator_managed", deletion_authority: "operator_only", result });
+    const agencyReportOutput = optionalArgument("--agency-report-output");
+    const deliveryOutput = optionalArgument("--delivery-output");
+    if (deliveryOutput && !agencyReportOutput) throw new Error("--delivery-output requires --agency-report-output");
+    const clientContentPath = optionalArgument("--client-content");
+    const rankMonitoringPath = optionalArgument("--rank-monitoring");
+    let generatedReport: string | undefined;
+    let generatedDelivery: string | undefined;
+    if (agencyReportOutput) {
+      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"));
+      generatedReport = resolve(agencyReportOutput);
+      if (deliveryOutput) {
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, rankMonitoringPath });
+        generatedDelivery = resolve(deliveryOutput);
+      }
+      process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);
+    } else {
+      process.stdout.write(`${JSON.stringify({ scope_status: scope.status, ...result }, null, 2)}\n`);
+    }
     if (result.failed.length > 0) process.exitCode = 1;
     return;
   }
@@ -272,6 +290,22 @@ async function main(): Promise<void> {
     return;
   }
   if (process.argv.includes("--schedule")) {
+    if (process.argv.includes("--agency-schedule")) {
+      process.stdout.write(`${buildMonthlyAgencyCron({
+        workingDirectory: process.cwd(),
+        oauthClientPath: optionalArgument("--oauth-client") ?? "/absolute/path/outside/repository/oauth-client.json",
+        registryPath: optionalArgument("--registry") ?? "fixtures/client-registry.json",
+        capabilitiesPath: optionalArgument("--capabilities") ?? "fixtures/capability-registry.json",
+        sourceRegistryPath: optionalArgument("--source-registry"),
+        artifactsDir: optionalArgument("--artifacts-dir") ?? "artifacts/analysis",
+        reportDir: optionalArgument("--agency-report-root") ?? "artifacts/reports",
+        deliveryDir: optionalArgument("--delivery-root") ?? "artifacts/delivery",
+        clientContentPath: optionalArgument("--client-content"),
+        rankMonitoringPath: optionalArgument("--rank-monitoring"),
+        lockPath: optionalArgument("--lock-file"),
+      })}\n`);
+      return;
+    }
     if (!["--client-id", "--property-id", "--registry", "--capabilities"].every(hasArgument)) {
       process.stderr.write("warning: using default schedule values; pass explicit flags for production use\n");
     }

@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { findPreviousBundleLinks, readAnalyticsHistory, summarizeHistory, writeHistoryDashboard } from "./report-history.js";
 import { writeReportPackage } from "./report-package.js";
 import { canonicalJson, sha256 } from "./serialize.js";
-import { buildDailyAnalyticsCron } from "./schedule.js";
+import { buildDailyAnalyticsCron, buildMonthlyAgencyCron } from "./schedule.js";
 
 async function writeBundle(root: string, name: string, start: string, clicks: number, runId = name, generatedAt = `${start}T08:00:00.000Z`, clientId = "bodymove", propertyId = "sc-domain:bodymove.pl"): Promise<void> {
   const directory = join(root, name);
@@ -281,4 +281,15 @@ test("schedule rejects unsafe client id path segments", () => {
   };
   assert.throws(() => buildDailyAnalyticsCron(options), /shell-safe path segment/);
   assert.throws(() => buildDailyAnalyticsCron({ ...options, clientId: "bad client" }), /shell-safe path segment/);
+});
+
+test("monthly agency schedule runs the complete report and delivery pipeline", () => {
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json" });
+  assert.match(entry, /^17 3 1 \* \* /);
+  assert.match(entry, /--agency-run/);
+  assert.match(entry, /--agency-report-output 'artifacts\/reports'\/agency-report-\$\(date/);
+  assert.match(entry, /--delivery-output 'artifacts\/delivery'\/client-delivery-\$\(date/);
+  assert.match(entry, /--source-registry 'fixtures\/source-registry\.json'/);
+  assert.match(entry, /--client-content 'fixtures\/client-content\.json'/);
+  assert.match(entry, /flock -n 'artifacts\/analysis\/\.agency-monthly\.lock'/);
 });
