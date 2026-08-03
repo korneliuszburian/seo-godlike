@@ -1197,3 +1197,18 @@ auth or schema is unknown.
   `provider_calls: 0`; Bodymove HTML contains the explicit unavailable actions
   and rank statuses, and its PDF passes `qpdf --check`. No provider request or
   Ahrefs rerun occurred.
+
+## Minimalist dashboard shell — 2026-08-03
+
+- Fixed point `7eb2f30` adds a deterministic local dashboard shell to client
+  delivery: Polish navigation, client/domain cards, a bottom circular report
+  switcher, stable anchors, and preserved HTML/PDF/email links. It consumes
+  existing manifest-bound evidence only; no provider request or Ahrefs rerun.
+- Local proof `artifacts/analysis/client-delivery-20260803-ui-v2/` renders 6
+  units from the existing Bodymove agency report. The separate PDF proof is
+  mode `0600`, A4 and qpdf-valid.
+- OpenCode/DeepSeek reviewed clean fixed point `7eb2f30` read-only and found no
+  blocker. Deferred: canonical Ahrefs percentage units at the adapter boundary,
+  scheduler falsifiers, and replacing fragile supplement string surgery.
+- Unassigned phrase domains remain operator-only; live SERPROBOT/Semstorm/GA4/
+  Localo access and client publication remain unproven and unauthorized.
