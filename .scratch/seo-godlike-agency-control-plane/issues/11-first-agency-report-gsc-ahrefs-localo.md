@@ -1183,3 +1183,17 @@ auth or schema is unknown.
   occurred. The local delivery proof remains operator-only and partial because
   GA4, Localo, SERPROBOT/Semstorm evidence and client mapping/actions are not
   present in the accepted inputs.
+
+## Client delivery completeness and Ahrefs display follow-up — 2026-08-03
+
+- Fixed point `59c0857` makes missing client supplements explicit: every mapped
+  client report now shows `Unavailable` for the absent actions register and
+  SERPROBOT rank snapshot instead of silently omitting those surfaces.
+- The client renderer now normalizes Ahrefs `traffic_diff_percent` values from
+  the provider's hundredths-of-a-percent representation (for example `-230`
+  renders as `-2,30%`), while preserving normalized fixture ratios.
+- Local delivery proof `artifacts/analysis/client-delivery-20260803-fixed-v5/`
+  contains 6 units, 19 manifest-bound files, 4 history manifests and
+  `provider_calls: 0`; Bodymove HTML contains the explicit unavailable actions
+  and rank statuses, and its PDF passes `qpdf --check`. No provider request or
+  Ahrefs rerun occurred.
