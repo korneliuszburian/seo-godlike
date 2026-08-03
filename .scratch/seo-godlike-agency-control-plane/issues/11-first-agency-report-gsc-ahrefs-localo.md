@@ -1325,3 +1325,21 @@ auth or schema is unknown.
   high audit vulnerabilities, and `git diff --check`.
 - This is a local policy guard only: no provider request, credential read,
   Ahrefs rerun, or production report rerun was performed.
+
+## Keyword preflight review follow-up — 2026-08-03
+
+- OpenCode/DeepSeek reviewed fixed point `963a657` read-only. It found no
+  blocker, but identified a medium operator-path defect: an existing keyword
+  bundle without an explicit root was checked against the fresh run directory
+  instead of `--artifacts-dir`.
+- Fixed point `dde0897` aligns the default root with `--artifacts-dir` (falling
+  back to the run output only when no artifacts root is supplied) and updates
+  the CLI falsifier to cover the omitted-root path. The guard still runs before
+  output creation and provider tasks.
+- Review-deferred low risks: the portable history manifest intentionally keeps
+  a relative artifacts label, and legacy Ahrefs integer percentage values have
+  an ambiguous `|value| == 1` boundary. Neither affects current normalized
+  bundles or blocks this slice.
+- Local proof after the fix: 160 TypeScript tests + 3 context tests, build,
+  zero high audit vulnerabilities, and `git diff --check`. No provider
+  request, credential read, or Ahrefs rerun occurred.
