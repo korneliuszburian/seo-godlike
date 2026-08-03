@@ -99,6 +99,28 @@ test("agency report excludes an Ahrefs snapshot older than the selected GSC peri
   }
 });
 
+test("agency report accepts an Ahrefs snapshot on the GSC period boundary", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-period-boundary-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    await writeAgencySelectionBundle(artifacts, "gsc", "2026-07-29T08:00:00.000Z", 2);
+    const registry: ClientRegistry = { clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "bodymove.pl", provider: "ahrefs", canonical_property: true }] }] };
+    const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "ahrefs.site-explorer.metrics", provider: "ahrefs", operation_id: "site-explorer.metrics", api_version: "v3", read_write: "read", state: "schema_verified" }] };
+    const request: AhrefsAnalyticsRequest = { schema_version: "1", run_id: "ahrefs-boundary", client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs", operation: "site-explorer.metrics", metric: "org_traffic", date_range: { start: "2026-07-28", end: "2026-07-28" }, credential_ref: "keyring:seo-godlike/ahrefs-api-key", policy_mode: "read_only", captured_at: "2026-07-29T08:00:00.000Z" };
+    await runAhrefsAnalytics(request, registry, capabilities, JSON.stringify({ metrics: { org_traffic: 10, org_keywords: 2, org_keywords_1_3: 1 } }), join(artifacts, "ahrefs-boundary"));
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "ready", entries: [
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "bodymove.pl", provider: "ahrefs", status: "ready", reason: null, metrics: [] },
+    ] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", { sources: [] });
+    assert.equal(summary.source_status.find((source) => source.provider === "ahrefs")?.status, "ready");
+    assert.equal(summary.report_status, "reportable");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("executive summary labels sources and preserves complete join coverage", () => {
   const context = [
     { client_id: "bodymove", key_type: "page" as const, join_type: "matched" as const, key: "https://bodymove.pl/a", gsc: { clicks: 1, impressions: 10, ctr: 0.1, position: 3 }, ahrefs: { estimated_traffic: 20, position: 2, keywords: 4, ranking_url: "https://bodymove.pl/a" } },
