@@ -947,3 +947,16 @@ auth or schema is unknown.
   boundary. No provider request, credential read or production rerun occurred.
 - Focused and full local proof now passes with 137 TypeScript tests + 3 context
   tests, build, zero high audit vulnerabilities and `git diff --check`.
+
+## Rank-export resolver follow-up — 2026-08-03
+
+- The resolver now rejects an unparseable `captured_at` instead of allowing
+  `NaN` to affect recency ordering.
+- Readiness recognizes both the exact `--rank-monitoring` input and the
+  recurring `--rank-monitoring-root` input. Schedule generation rejects both
+  rank inputs together before emitting a cron command.
+- Focused and full local proof now passes with 139 TypeScript tests + 3 context
+  tests, build, zero high audit vulnerabilities and `git diff --check`.
+- OpenCode second opinion for fixed point `c4cab8c` found no blocker; its
+  static verification gap was replaced by the local proof above. No provider
+  request, credential read, Ahrefs rerun or production report rerun occurred.

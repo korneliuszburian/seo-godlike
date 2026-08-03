@@ -61,6 +61,7 @@ export interface AgencyScheduleOptions {
 }
 
 export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
+  if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   if (options.keywordResearch && !options.keywordInputPath) throw new Error("keyword research scheduling requires keywordInputPath");
   if (options.keywordResearch && !options.allowEstimatedBudget) throw new Error("keyword research scheduling requires allowEstimatedBudget");
   const lockPath = options.lockPath ?? `${options.artifactsDir}/.agency-monthly.lock`;

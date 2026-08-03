@@ -13,7 +13,7 @@ function nullableString(value: unknown, label: string): string | null { if (valu
 
 export function parseRankMonitoringSnapshot(value: unknown): RankMonitoringSnapshot {
   if (!record(value) || value.schema_version !== "1" || value.provider !== "serprobot") throw new Error("rank monitoring snapshot must declare schema_version '1' and provider 'serprobot'");
-  if (typeof value.client_id !== "string" || typeof value.captured_at !== "string" || !record(value.date_range) || typeof value.date_range.start !== "string" || typeof value.date_range.end !== "string" || !Array.isArray(value.rows)) throw new Error("invalid rank monitoring snapshot metadata");
+  if (typeof value.client_id !== "string" || typeof value.captured_at !== "string" || Number.isNaN(Date.parse(value.captured_at)) || !record(value.date_range) || typeof value.date_range.start !== "string" || typeof value.date_range.end !== "string" || !Array.isArray(value.rows)) throw new Error("invalid rank monitoring snapshot metadata");
   const configValue = value.source_config;
   let source_config: RankMonitoringSourceConfig | null = null;
   if (configValue !== null && configValue !== undefined) {

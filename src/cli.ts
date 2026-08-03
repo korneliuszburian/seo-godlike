@@ -253,7 +253,7 @@ async function main(): Promise<void> {
     const readiness = buildAgencyReadiness(buildScopePlan(registry, capabilities, readinessGeneratedAt), sourceRegistry, {
       oauth_client_supplied: hasArgument("--oauth-client"),
       keyword_input_supplied: hasArgument("--keyword-input"),
-      rank_monitoring_supplied: hasArgument("--rank-monitoring"),
+      rank_monitoring_supplied: hasArgument("--rank-monitoring") || hasArgument("--rank-monitoring-root"),
       client_content_supplied: hasArgument("--client-content") || hasArgument("--client-content-bundle"),
     }, readinessGeneratedAt);
     process.stdout.write(`${JSON.stringify(readiness, null, 2)}\n`);
@@ -359,6 +359,7 @@ async function main(): Promise<void> {
   }
   if (process.argv.includes("--schedule")) {
     if (process.argv.includes("--agency-schedule")) {
+      if (hasArgument("--rank-monitoring") && hasArgument("--rank-monitoring-root")) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
       process.stdout.write(`${buildMonthlyAgencyCron({
         workingDirectory: process.cwd(),
         oauthClientPath: argument("--oauth-client"),

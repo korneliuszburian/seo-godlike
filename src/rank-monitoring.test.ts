@@ -29,6 +29,15 @@ test("rank monitoring rejects malformed SERPROBOT source configuration", async (
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test("rank monitoring rejects an unparseable capture timestamp", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-date-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "not-a-date", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [] }));
+    await assert.rejects(writeRankMonitoringBundle(input, join(root, "bundle")), /invalid rank monitoring snapshot metadata/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("rank monitoring packer creates the manifest-bound input expected by delivery", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-pack-"));
   try {
