@@ -321,3 +321,6 @@ auth or schema is unknown.
   TypeScript tests + 3 context tests); `npm audit --omit=dev
   --audit-level=high` reports zero vulnerabilities. No provider rerun or new
   network request was made.
+- Monthly scheduling now runs the local history dashboard step after the
+  agency delivery step, with a deterministic per-month history output root;
+  the schedule test proves the ordering and artifact-root wiring.

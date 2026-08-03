@@ -41,6 +41,7 @@ export interface AgencyScheduleOptions {
   artifactsDir: string;
   reportDir: string;
   deliveryDir: string;
+  historyDir?: string;
   clientContentPath?: string;
   clientContentBundlePath?: string;
   rankMonitoringPath?: string;
@@ -56,6 +57,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   const output = `${shellQuote(options.artifactsDir)}/agency-run-${stamp}`;
   const report = `${shellQuote(options.reportDir)}/agency-report-${stamp}`;
   const delivery = `${shellQuote(options.deliveryDir)}/client-delivery-${stamp}`;
+  const history = shellQuote(options.historyDir ?? `${options.reportDir}/history-${stamp}`);
   const command = [
     "flock", "-n", shellQuote(lockPath), "node", "dist/cli.js", "--agency-run",
     "--registry", shellQuote(options.registryPath), "--capabilities", shellQuote(options.capabilitiesPath),
@@ -69,5 +71,5 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     ...(options.keywordInputPath ? ["--keyword-input", shellQuote(options.keywordInputPath)] : []),
     ...(options.keywordBundleRoot ? ["--keyword-bundle-root", shellQuote(options.keywordBundleRoot)] : []),
   ].join(" ");
-  return `17 3 1 * * cd ${shellQuote(options.workingDirectory)} && ${command}`;
+  return `17 3 1 * * cd ${shellQuote(options.workingDirectory)} && ${command} && node dist/cli.js --report-history ${shellQuote(options.artifactsDir)} --output ${history}`;
 }

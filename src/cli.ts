@@ -313,6 +313,7 @@ async function main(): Promise<void> {
         artifactsDir: optionalArgument("--artifacts-dir") ?? "artifacts/analysis",
         reportDir: optionalArgument("--agency-report-root") ?? "artifacts/reports",
         deliveryDir: optionalArgument("--delivery-root") ?? "artifacts/delivery",
+        historyDir: optionalArgument("--history-root"),
         clientContentPath: optionalArgument("--client-content"),
         clientContentBundlePath: optionalArgument("--client-content-bundle"),
         rankMonitoringPath: optionalArgument("--rank-monitoring"),

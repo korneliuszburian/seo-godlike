@@ -188,6 +188,12 @@ This prints a `17 3 * * *` entry and never installs or edits crontab. When
 `--artifacts-dir` is supplied to `--analytics`, the generated Markdown also
 contains relative links to verified previous analytics bundle reports.
 
+The agency schedule additionally runs the local `--report-history` step after
+the monthly read-only collection and delivery steps. Its output is written to
+the configured history root (or the deterministic `history-YYYYMM` directory
+under the agency report root) and is built only from already verified local
+bundles; it performs no provider request.
+
 ## GA4 adapter readiness
 
 The repository includes a fixture-testable, read-only GA4 `sessions` adapter.
