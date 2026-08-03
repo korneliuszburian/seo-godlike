@@ -249,12 +249,13 @@ async function main(): Promise<void> {
     const sourceRegistryPath = optionalArgument("--source-registry");
     const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
     validateSourceRegistry(sourceRegistry, registry);
-    const readiness = buildAgencyReadiness(buildScopePlan(registry, capabilities), sourceRegistry, {
+    const readinessGeneratedAt = new Date().toISOString();
+    const readiness = buildAgencyReadiness(buildScopePlan(registry, capabilities, readinessGeneratedAt), sourceRegistry, {
       oauth_client_supplied: hasArgument("--oauth-client"),
       keyword_input_supplied: hasArgument("--keyword-input"),
       rank_monitoring_supplied: hasArgument("--rank-monitoring"),
       client_content_supplied: hasArgument("--client-content") || hasArgument("--client-content-bundle"),
-    });
+    }, readinessGeneratedAt);
     process.stdout.write(`${JSON.stringify(readiness, null, 2)}\n`);
     return;
   }

@@ -60,6 +60,7 @@ export function buildAgencyReadiness(
   if (!inputs.oauth_client_supplied && scopeEntries.some((entry) => entry.status === "ready" && (entry.provider === "google-search-console" || entry.provider === "google-analytics"))) {
     blockers.push("Google sources are in scope but --oauth-client was not supplied; credential contents were not inspected");
   }
+  if (scopeEntries.length === 0) blockers.push("no registered scope entries are available");
   const status = scopeEntries.length === 0 || scopeEntries.every((entry) => entry.status !== "ready")
     ? "blocked"
     : blockers.length > 0

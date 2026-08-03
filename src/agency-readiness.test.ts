@@ -39,6 +39,6 @@ test("readiness does not inspect credentials or call providers", () => {
   const scope = buildScopePlan({ clients: [] }, { capabilities: [] }, "2026-08-03T00:00:00.000Z");
   const readiness = buildAgencyReadiness(scope, { sources: [] }, { oauth_client_supplied: false, keyword_input_supplied: false, rank_monitoring_supplied: false, client_content_supplied: false }, "2026-08-03T00:00:00.000Z");
   assert.equal(readiness.status, "blocked");
-  assert.deepEqual(readiness.blockers, []);
+  assert.deepEqual(readiness.blockers, ["no registered scope entries are available"]);
   assert.equal(readiness.policy_mode, "read_only");
 });
