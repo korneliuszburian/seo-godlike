@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
+import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -24,6 +25,42 @@ test("agency-run rejects malformed keyword budget before creating output or runn
         "--keyword-max-requests", "not-a-number",
       ], { cwd: process.cwd() }),
       /--keyword-max-requests must be a positive integer/,
+    );
+    await assert.rejects(access(output));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agency-run rejects a mismatched existing keyword bundle before creating output or running tasks", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-keyword-provenance-"));
+  const output = join(root, "run");
+  const originalInput = join(root, "original-phrases.txt");
+  const mismatchedInput = join(root, "current-phrases.txt");
+  const keywordBundle = join(root, "keyword-bundle");
+  try {
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(originalInput, "https://example.test/\noriginal phrase\n");
+    await writeFile(mismatchedInput, "https://example.test/\ncurrent phrase\n");
+    await writeAhrefsKeywordResearch({
+      inputPath: originalInput,
+      outputDir: keywordBundle,
+      capabilities: { capabilities: [{ capability_id: "ahrefs.keywords-explorer.overview", provider: "ahrefs", operation_id: "keywords-explorer.overview", api_version: "v3", metric_ids: ["ahrefs.keyword_metrics"], read_write: "read", state: "schema_verified" }] },
+      apiKey: "test-key",
+      allowEstimatedBudget: true,
+      fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "original phrase" }] }), { status: 200 }),
+    });
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        "dist/cli.js", "--agency-run",
+        "--registry", "fixtures/client-registry.json",
+        "--capabilities", "fixtures/capability-registry.json",
+        "--output", output,
+        "--keyword-bundle", keywordBundle,
+        "--keyword-bundle-root", root,
+        "--keyword-input", mismatchedInput,
+      ], { cwd: process.cwd() }),
+      /keyword input hash does not match bundle/,
     );
     await assert.rejects(access(output));
   } finally {

@@ -130,7 +130,7 @@ async function readRankMonitoringEvidence(bundlePath: string, clientIds: readonl
   }));
 }
 
-async function readKeywordResearchBundle(bundlePath: string, keywordBundleRoot: string, inputPath?: string): Promise<AgencyKeywordResearch> {
+export async function verifyKeywordResearchBundle(bundlePath: string, keywordBundleRoot: string, inputPath?: string): Promise<AgencyKeywordResearch> {
   const resolvedKeywordRoot = resolve(keywordBundleRoot);
   const root = await resolveExistingInside(resolvedKeywordRoot, relative(resolvedKeywordRoot, resolve(bundlePath)) || ".", "keyword bundle");
   const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
@@ -569,7 +569,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   }));
   const crossSourceContext = composeCrossSourceContext(reports);
   const insights = composeReportInsights(reports);
-  const keywordResearch = keywordBundlePath ? await readKeywordResearchBundle(keywordBundlePath, keywordBundleRoot ?? resolvedArtifacts, keywordInputPath) : undefined;
+  const keywordResearch = keywordBundlePath ? await verifyKeywordResearchBundle(keywordBundlePath, keywordBundleRoot ?? resolvedArtifacts, keywordInputPath) : undefined;
   const rankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
   const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
   const rankMonitoring = rankMonitoringEvidence[0];

@@ -20,7 +20,7 @@ import { buildScopePlan } from "./scope-plan.js";
 import { buildAgentRunPlan } from "./agent-plan.js";
 import { buildAgencyReadiness } from "./agency-readiness.js";
 import { buildExternalSourceTasks, executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
-import { writeAgencyReport } from "./agency-report.js";
+import { verifyKeywordResearchBundle, writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeClientDelivery } from "./client-delivery.js";
 import { validateSourceRegistry } from "./source-registry.js";
@@ -308,11 +308,15 @@ async function main(): Promise<void> {
       : rankMonitoringPath;
     const keywordInputPath = optionalArgument("--keyword-input");
     const existingKeywordBundlePath = optionalArgument("--keyword-bundle");
+    const keywordBundleRoot = optionalArgument("--keyword-bundle-root");
     const keywordResearchOutputPath = optionalArgument("--keyword-research-output") ?? (process.argv.includes("--keyword-research") ? join(outputRoot, "keyword-research") : undefined);
     if (keywordResearchOutputPath && !keywordInputPath) throw new Error("--keyword-research-output requires --keyword-input");
     const keywordMaxRequests = optionalPositiveIntegerArgument("--keyword-max-requests");
     const keywordMaxApiUnits = optionalPositiveIntegerArgument("--keyword-max-api-units");
     const keywordResearchTaskId = keywordResearchOutputPath ? `ahrefs:keywords-explorer:${keywordResearchOutputPath}` : null;
+    if (existingKeywordBundlePath && keywordInputPath) {
+      await verifyKeywordResearchBundle(existingKeywordBundlePath, keywordBundleRoot ?? outputRoot, keywordInputPath);
+    }
     await mkdir(outputRoot, { recursive: false, mode: 0o700 });
     const propertyTasks = scope.entries.map((entry) => {
       const id = `${entry.client_id}:${entry.provider}:${entry.property_id}`;
@@ -350,11 +354,11 @@ async function main(): Promise<void> {
     let generatedDelivery: string | undefined;
     if (agencyReportOutput) {
       const keywordBundlePath = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? keywordResearchOutputPath : existingKeywordBundlePath;
-      const keywordBundleRoot = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? outputRoot : optionalArgument("--keyword-bundle-root");
-      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath, keywordBundleRoot);
+      const reportKeywordBundleRoot = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? outputRoot : keywordBundleRoot;
+      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath, reportKeywordBundleRoot);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
-        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath: resolvedRankMonitoringPath, keywordBundleRoot, agencyRunRecordPath: join(outputRoot, "agency-run.json") });
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath: resolvedRankMonitoringPath, keywordBundleRoot: reportKeywordBundleRoot, agencyRunRecordPath: join(outputRoot, "agency-run.json") });
         generatedDelivery = resolve(deliveryOutput);
       }
       process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);
