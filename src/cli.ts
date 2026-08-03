@@ -424,15 +424,15 @@ async function main(): Promise<void> {
     return;
   }
   if (process.argv.includes("--ahrefs-keyword-research")) {
-    const maxRequestsValue = optionalArgument("--max-requests");
-    const maxApiUnitsValue = optionalArgument("--max-api-units");
+    const maxRequests = optionalPositiveIntegerArgument("--max-requests");
+    const maxApiUnits = optionalPositiveIntegerArgument("--max-api-units");
     const report = await writeAhrefsKeywordResearch({
       inputPath: argument("--input"),
       outputDir: argument("--output"),
       capabilities: JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry,
       country: optionalArgument("--country"),
-      maxRequests: maxRequestsValue ? Number(maxRequestsValue) : undefined,
-      maxApiUnits: maxApiUnitsValue ? Number(maxApiUnitsValue) : undefined,
+      maxRequests,
+      maxApiUnits,
       allowEstimatedBudget: process.argv.includes("--allow-estimated-budget"),
     });
     process.stdout.write(`${JSON.stringify({ provider: report.provider, operation: report.operation, groups: report.groups.length, output: resolve(argument("--output")) }, null, 2)}\n`);

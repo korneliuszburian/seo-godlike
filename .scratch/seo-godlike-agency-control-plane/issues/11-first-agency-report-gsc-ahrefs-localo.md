@@ -806,3 +806,17 @@ auth or schema is unknown.
 - The final bounded OpenCode review found no confirmed blocker in the changed
   scheduler/keyword surface. It was step-budget limited for older delivery
   modules, which remain covered by prior focused tests and reviews.
+
+## Standalone keyword budget parity — 2026-08-03
+
+- The standalone `--ahrefs-keyword-research` command now uses the same positive
+  safe-integer validation as recurring `--agency-run`; malformed request or
+  unit limits fail before its output bundle is created.
+- A second CLI falsifier covers the standalone unit-limit path. Local proof:
+  121 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`; no provider request, credential
+  read or Ahrefs rerun was performed.
+- Focused OpenCode review returned `PASS` with no blockers for the changed CLI
+  and schedule surface. It noted only non-blocking follow-ups: broader legacy
+  delivery modules were outside this focused pass, and the test harness relies
+  on the existing build-before-test command.
