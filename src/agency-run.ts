@@ -6,7 +6,7 @@ export interface AgencyTask {
 }
 
 export function buildExternalSourceTasks(sourceRegistry: SourceRegistry, rankMonitoringPath?: string): AgencyTask[] {
-  const expectedRankClientIds = [...new Set(sourceRegistry.sources.filter((source) => source.provider === "serprobot").map((source) => source.client_id))];
+  const expectedRankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
   return sourceRegistry.sources.map((source) => {
     const id = `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}`;
     if (source.status !== "ready") return { id, status: "blocked", reason: source.reason ?? "external source is unavailable" };
@@ -98,5 +98,5 @@ export async function writeAgencyRunRecord(outputDir: string, record: AgencyRunR
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { canonicalJson } from "./serialize.js";
-import { readRankMonitoringBundle } from "./rank-monitoring.js";
+import { rankMonitoringClientIds, readRankMonitoringBundle } from "./rank-monitoring.js";
 import { SourceRegistry } from "./domain.js";

@@ -6,7 +6,7 @@ import { canonicalJson, sha256 } from "./serialize.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { composeReportInsights, ReportInsight } from "./report-insights.js";
 import { parsePhraseInput, PhraseGroup } from "./ahrefs-keywords.js";
-import { RANK_MONITORING_PROVIDER, readRankMonitoringBundle, RankMonitoringSnapshot } from "./rank-monitoring.js";
+import { RANK_MONITORING_SOURCE_LABEL, rankMonitoringClientIds, readRankMonitoringBundle, RankMonitoringSnapshot } from "./rank-monitoring.js";
 
 interface AgencyReportSourceStatus {
   source_id?: string;
@@ -70,7 +70,7 @@ export interface AhrefsProfileEvidence {
 }
 
 export interface AgencyRankMonitoringEvidence {
-  source_label: "Observed — SERPROBOT rank snapshot";
+  source_label: typeof RANK_MONITORING_SOURCE_LABEL;
   client_id: string;
   manifest_sha256: string;
   captured_at: string;
@@ -118,7 +118,7 @@ function safeManifestName(name: string): boolean {
 async function readRankMonitoringEvidence(bundlePath: string, clientIds: readonly string[]): Promise<AgencyRankMonitoringEvidence[]> {
   const verified = await readRankMonitoringBundle(resolve(bundlePath), clientIds);
   return verified.snapshots.map((snapshot) => ({
-    source_label: "Observed — SERPROBOT rank snapshot",
+    source_label: RANK_MONITORING_SOURCE_LABEL,
     client_id: snapshot.client_id,
     manifest_sha256: verified.manifest_sha256,
     captured_at: snapshot.captured_at,
@@ -335,7 +335,7 @@ function markdown(summary: AgencyReportSummary): string {
   ] : [];
   const rankEvidence = summary.rank_monitoring_snapshots ?? (summary.rank_monitoring ? [summary.rank_monitoring] : []);
   const rankSection = rankEvidence.length ? [
-    "### Observed — SERPROBOT rank snapshot",
+    `### ${RANK_MONITORING_SOURCE_LABEL}`,
     "",
     ...rankEvidence.map((entry) => `- Client: ${entry.client_id}; period: ${entry.date_range.start} to ${entry.date_range.end}; returned rows: ${entry.row_count}; manifest SHA-256: ${entry.manifest_sha256}`),
     "",
@@ -410,7 +410,7 @@ function html(summary: AgencyReportSummary): string {
   const signals = summary.executive.top_signals.map((insight) => `<li><span class="badge signal">Rule-based signal — not a recommendation</span> ${escapeHtml(insight.kind)} — ${escapeHtml(insight.key)}: ${escapeHtml(insight.evidence)}</li>`).join("");
   const keywordCard = summary.keyword_research ? `<div class="card"><span class="badge estimated">Estimated — Ahrefs Keywords Explorer</span><h3>Phrase research</h3><p>${summary.keyword_research.input_groups.length} input groups · ${summary.keyword_research.groups.reduce((total, group) => total + group.rows.length, 0)} returned rows · ${escapeHtml(summary.keyword_research.country)} market</p></div>` : "";
   const rankEvidence = summary.rank_monitoring_snapshots ?? (summary.rank_monitoring ? [summary.rank_monitoring] : []);
-  const rankCard = rankEvidence.map((entry) => `<div class="card"><span class="badge observed">Observed — SERPROBOT rank snapshot</span><h3>${escapeHtml(entry.client_id)}</h3><p>${escapeHtml(entry.date_range.start)} — ${escapeHtml(entry.date_range.end)} · ${entry.row_count} returned rows</p></div>`).join("");
+  const rankCard = rankEvidence.map((entry) => `<div class="card"><span class="badge observed">${escapeHtml(RANK_MONITORING_SOURCE_LABEL)}</span><h3>${escapeHtml(entry.client_id)}</h3><p>${escapeHtml(entry.date_range.start)} — ${escapeHtml(entry.date_range.end)} · ${entry.row_count} returned rows</p></div>`).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agency SEO report</title><style>:root{font-family:system-ui,sans-serif;color:#172033;background:#f6f8fb}body{margin:0;padding:2rem;max-width:1200px;margin-inline:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}.card,section{background:#fff;border:1px solid #dbe2ec;border-radius:12px;padding:1rem;margin-block:1rem}.badge{display:inline-block;border-radius:999px;padding:.2rem .55rem;font-size:.8rem;font-weight:700}.observed{background:#dceeff;color:#075985}.estimated{background:#eee5ff;color:#5b21b6}.signal{background:#fff1c2;color:#854d0e}.blocked{background:#e5e7eb;color:#374151}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #e5e7eb}th{background:#f1f5f9}a{color:#075985}@media print{body{background:#fff;padding:.5rem}.card,section{break-inside:avoid}}</style></head><body><header id="summary"><h1>Agency SEO report</h1><p>Status: <strong>${escapeHtml(summary.report_status)}</strong> · accepted evidence: ${summary.accepted_bundles.length} · blocked sources: ${summary.blocked_sources.length}</p></header><section id="kpis"><h2>Observed and estimated KPIs</h2><div class="grid">${gscCards}${ahrefsCards}${keywordCard}${rankCard}</div></section><section><h2>Source availability</h2><ul>${summary.source_status.map((source) => `<li><strong>${escapeHtml(source.provider)}</strong>: ${escapeHtml(source.status)}${source.reason ? ` — ${escapeHtml(source.reason)}` : ""}</li>`).join("")}</ul></section><section id="queries"><h2>Executive opportunities preview</h2><p>Showing ${summary.executive.preview.context_shown} of ${summary.executive.preview.context_total}; full appendix available locally.</p><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Join</th><th>Key</th><th>GSC clicks</th><th>GSC impressions</th><th>Ahrefs traffic</th></tr></thead><tbody>${preview}</tbody></table></div></section><section><h2>Rule-based signals</h2><ul>${signals}</ul></section><section id="limitations"><h2>Limitations</h2><ul><li>Ahrefs values are estimated context and are not added to GSC metrics.</li><li>Unavailable sources are not converted to zero.</li><li>Bounded responses are not full inventories.</li><li>Signals are not recommendations or causal conclusions.</li></ul><p><a href="agency-report-appendix.html">Open full evidence appendix</a></p></section></body></html>\n`;
 }
 
@@ -525,7 +525,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const crossSourceContext = composeCrossSourceContext(reports);
   const insights = composeReportInsights(reports);
   const keywordResearch = keywordBundlePath ? await readKeywordResearchBundle(keywordBundlePath, keywordInputPath) : undefined;
-  const rankClientIds = [...new Set(sourceRegistry.sources.filter((source) => source.provider === RANK_MONITORING_PROVIDER).map((source) => source.client_id))];
+  const rankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
   const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
   const rankMonitoring = rankMonitoringEvidence[0];
   const profileContext = composeAhrefsProfileContext(reports);

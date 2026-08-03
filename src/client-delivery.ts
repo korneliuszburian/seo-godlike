@@ -8,7 +8,7 @@ import { AgencyReportSummary, CrossSourceContextEntry } from "./agency-report.js
 import { PhraseGroup } from "./ahrefs-keywords.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { ClientContent, readClientContent, readClientContentBundle } from "./client-content.js";
-import { RANK_MONITORING_PROVIDER, RankMonitoringSnapshot, readRankMonitoringBundle, resolveLatestRankMonitoringBundle } from "./rank-monitoring.js";
+import { RANK_MONITORING_SOURCE_LABEL, RankMonitoringSnapshot, rankMonitoringClientIds, readRankMonitoringBundle, resolveLatestRankMonitoringBundle } from "./rank-monitoring.js";
 import { ProviderHistoryEntry, readProviderHistory } from "./provider-history.js";
 import { AgencyRunRecord, assertAgencyReadOnlyPolicy } from "./agency-run.js";
 
@@ -262,12 +262,12 @@ async function readAgencyReport(path: string, artifactsDir: string): Promise<Age
   }
   if (value.rank_monitoring !== undefined) {
     const rank = value.rank_monitoring;
-    if (!isRecord(rank) || rank.source_label !== "Observed — SERPROBOT rank snapshot" || typeof rank.client_id !== "string" || typeof rank.manifest_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(rank.manifest_sha256) || typeof rank.captured_at !== "string" || !isRecord(rank.date_range) || typeof rank.date_range.start !== "string" || typeof rank.date_range.end !== "string" || typeof rank.row_count !== "number" || !Number.isInteger(rank.row_count) || rank.row_count < 0) throw new Error("agency report rank monitoring evidence validation failed");
+    if (!isRecord(rank) || rank.source_label !== RANK_MONITORING_SOURCE_LABEL || typeof rank.client_id !== "string" || typeof rank.manifest_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(rank.manifest_sha256) || typeof rank.captured_at !== "string" || !isRecord(rank.date_range) || typeof rank.date_range.start !== "string" || typeof rank.date_range.end !== "string" || typeof rank.row_count !== "number" || !Number.isInteger(rank.row_count) || rank.row_count < 0) throw new Error("agency report rank monitoring evidence validation failed");
   }
   if (value.rank_monitoring_snapshots !== undefined) {
     if (!Array.isArray(value.rank_monitoring_snapshots) || value.rank_monitoring_snapshots.length === 0) throw new Error("agency report rank monitoring snapshots validation failed");
     for (const rank of value.rank_monitoring_snapshots) {
-      if (!isRecord(rank) || rank.source_label !== "Observed — SERPROBOT rank snapshot" || typeof rank.client_id !== "string" || typeof rank.manifest_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(rank.manifest_sha256) || typeof rank.captured_at !== "string" || !isRecord(rank.date_range) || typeof rank.date_range.start !== "string" || typeof rank.date_range.end !== "string" || typeof rank.row_count !== "number" || !Number.isInteger(rank.row_count) || rank.row_count < 0) throw new Error("agency report rank monitoring snapshots validation failed");
+      if (!isRecord(rank) || rank.source_label !== RANK_MONITORING_SOURCE_LABEL || typeof rank.client_id !== "string" || typeof rank.manifest_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(rank.manifest_sha256) || typeof rank.captured_at !== "string" || !isRecord(rank.date_range) || typeof rank.date_range.start !== "string" || typeof rank.date_range.end !== "string" || typeof rank.row_count !== "number" || !Number.isInteger(rank.row_count) || rank.row_count < 0) throw new Error("agency report rank monitoring snapshots validation failed");
     }
   }
   return value as AgencyReportSummary;
@@ -429,7 +429,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const summary = await readAgencyReport(options.agencyReportPath, options.artifactsDir);
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   const resolvedRankMonitoringPath = options.rankMonitoringRoot
-    ? await resolveLatestRankMonitoringBundle(options.rankMonitoringRoot, [...new Set(summary.source_status.filter((source) => source.provider === RANK_MONITORING_PROVIDER).map((source) => source.client_id))])
+    ? await resolveLatestRankMonitoringBundle(options.rankMonitoringRoot, rankMonitoringClientIds(summary.source_status))
     : options.rankMonitoringPath;
   const metrics = await collectMetrics(summary, options.artifactsDir);
   const agencyReportBytes = await readFile(options.agencyReportPath);

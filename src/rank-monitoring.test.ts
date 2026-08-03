@@ -84,6 +84,21 @@ test("rank monitoring root selects the newest complete manifest-bound export", a
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test("rank monitoring root skips a stale export with a foreign client", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-stale-"));
+  try {
+    const snapshot = (capturedAt: string, client_id: string) => ({ schema_version: "1", provider: "serprobot", client_id, captured_at: capturedAt, date_range: { start: "2026-07-01", end: capturedAt.slice(0, 10) }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [] });
+    const oldInput = join(root, "old.json");
+    const newInput = join(root, "new.json");
+    await writeFile(oldInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [snapshot("2026-07-15T00:00:00.000Z", "bodymove"), snapshot("2026-07-15T00:00:00.000Z", "retired-client")] }));
+    await writeFile(newInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [snapshot("2026-08-03T00:00:00.000Z", "bodymove")] }));
+    await mkdir(join(root, "exports"));
+    await writeRankMonitoringBundle(oldInput, join(root, "exports", "old"));
+    await writeRankMonitoringBundle(newInput, join(root, "exports", "new"));
+    assert.equal(await resolveLatestRankMonitoringBundle(join(root, "exports"), ["bodymove"]), join(root, "exports", "new"));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("rank monitoring root ignores unrelated provider manifests", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-mixed-"));
   try {

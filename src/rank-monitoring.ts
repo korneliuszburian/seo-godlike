@@ -7,6 +7,11 @@ export interface RankMonitoringSourceConfig { project_id: string; search_engine:
 export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; source_config: RankMonitoringSourceConfig | null; rows: RankRow[]; }
 export interface RankMonitoringBundle { snapshot: RankMonitoringSnapshot; snapshots: RankMonitoringSnapshot[]; manifest_sha256: string; }
 export const RANK_MONITORING_PROVIDER = "serprobot" as const;
+export const RANK_MONITORING_SOURCE_LABEL = "Observed — SERPROBOT rank snapshot" as const;
+
+export function rankMonitoringClientIds(sources: readonly { provider: string; client_id: string }[]): string[] {
+  return [...new Set(sources.filter((source) => source.provider === RANK_MONITORING_PROVIDER).map((source) => source.client_id))].sort();
+}
 
 function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function nullableNumber(value: unknown, label: string): number | null { if (value === null || value === undefined) return null; if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${label} must be a finite number or null`); return value; }
@@ -67,9 +72,13 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
       try { manifestValue = JSON.parse(await readFile(join(directory, manifestEntry.name), "utf8")) as unknown; }
       catch { manifestValue = null; }
       if (record(manifestValue) && manifestValue.provider === RANK_MONITORING_PROVIDER) {
-        const bundle = await readRankMonitoringBundle(directory, expectedClientIds);
-        const ids = new Set(bundle.snapshots.map((snapshot) => snapshot.client_id));
-        if (expectedClientIds.every((clientId) => ids.has(clientId))) candidates.push({ path: directory, bundle });
+        try {
+          const bundle = await readRankMonitoringBundle(directory, expectedClientIds);
+          const ids = new Set(bundle.snapshots.map((snapshot) => snapshot.client_id));
+          if (expectedClientIds.every((clientId) => ids.has(clientId))) candidates.push({ path: directory, bundle });
+        } catch (error) {
+          if (!(error instanceof Error) || !error.message.startsWith("rank monitoring client identity mismatch:")) throw error;
+        }
       }
     }
     for (const entry of entries.filter((item) => item.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) await inspect(join(directory, entry.name));
