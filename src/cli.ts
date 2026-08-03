@@ -293,7 +293,7 @@ async function main(): Promise<void> {
     if (process.argv.includes("--agency-schedule")) {
       process.stdout.write(`${buildMonthlyAgencyCron({
         workingDirectory: process.cwd(),
-        oauthClientPath: optionalArgument("--oauth-client") ?? "/absolute/path/outside/repository/oauth-client.json",
+        oauthClientPath: argument("--oauth-client"),
         registryPath: optionalArgument("--registry") ?? "fixtures/client-registry.json",
         capabilitiesPath: optionalArgument("--capabilities") ?? "fixtures/capability-registry.json",
         sourceRegistryPath: optionalArgument("--source-registry"),
