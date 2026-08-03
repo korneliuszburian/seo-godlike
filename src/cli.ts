@@ -222,7 +222,7 @@ async function main(): Promise<void> {
     return;
   }
   if (process.argv.includes("--client-delivery")) {
-    const result = await writeClientDelivery({ agencyReportPath: argument("--agency-report-json"), artifactsDir: argument("--artifacts-dir"), outputDir: argument("--output"), renderPdf: process.argv.includes("--pdf"), clientContentPath: optionalArgument("--client-content"), rankMonitoringPath: optionalArgument("--rank-monitoring") });
+    const result = await writeClientDelivery({ agencyReportPath: argument("--agency-report-json"), artifactsDir: argument("--artifacts-dir"), outputDir: argument("--output"), renderPdf: process.argv.includes("--pdf"), clientContentPath: optionalArgument("--client-content"), rankMonitoringPath: optionalArgument("--rank-monitoring"), keywordBundleRoot: optionalArgument("--keyword-bundle-root") });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
@@ -265,7 +265,7 @@ async function main(): Promise<void> {
       const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"));
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
-        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, rankMonitoringPath });
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, rankMonitoringPath, keywordBundleRoot: optionalArgument("--keyword-bundle-root") });
         generatedDelivery = resolve(deliveryOutput);
       }
       process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);

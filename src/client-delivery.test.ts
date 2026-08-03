@@ -60,7 +60,7 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const keywordTraversalText = JSON.stringify(keywordTraversalSummary);
     await writeFile(agencyPath, keywordTraversalText);
     await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": keywordTraversalText }));
-    await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "keyword-traversal-delivery") }), /keyword bundle_path escapes artifactsDir/);
+    await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "keyword-traversal-delivery") }), /keyword bundle_path escapes keyword bundle root/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

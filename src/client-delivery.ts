@@ -31,6 +31,7 @@ export interface ClientDeliveryOptions {
   renderPdf?: boolean;
   clientContentPath?: string;
   rankMonitoringPath?: string;
+  keywordBundleRoot?: string;
 }
 
 export interface ClientDeliveryResult {
@@ -169,10 +170,10 @@ async function collectSourceManifestHashes(summary: AgencyReportSummary, artifac
   return hashes;
 }
 
-async function verifyKeywordBundle(keyword: NonNullable<AgencyReportSummary["keyword_research"]>, artifactsDir: string): Promise<string> {
+async function verifyKeywordBundle(keyword: NonNullable<AgencyReportSummary["keyword_research"]>, keywordBundleRoot: string): Promise<string> {
   const root = resolve(keyword.bundle_path);
-  const artifactsRoot = resolve(artifactsDir);
-  if (root !== artifactsRoot && !root.startsWith(`${artifactsRoot}${sep}`)) throw new Error("keyword bundle_path escapes artifactsDir");
+  const artifactsRoot = resolve(keywordBundleRoot);
+  if (root !== artifactsRoot && !root.startsWith(`${artifactsRoot}${sep}`)) throw new Error("keyword bundle_path escapes keyword bundle root");
   const manifestPath = join(root, "manifest.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
   if (!manifest.files || Object.keys(keyword.manifest_files).length === 0) throw new Error("keyword bundle manifest provenance is missing");
@@ -261,7 +262,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const agencyReportBytes = await readFile(options.agencyReportPath);
   const clientContent = options.clientContentPath ? await readClientContent(options.clientContentPath) : null;
   const sourceManifestHashes = await collectSourceManifestHashes(summary, options.artifactsDir);
-  const keywordManifestSha256 = summary.keyword_research ? await verifyKeywordBundle(summary.keyword_research, options.artifactsDir) : null;
+  const keywordManifestSha256 = summary.keyword_research ? await verifyKeywordBundle(summary.keyword_research, options.keywordBundleRoot ?? options.artifactsDir) : null;
   const outputDir = resolve(options.outputDir);
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
   const clientIds = [...new Set(summary.scope.entries.map((entry) => entry.client_id).concat(summary.source_status.map((source) => source.client_id)))].sort();
