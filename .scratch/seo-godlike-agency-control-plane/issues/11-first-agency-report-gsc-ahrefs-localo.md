@@ -394,3 +394,19 @@ auth or schema is unknown.
   Polish HTML; position deltas retain the lower-is-better semantics.
 - The comparison is derived only from existing manifest-verified analytics
   bundles. No provider call, rerun, or new evidence collection was performed.
+
+## Rank provenance follow-up — 2026-08-03
+
+- Commit `e8784a9` binds an imported SERPROBOT snapshot to the agency report
+  through its client identity, date range, row count, source configuration and
+  manifest SHA-256. Client delivery rejects a rank bundle that does not match
+  this provenance.
+- The CLI and monthly agency schedule now pass the rank snapshot into report
+  composition, so the recurring path retains the rank evidence instead of
+  attaching it only at final rendering.
+- Focused rank/report/delivery proof passes; the full local suite passes with
+  103 TypeScript tests and 3 context tests. No provider request or rerun was
+  performed.
+- This does not claim a live SERPROBOT API adapter: the official connector is
+  still represented by an operator-provided manifest-bound snapshot until a
+  stable direct response schema is verified.
