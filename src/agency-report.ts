@@ -599,7 +599,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const keywordResearch = keywordBundlePath ? await verifyKeywordResearchBundle(keywordBundlePath, keywordBundleRoot ?? resolvedArtifacts, keywordInputPath) : undefined;
   const rankMonitoring = rankMonitoringEvidence[0];
   const profileContext = composeAhrefsProfileContext(reports);
-  const hasEvidence = currentAcceptedBundles.length > 0 || rankMonitoringEvidence.length > 0;
+  const hasEvidence = currentAcceptedBundles.length > 0 || rankMonitoringEvidence.length > 0 || keywordResearch !== undefined;
   const summary: AgencyReportSummary = { schema_version: "1", report_status: !hasEvidence ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: currentAcceptedBundles, history_bundle_paths: packageSummary.accepted_bundles.map((entry) => entry.bundle_path), blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: crossSourceContext, insights, executive: composeExecutiveSummary(reports, crossSourceContext, insights), ...(profileContext.length ? { ahrefs_profile_context: profileContext } : {}), ...(keywordResearch ? { keyword_research: keywordResearch } : {}), ...(rankMonitoring ? { rank_monitoring: rankMonitoring } : {}), ...(rankMonitoringEvidence.length > 1 ? { rank_monitoring_snapshots: rankMonitoringEvidence } : {}) };
   const details: string[] = [];
   for (const accepted of currentAcceptedBundles) {

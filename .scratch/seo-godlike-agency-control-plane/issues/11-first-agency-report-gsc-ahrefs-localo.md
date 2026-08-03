@@ -1526,3 +1526,18 @@ auth or schema is unknown.
 - Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
+
+## Verified keyword-only evidence status — 2026-08-04
+
+- A final exact-HEAD review found that a verified Keywords Explorer bundle was
+  rendered in the report while `report_status` still said `blocked` when no
+  analytics or rank bundle was present.
+- `keyword_research` now counts as evidence for reportability after its own
+  manifest/input verification; the focused keyword-only test asserts
+  `reportable`. Zero-evidence reports remain blocked.
+- The review's history-totals zero-vs-unavailable edge remains deferred because
+  correcting it requires a deliberate nullable metric contract across the
+  history JSON, Markdown, and HTML surfaces.
+- Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.

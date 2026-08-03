@@ -408,6 +408,7 @@ test("agency report preserves every supplied keyword group and full returned row
     const scope: ScopePlan = { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] };
     const output = join(root, "report");
     const summary = await writeAgencyReport(artifacts, output, scope, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath, undefined, root);
+    assert.equal(summary.report_status, "reportable");
     assert.deepEqual(summary.keyword_research?.input_groups.map((group) => [group.host, group.phrases.length]), [["wilmed.pl", 0], ["cmr-ostroleka.pl", 1]]);
     assert.equal(summary.keyword_research?.groups[0]?.rows[0]?.difficulty, 7);
     const appendix = await readFile(join(output, "agency-report-appendix.md"), "utf8");
