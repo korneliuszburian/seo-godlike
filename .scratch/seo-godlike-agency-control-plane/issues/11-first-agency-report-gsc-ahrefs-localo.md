@@ -1527,6 +1527,17 @@ auth or schema is unknown.
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
 
+## GA4 accepted-bundle positive proof — 2026-08-04
+
+- Added the missing positive-path falsifier: a ready external GA4 source with
+  a manifest-verified bundle whose canonical `property_refs` matches the
+  registry target remains `ready` and carries its accepted bundle path.
+- This complements the fail-closed missing-bundle test; no live GA4 request or
+  credential read was performed.
+- Proof: 173 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No Ahrefs rerun, report
+  regeneration, or publication occurred.
+
 ## Verified keyword-only evidence status — 2026-08-04
 
 - A final exact-HEAD review found that a verified Keywords Explorer bundle was

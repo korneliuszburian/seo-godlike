@@ -5,9 +5,10 @@ import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { AhrefsAnalyticsRequest, CapabilityRegistry, ClientRegistry, ScopePlan, SourceRegistry } from "./domain.js";
+import { AhrefsAnalyticsRequest, CapabilityRegistry, ClientRegistry, Ga4AnalyticsRequest, ScopePlan, SourceRegistry } from "./domain.js";
 import { composeAhrefsProfileContext, composeCrossSourceContext, composeExecutiveSummary, writeAgencyReport } from "./agency-report.js";
 import { runAhrefsAnalytics } from "./ahrefs.js";
+import { runGa4Analytics } from "./ga4-analytics.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { canonicalJson, sha256 } from "./serialize.js";
@@ -203,6 +204,28 @@ test("agency report distinguishes an external source without an evidence path", 
     assert.equal(ga4Status?.reason_code, "missing_evidence_bundle");
     assert.match(ga4Status?.reason ?? "", /No accepted evidence bundle/);
     assert.equal(summary.report_status, "partial");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agency report accepts a verified GA4 bundle for a ready external source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-ga4-evidence-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    await writeAgencySelectionBundle(artifacts, "gsc", "2026-07-29T08:00:00.000Z", 2);
+    const ga4Registry: ClientRegistry = { clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "properties/123456789", provider: "google-analytics", canonical_property: true }] }] };
+    const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "ga4.properties.runReport", provider: "google-analytics", operation_id: "properties.runReport", api_version: "v1beta", read_write: "read", state: "schema_verified" }] };
+    const request: Ga4AnalyticsRequest = { schema_version: "1", run_id: "ga4-bodymove-positive", client_id: "bodymove", property_id: "properties/123456789", provider: "google-analytics", operation: "properties.runReport", metric: "sessions", date_range: { start: "2026-07-01", end: "2026-07-28" }, dimensions: ["date"], row_limit: 10_000, credential_ref: "keyring:seo-godlike/google-agency-refresh-token", policy_mode: "read_only", captured_at: "2026-07-29T08:00:00.000Z" };
+    await runGa4Analytics(request, ga4Registry, capabilities, JSON.stringify({ rows: [{ dimensionValues: [{ value: "20260701" }], metricValues: [{ value: "12" }] }] }), join(artifacts, "ga4"));
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "ready", entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] };
+    const sourceRegistry: SourceRegistry = { sources: [{ source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/123456789", status: "ready", reason: null }] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", sourceRegistry);
+    const ga4Status = summary.source_status.find((source) => source.provider === "google-analytics");
+    assert.equal(ga4Status?.status, "ready");
+    assert.equal(ga4Status?.bundle_path, "ga4");
+    assert.equal(summary.accepted_bundles.some((entry) => entry.provider === "google-analytics"), true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
