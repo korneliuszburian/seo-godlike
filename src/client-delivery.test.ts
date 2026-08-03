@@ -42,6 +42,8 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.match(clientHtml, /DZIAŁANIA DLA STRONY/);
     assert.match(clientHtml, /Artykuł sponsorowany/);
     assert.match(clientHtml, /Współczynnik klikalności/);
+    assert.match(clientHtml, /Zakres danych/);
+    assert.doesNotMatch(clientHtml, /Poprzedni okres/);
     assert.match(clientHtml, /bodymove-keyword/);
     assert.doesNotMatch(clientHtml, /other\.pl/);
     assert.match(await readFile(join(root, "delivery", "domain-other.pl", "domain-other.pl-seo-report.html"), "utf8"), /Przypisanie do klienta: oczekuje na potwierdzenie operatora/);
