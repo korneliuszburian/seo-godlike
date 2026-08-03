@@ -1370,3 +1370,19 @@ auth or schema is unknown.
 - Local proof passes with 162 TypeScript tests + 3 context tests, build, zero
   high audit vulnerabilities, and `git diff --check`. No provider request,
   credential read, or Ahrefs rerun occurred.
+
+## Bundle-only preflight follow-up — 2026-08-03
+
+- OpenCode/DeepSeek follow-up on `ca48bc3` found one remaining medium timing
+  gap: bundle-only `--agency-run` skipped preflight when no current phrase file
+  was supplied, so a tampered bundle could be detected only after provider
+  tasks and partial output creation.
+- Fixed point `4a6c88e` makes existing-bundle verification unconditional in
+  both `--agency-run` and `--agency-report`. A tampered `request.json` now
+  fails before output creation even in bundle-only mode; a dedicated CLI
+  falsifier covers that path.
+- Local proof passes with 163 TypeScript tests + 3 context tests, build, zero
+  high audit vulnerabilities, and `git diff --check`. No provider request,
+  credential read, or Ahrefs rerun occurred. Remaining deferred items are
+  legacy percentage edge semantics, recurring-job installation, and live
+  operator-gated providers.
