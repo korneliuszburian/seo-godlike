@@ -12,12 +12,12 @@ import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 
-async function writeAgencySelectionBundle(root: string, name: string, generatedAt: string, clicks: number, dateRange = { start: "2026-07-01", end: "2026-07-28" }): Promise<void> {
+async function writeAgencySelectionBundle(root: string, name: string, generatedAt: string, clicks: number, dateRange = { start: "2026-07-01", end: "2026-07-28" }, clientId = "bodymove", propertyId = "sc-domain:bodymove.pl"): Promise<void> {
   const bundle = join(root, name);
   await mkdir(bundle, { recursive: true });
-  const withoutHash = { schema_version: "1", run_id: `run-${name}`, client_id: "bodymove", client_display_name: "Bodymove", property_refs: ["sc-domain:bodymove.pl"], generated_at: generatedAt, evidence_manifest_ref: "manifest.json", provider: "google-search-console", operation: "search_analytics.query", analytics: { current_date_range: dateRange, current: { clicks, impressions: clicks * 10, ctr: 0.1, position: 2 } } };
+  const withoutHash = { schema_version: "1", run_id: `run-${name}`, client_id: clientId, client_display_name: clientId, property_refs: [propertyId], generated_at: generatedAt, evidence_manifest_ref: "manifest.json", provider: "google-search-console", operation: "search_analytics.query", analytics: { current_date_range: dateRange, current: { clicks, impressions: clicks * 10, ctr: 0.1, position: 2 } } };
   const report = canonicalJson({ ...withoutHash, canonical_json_hash: sha256(canonicalJson(withoutHash)) });
-  const request = canonicalJson({ run_id: `run-${name}`, client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", operation: "search_analytics.query", policy_mode: "read_only" });
+  const request = canonicalJson({ run_id: `run-${name}`, client_id: clientId, property_id: propertyId, provider: "google-search-console", operation: "search_analytics.query", policy_mode: "read_only" });
   const markdown = `# ${name}\n`;
   await writeFile(join(bundle, "report.json"), report);
   await writeFile(join(bundle, "request.json"), request);
@@ -110,6 +110,31 @@ test("agency report freshness ignores non-current historical GSC periods", async
     const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", { sources: [] });
     assert.equal(summary.source_status.find((source) => source.provider === "ahrefs")?.status, "ready");
     assert.equal(summary.report_status, "reportable");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agency report scopes Ahrefs freshness to the same client", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-freshness-tenant-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    await writeAgencySelectionBundle(artifacts, "gsc-bodymove", "2026-07-29T08:00:00.000Z", 2, { start: "2026-07-01", end: "2026-07-28" }, "bodymove", "sc-domain:bodymove.pl");
+    await writeAgencySelectionBundle(artifacts, "gsc-other", "2026-07-29T08:00:00.000Z", 3, { start: "2026-08-01", end: "2026-08-28" }, "other", "sc-domain:other.pl");
+    const registry: ClientRegistry = { clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "bodymove.pl", provider: "ahrefs", canonical_property: true }] }, { client_id: "other", display_name: "Other", properties: [{ property_id: "other.pl", provider: "ahrefs", canonical_property: true }] }] };
+    const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "ahrefs.site-explorer.metrics", provider: "ahrefs", operation_id: "site-explorer.metrics", api_version: "v3", read_write: "read", state: "schema_verified" }] };
+    const ahrefsRequest: AhrefsAnalyticsRequest = { schema_version: "1", run_id: "ahrefs-bodymove", client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs", operation: "site-explorer.metrics", metric: "org_traffic", date_range: { start: "2026-07-28", end: "2026-07-28" }, credential_ref: "keyring:seo-godlike/ahrefs-api-key", policy_mode: "read_only", captured_at: "2026-07-29T08:00:00.000Z" };
+    await runAhrefsAnalytics(ahrefsRequest, registry, capabilities, JSON.stringify({ metrics: { org_traffic: 10, org_keywords: 2, org_keywords_1_3: 1 } }), join(artifacts, "ahrefs-bodymove"));
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "ready", entries: [
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "bodymove.pl", provider: "ahrefs", status: "ready", reason: null, metrics: [] },
+      { client_id: "other", client_display_name: "Other", property_id: "sc-domain:other.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
+      { client_id: "other", client_display_name: "Other", property_id: "other.pl", provider: "ahrefs", status: "ready", reason: null, metrics: [] },
+    ] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", { sources: [] });
+    assert.equal(summary.source_status.find((source) => source.client_id === "bodymove" && source.provider === "ahrefs")?.status, "ready");
+    assert.equal(summary.source_status.find((source) => source.client_id === "other" && source.provider === "ahrefs")?.reason_code, "missing_evidence_bundle");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

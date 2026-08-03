@@ -1513,3 +1513,16 @@ auth or schema is unknown.
 - Proof: 171 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
+
+## Tenant-scoped Ahrefs freshness — 2026-08-04
+
+- The exact-HEAD OpenCode/DeepSeek review reproduced a cross-client freshness
+  defect: a later GSC period for one client could downgrade another client's
+  Ahrefs snapshot even when it matched that client's own period.
+- Freshness now indexes selected current GSC period ends by `client_id`; an
+  Ahrefs snapshot is compared only with the same client's selected GSC scope.
+  A two-client falsifier proves the valid client remains ready while the
+  client without an accepted Ahrefs bundle fails closed independently.
+- Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.

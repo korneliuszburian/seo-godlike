@@ -563,15 +563,16 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const resolvedOutput = resolve(outputDir);
   await mkdir(resolvedOutput, { recursive: false, mode: 0o700 });
   const packageSummary = await writeReportPackage(resolvedArtifacts, join(resolvedOutput, "package"));
-  const selectedGscPeriodEnds = scope.entries
-    .filter((entry) => entry.status === "ready" && entry.provider === "google-search-console")
-    .map((entry) => acceptedBundleFor({ client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null }, packageSummary)?.period.end)
-    .filter((end): end is string => Boolean(end));
+  const selectedGscPeriodEndsByClient = new Map<string, string[]>();
+  for (const entry of scope.entries.filter((candidate) => candidate.status === "ready" && candidate.provider === "google-search-console")) {
+    const accepted = acceptedBundleFor({ client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null }, packageSummary);
+    if (accepted) selectedGscPeriodEndsByClient.set(entry.client_id, [...(selectedGscPeriodEndsByClient.get(entry.client_id) ?? []), accepted.period.end]);
+  }
   const propertyStatus = scope.entries.map((entry) => {
     const source: AgencyReportSourceStatus = { client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null };
     if (source.status !== "ready") return source;
     const accepted = acceptedBundleFor(source, packageSummary);
-    if (accepted && !ahrefsSnapshotFreshForGsc(accepted, selectedGscPeriodEnds)) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", reason_code: "stale_snapshot" as const, bundle_path: null };
+    if (accepted && !ahrefsSnapshotFreshForGsc(accepted, selectedGscPeriodEndsByClient.get(source.client_id) ?? [])) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", reason_code: "stale_snapshot" as const, bundle_path: null };
     if (accepted) return { ...source, status: "ready" as const, reason: null, bundle_path: accepted.bundle_path };
     if (source.status === "ready") return { ...source, status: "unavailable" as const, reason: "No accepted evidence bundle was found for this source", reason_code: "missing_evidence_bundle" as const, bundle_path: null };
     return source;
