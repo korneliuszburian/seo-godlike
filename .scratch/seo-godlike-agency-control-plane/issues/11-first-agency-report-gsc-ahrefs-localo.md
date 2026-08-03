@@ -1246,3 +1246,14 @@ auth or schema is unknown.
   deferred items are pinned Chromium reproducibility, recurring installation,
   and operator authorization for live SERPROBOT/Semstorm, GA4, Localo and
   client publication.
+
+## Standalone delivery input forwarding — 2026-08-03
+
+- Fixed point `2d731dd` closes a CLI seam: standalone
+  `--client-delivery` now forwards operator content bundles, exact or rooted
+  SERPROBOT snapshots, and keyword bundle roots exactly like `--agency-run`.
+- The CLI rejects conflicting `--rank-monitoring` and
+  `--rank-monitoring-root` inputs before reading the evidence package.
+- Proof passes with 158 TypeScript tests + 3 context tests, build, zero high
+  audit vulnerabilities and `git diff --check`. No provider request, secret
+  read or Ahrefs rerun occurred.
