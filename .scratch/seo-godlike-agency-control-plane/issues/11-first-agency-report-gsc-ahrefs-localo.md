@@ -1260,3 +1260,13 @@ auth or schema is unknown.
 
 - Fixed point `d2c1330` also accepts `--agency-run-record` on standalone
   delivery, preserving the read-only execution trace in the output manifest.
+
+## Readiness executor truthfulness — 2026-08-03
+
+- Fixed point `2f2d659` makes `--agency-readiness` fail closed when a
+  ready SERPROBOT source lacks `--rank-monitoring` or
+  `--rank-monitoring-root`, and when a ready external source has no
+  agency-run executor (currently Localo/Semstorm).
+- Added a focused readiness falsifier. Proof passes with 159 TypeScript tests
+  + 3 context tests, build, zero high audit vulnerabilities and
+  `git diff --check`; no provider request or Ahrefs rerun occurred.
