@@ -21,6 +21,7 @@ import { buildAgentRunPlan } from "./agent-plan.js";
 import { executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
 import { writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
+import { writeClientDelivery } from "./client-delivery.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 
@@ -218,6 +219,11 @@ async function main(): Promise<void> {
     const scope = buildScopePlan(registry, capabilities);
     const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"));
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--client-delivery")) {
+    const result = await writeClientDelivery({ agencyReportPath: argument("--agency-report-json"), artifactsDir: argument("--artifacts-dir"), outputDir: argument("--output"), renderPdf: process.argv.includes("--pdf") });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--agency-run")) {

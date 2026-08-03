@@ -155,6 +155,25 @@ auth or schema is unknown.
   `keyring:seo-godlike/localo-mcp-token` is absent; the missing-keyring path is
   now covered by an injected-loader falsifier; fixed point `65e117e`.
 
+## Client delivery proof — 2026-08-03
+
+- A split client-delivery layer was generated from the existing verified agency
+  report and accepted source bundles only:
+  `artifacts/analysis/client-delivery-20260803-v4/`.
+- The output contains one Bodymove client PDF/HTML and five separate domain
+  PDF/HTML units for the supplied phrase groups. The phrase domains are kept
+  as `Client mapping pending`; no ownership or client assignment was inferred.
+- All 41 returned keyword rows, the empty `wilmed.pl` group, Bodymove source
+  context, and rule-based signals remain available in the rendered units. GSC
+  cards are labelled `Observed — Google Search Console`; Ahrefs cards and
+  keyword research are labelled `Estimated — Ahrefs`.
+- Previous-period deltas are rendered only where the accepted bundle contains a
+  non-zero comparable baseline. Missing/zero baselines remain `—`; no month-
+  over-month claim or invented delta is emitted.
+- Delivery manifest verifies 13 generated HTML/PDF/index files by SHA-256 and
+  byte count; `provider_calls: 0`. Chromium produced A4 PDFs: Bodymove 17
+  pages; each phrase-domain unit 5–6 pages. No provider rerun was performed.
+
 ## Operator handoff
 
 1. In Localo, add/activate the managed Business Profile representing
