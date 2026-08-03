@@ -83,7 +83,10 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     await writeFile(agencyPath, nonAdjacentText);
     await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": nonAdjacentText }));
     await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "non-adjacent-delivery") });
-    assert.match(await readFile(join(root, "non-adjacent-delivery", "bodymove", "bodymove-seo-report.html"), "utf8"), /Brak porównywalnej bazy/);
+    const unavailableSupplementHtml = await readFile(join(root, "non-adjacent-delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
+    assert.match(unavailableSupplementHtml, /Brak porównywalnej bazy/);
+    assert.match(unavailableSupplementHtml, /DZIAŁANIA DLA STRONY/);
+    assert.match(unavailableSupplementHtml, /Unavailable · brak rejestru działań/);
     await writeFile(join(bundle, "report.json"), bundleReport);
     await writeFile(join(bundle, "manifest.json"), bundleManifest);
     const multiPropertyReport = bundleReport.replace('"property_refs":["sc-domain:bodymove.pl"]', '"property_refs":["sc-domain:bodymove.pl","https://krakow.bodymove.pl/"]');
