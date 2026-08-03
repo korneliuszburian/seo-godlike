@@ -78,6 +78,9 @@ test("keyword research writes a hash-bound deterministic bundle and refuses over
     assert.equal(report.groups[0]?.rows[0]?.keyword, "fraza");
     const manifest = JSON.parse(await readFile(join(outputDir, "manifest.json"), "utf8"));
     assert.equal(Object.keys(manifest.files).length, 4);
+    const request = JSON.parse(await readFile(join(outputDir, "request.json"), "utf8"));
+    assert.equal(request.estimated_budget_explicitly_accepted, true);
+    assert.equal(request.budget_basis, "minimum_request_cost_only; actual_cost_depends_on_returned_rows_and_selected_fields");
     assert.equal(await readFile(join(outputDir, "raw-response.001.example.pl.json"), "utf8"), JSON.stringify({ keywords: [{ keyword: "fraza", volume: 100 }] }));
     await assert.rejects(() => queryAhrefsKeywordOverview("test-key", [], "pl", fetchImpl), /invalid phrase count/);
   } finally {
