@@ -174,6 +174,34 @@ auth or schema is unknown.
   byte count; `provider_calls: 0`. Chromium produced A4 PDFs: Bodymove 17
   pages; each phrase-domain unit 5–6 pages. No provider rerun was performed.
 
+## Client delivery hardening proof — 2026-08-03
+
+- Fixed delivery output: `artifacts/analysis/client-delivery-20260803-v17/`;
+  identical rerender proof: `artifacts/analysis/client-delivery-20260803-v18/`.
+- Inputs were existing manifest-verified bundles only: the two GSC bundles from
+  `bodymove-gsc-all-20260729/`, the verified Ahrefs profile from
+  `bodymove-agency-run-20260729-v7/`, and the existing Keywords Explorer bundle.
+  No provider adapter or credential path was invoked.
+- Runtime hardening now rejects absolute, traversal, and backslash bundle paths;
+  verifies accepted-bundle identity (`client_id`, provider, and property) before
+  consuming `report.json`; derives phrase-domain units from explicit property
+  hosts rather than a tenant-specific suffix; and writes every delivery file
+  and PDF with mode 0600 under mode-0700 unit/output directories.
+- Chromium is executed through a user systemd sandbox with
+  `RestrictAddressFamilies=AF_UNIX` and `PrivateNetwork=yes`, plus a bwrap
+  filesystem/process sandbox. The traced final render produced no IPv4/IPv6
+  `connect()` calls. The delivery manifest records `provider_calls: 0` and the
+  renderer network policy.
+- The six PDFs from v17 and v18 have byte-identical SHA-256 values. Bodymove is
+  14-page A4; the five domain units remain separately scoped. `qpdf --check`
+  passes for the Bodymove PDF, all generated files are hash/byte-bound in the
+  delivery manifest, and the rendered copy is Polish with property-scoped GSC
+  labels, explicit Ahrefs date/market, unavailable-source wording, and visible
+  comparison semantics for CTR and average position.
+- Local proof gates: `npm test` passes with 88 TypeScript tests and 3 context
+  tests; strict build passes; `npm audit --omit=dev --audit-level=high` reports
+  zero vulnerabilities; `git diff --check` passes.
+
 ## Operator handoff
 
 1. In Localo, add/activate the managed Business Profile representing
