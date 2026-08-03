@@ -288,3 +288,22 @@ auth or schema is unknown.
   items; it was an interim review because its bounded step cap did not read the
   full repository diff. A fresh fixed-point review is required after this
   follow-up commit.
+
+## Bodymove v7 local proof — 2026-08-03
+
+- Re-composed the report from the existing GSC/Ahrefs/Keywords Explorer
+  bundles only; no provider adapter or credential path was invoked.
+- Agency report: `artifacts/analysis/bodymove-full-seo-report-20260803-final-v7/`.
+  Delivery: `artifacts/analysis/client-delivery-20260803-v19/` (deterministic
+  rerender: `client-delivery-20260803-v20/`).
+- Delivery contains 1 Bodymove client unit plus 5 explicitly unassigned
+  phrase-domain units, 13 manifest-listed files, 6 PDFs, and 5 verified input
+  manifests. All generated files are `0600`; all PDFs pass `qpdf --check` and
+  both renders have identical PDF hashes.
+- `npm audit --omit=dev --audit-level=high` reports zero vulnerabilities.
+- `.env.example` now names the operator inputs for SERPROBOT and the
+  manifest-bound actions bundle; no secret values were added.
+- OpenCode `deepseek-v4-flash` review of `1f9ba8b` was also partial because its
+  bounded step cap expired during source inspection. It reported no verified
+  blocker; the remaining review items are explicitly unverified and require a
+  future full-capacity review.
