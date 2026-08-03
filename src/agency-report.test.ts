@@ -189,5 +189,15 @@ test("agency report accepts a rank-only client owned by the source registry", as
     const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-08-03T00:00:00.000Z", sourceRegistry, undefined, undefined, rankBundle);
     assert.equal(summary.rank_monitoring?.client_id, "rank-only");
     assert.equal(summary.source_status[0]?.client_id, "rank-only");
+    assert.equal(summary.source_status[0]?.status, "ready");
+    assert.equal(summary.report_status, "blocked");
+    const foreignInput = join(root, "foreign-rank.json");
+    await writeFile(foreignInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [
+      { schema_version: "1", provider: "serprobot", client_id: "rank-only", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "456", search_engine: "google.pl", location: null, device: null }, rows: [] },
+      { schema_version: "1", provider: "serprobot", client_id: "foreign", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "999", search_engine: "google.pl", location: null, device: null }, rows: [] },
+    ] }));
+    const foreignBundle = join(root, "foreign-bundle");
+    await writeRankMonitoringBundle(foreignInput, foreignBundle);
+    await assert.rejects(writeAgencyReport(artifacts, join(root, "foreign-report"), scope, "2026-08-03T00:00:00.000Z", sourceRegistry, undefined, undefined, foreignBundle), /rank monitoring client identity mismatch: foreign/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });

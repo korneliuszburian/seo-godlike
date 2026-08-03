@@ -6,7 +6,7 @@ import { canonicalJson, sha256 } from "./serialize.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { composeReportInsights, ReportInsight } from "./report-insights.js";
 import { parsePhraseInput, PhraseGroup } from "./ahrefs-keywords.js";
-import { readRankMonitoringBundle, RankMonitoringSnapshot } from "./rank-monitoring.js";
+import { RANK_MONITORING_PROVIDER, readRankMonitoringBundle, RankMonitoringSnapshot } from "./rank-monitoring.js";
 
 interface AgencyReportSourceStatus {
   source_id?: string;
@@ -525,7 +525,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const crossSourceContext = composeCrossSourceContext(reports);
   const insights = composeReportInsights(reports);
   const keywordResearch = keywordBundlePath ? await readKeywordResearchBundle(keywordBundlePath, keywordInputPath) : undefined;
-  const rankClientIds = [...new Set(sourceRegistry.sources.filter((source) => source.provider === "serprobot").map((source) => source.client_id))];
+  const rankClientIds = [...new Set(sourceRegistry.sources.filter((source) => source.provider === RANK_MONITORING_PROVIDER).map((source) => source.client_id))];
   const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
   const rankMonitoring = rankMonitoringEvidence[0];
   const profileContext = composeAhrefsProfileContext(reports);

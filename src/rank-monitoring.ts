@@ -6,13 +6,14 @@ export interface RankRow { keyword: string; position: number | null; previous_po
 export interface RankMonitoringSourceConfig { project_id: string; search_engine: string; location: string | null; device: string | null; }
 export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; source_config: RankMonitoringSourceConfig | null; rows: RankRow[]; }
 export interface RankMonitoringBundle { snapshot: RankMonitoringSnapshot; snapshots: RankMonitoringSnapshot[]; manifest_sha256: string; }
+export const RANK_MONITORING_PROVIDER = "serprobot" as const;
 
 function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function nullableNumber(value: unknown, label: string): number | null { if (value === null || value === undefined) return null; if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${label} must be a finite number or null`); return value; }
 function nullableString(value: unknown, label: string): string | null { if (value === null || value === undefined) return null; if (typeof value !== "string") throw new Error(`${label} must be a string or null`); return value; }
 
 export function parseRankMonitoringSnapshot(value: unknown): RankMonitoringSnapshot {
-  if (!record(value) || value.schema_version !== "1" || value.provider !== "serprobot") throw new Error("rank monitoring snapshot must declare schema_version '1' and provider 'serprobot'");
+  if (!record(value) || value.schema_version !== "1" || value.provider !== RANK_MONITORING_PROVIDER) throw new Error("rank monitoring snapshot must declare schema_version '1' and provider 'serprobot'");
   if (typeof value.client_id !== "string" || typeof value.captured_at !== "string" || Number.isNaN(Date.parse(value.captured_at)) || !record(value.date_range) || typeof value.date_range.start !== "string" || typeof value.date_range.end !== "string" || !Array.isArray(value.rows)) throw new Error("invalid rank monitoring snapshot metadata");
   const configValue = value.source_config;
   let source_config: RankMonitoringSourceConfig | null = null;

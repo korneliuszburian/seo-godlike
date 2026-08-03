@@ -972,3 +972,15 @@ auth or schema is unknown.
 - A focused falsifier covers a rank-only client; full local proof passes with
   140 TypeScript tests + 3 context tests, build, zero high audit vulnerabilities
   and `git diff --check`. No provider request or report rerun occurred.
+
+## Rank-only isolation proof follow-up — 2026-08-03
+
+- The rank provider identity is now owned by one exported constant in the rank
+  monitoring module instead of another independent provider literal in report
+  composition.
+- The rank-only test now asserts ready source attribution, blocked report
+  status with no analytics bundles, and rejects a manifest containing a foreign
+  client snapshot.
+- Local proof remains green: 140 TypeScript tests + 3 context tests, build,
+  zero high audit vulnerabilities and `git diff --check`. No provider request,
+  credential read, Ahrefs rerun or production report rerun occurred.
