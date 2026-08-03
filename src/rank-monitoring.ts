@@ -3,17 +3,24 @@ import { join } from "node:path";
 import { canonicalJson, sha256 } from "./serialize.js";
 
 export interface RankRow { keyword: string; position: number | null; previous_position: number | null; search_engine: string; location: string | null; url: string | null; }
-export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; rows: RankRow[]; }
+export interface RankMonitoringSourceConfig { project_id: string; search_engine: string; location: string | null; device: string | null; }
+export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; source_config: RankMonitoringSourceConfig | null; rows: RankRow[]; }
 
 function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function nullableNumber(value: unknown, label: string): number | null { if (value === null || value === undefined) return null; if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${label} must be a finite number or null`); return value; }
-function nullableString(value: unknown): string | null { return value === null || value === undefined ? null : typeof value === "string" ? value : null; }
+function nullableString(value: unknown, label: string): string | null { if (value === null || value === undefined) return null; if (typeof value !== "string") throw new Error(`${label} must be a string or null`); return value; }
 
 export function parseRankMonitoringSnapshot(value: unknown): RankMonitoringSnapshot {
   if (!record(value) || value.schema_version !== "1" || value.provider !== "serprobot") throw new Error("rank monitoring snapshot must declare schema_version '1' and provider 'serprobot'");
   if (typeof value.client_id !== "string" || typeof value.captured_at !== "string" || !record(value.date_range) || typeof value.date_range.start !== "string" || typeof value.date_range.end !== "string" || !Array.isArray(value.rows)) throw new Error("invalid rank monitoring snapshot metadata");
-  const rows = value.rows.map((row, index) => { if (!record(row) || typeof row.keyword !== "string" || typeof row.search_engine !== "string") throw new Error(`invalid rank row ${index}`); return { keyword: row.keyword, position: nullableNumber(row.position, `rank row ${index}.position`), previous_position: nullableNumber(row.previous_position, `rank row ${index}.previous_position`), search_engine: row.search_engine, location: nullableString(row.location), url: nullableString(row.url) }; }).sort((a, b) => a.keyword.localeCompare(b.keyword) || (a.position ?? Infinity) - (b.position ?? Infinity));
-  return { schema_version: "1", provider: "serprobot", client_id: value.client_id, captured_at: value.captured_at, date_range: { start: value.date_range.start, end: value.date_range.end }, rows };
+  const configValue = value.source_config;
+  let source_config: RankMonitoringSourceConfig | null = null;
+  if (configValue !== null && configValue !== undefined) {
+    if (!record(configValue) || typeof configValue.project_id !== "string" || !/^[1-9]\d*$/.test(configValue.project_id) || typeof configValue.search_engine !== "string") throw new Error("invalid SERPROBOT source configuration");
+    source_config = { project_id: configValue.project_id, search_engine: configValue.search_engine, location: nullableString(configValue.location, "source_config.location"), device: nullableString(configValue.device, "source_config.device") };
+  }
+  const rows = value.rows.map((row, index) => { if (!record(row) || typeof row.keyword !== "string" || typeof row.search_engine !== "string") throw new Error(`invalid rank row ${index}`); return { keyword: row.keyword, position: nullableNumber(row.position, `rank row ${index}.position`), previous_position: nullableNumber(row.previous_position, `rank row ${index}.previous_position`), search_engine: row.search_engine, location: nullableString(row.location, `rank row ${index}.location`), url: nullableString(row.url, `rank row ${index}.url`) }; }).sort((a, b) => a.keyword.localeCompare(b.keyword) || (a.position ?? Infinity) - (b.position ?? Infinity));
+  return { schema_version: "1", provider: "serprobot", client_id: value.client_id, captured_at: value.captured_at, date_range: { start: value.date_range.start, end: value.date_range.end }, source_config, rows };
 }
 
 export async function readRankMonitoringBundle(bundleDir: string, expectedClientIds: readonly string[]): Promise<{ snapshot: RankMonitoringSnapshot; manifest_sha256: string }> {

@@ -10,12 +10,22 @@ import { sha256 } from "./serialize.js";
 test("rank monitoring bundle verifies identity and deterministic row order", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-"));
   try {
-    const report = JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [{ keyword: "zeta", position: 8, previous_position: 9, search_engine: "google.pl", location: "PL", url: null }, { keyword: "alpha", position: 3, previous_position: 4, search_engine: "google.pl", location: "PL", url: "https://bodymove.pl/" }] });
+    const report = JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "123", search_engine: "google.pl", location: "Warszawa", device: "desktop" }, rows: [{ keyword: "zeta", position: 8, previous_position: 9, search_engine: "google.pl", location: "PL", url: null }, { keyword: "alpha", position: 3, previous_position: 4, search_engine: "google.pl", location: "PL", url: "https://bodymove.pl/" }] });
     await writeFile(join(root, "report.json"), report);
     await writeFile(join(root, "manifest.json"), JSON.stringify({ files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } }));
     const result = await readRankMonitoringBundle(root, ["bodymove"]);
     assert.deepEqual(result.snapshot.rows.map((row) => row.keyword), ["alpha", "zeta"]);
+    assert.equal(result.snapshot.source_config?.project_id, "123");
     await assert.rejects(readRankMonitoringBundle(root, ["other"]), /identity mismatch/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank monitoring rejects malformed SERPROBOT source configuration", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-invalid-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "project", search_engine: "google.pl" }, rows: [] }));
+    await assert.rejects(writeRankMonitoringBundle(input, join(root, "bundle")), /invalid SERPROBOT source configuration/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

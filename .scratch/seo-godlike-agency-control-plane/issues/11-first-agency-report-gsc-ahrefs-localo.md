@@ -373,3 +373,15 @@ auth or schema is unknown.
   syntax has no provider contract yet; the Keywords Explorer capability is
   backed by the existing bounded local proof; a full external review remains
   required before advancing the provider-boundary slice.
+
+## SERPROBOT connector boundary — 2026-08-03
+
+- Official SERPROBOT connector documentation confirms the operator flow:
+  authorize the connector, enter the account API key, select the numeric
+  project ID from the project URL, and provide start/end dates. The page does
+  not publish a stable response schema for a direct application API adapter.
+- The rank snapshot seam now preserves the connector configuration
+  (`project_id`, search engine, location, device) inside the manifest-bound
+  normalized input and rejects malformed project IDs before writing. Delivery
+  displays that provenance next to the rank period. This is an import seam,
+  not a live provider connector; no SERPROBOT request was made.
