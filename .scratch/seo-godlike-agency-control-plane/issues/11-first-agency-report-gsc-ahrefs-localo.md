@@ -501,3 +501,17 @@ auth or schema is unknown.
   because the bounded step limit prevented the full path ledger and suite
   execution. It found no certified blocker in the inspected rank-history seam;
   remaining claims are explicitly unverified in that packet.
+
+## Ahrefs profile context delivery follow-up — 2026-08-03
+
+- Client delivery now renders the complete bounded Ahrefs profile context
+  already present in verified local bundles: top pages, organic keyword rows,
+  and organic competitors, including provider-returned deltas, positions,
+  URLs, difficulty, SERP features, traffic and competitor fields.
+- Every section is explicitly labelled `Estimated — Ahrefs`, scoped to the
+  canonical property, market and snapshot date. Ahrefs values remain separate
+  from observed GSC metrics and are never aggregated into a combined traffic
+  KPI.
+- A focused fixture falsifier proves the three bounded sections and
+  representative provenance fields render without any provider call. No
+  Ahrefs rerun, credential read, or external mutation was performed.

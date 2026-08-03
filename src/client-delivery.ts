@@ -108,6 +108,47 @@ function hostFromProperty(value: string): string | null {
   try { return new URL(value).hostname.toLowerCase(); } catch { return value.toLowerCase(); }
 }
 
+function recordRows(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function rowValue(row: Record<string, unknown>, ...keys: string[]): unknown {
+  for (const key of keys) if (row[key] !== undefined && row[key] !== null) return row[key];
+  return null;
+}
+
+function rowList(row: Record<string, unknown>, key: string): string {
+  const value = row[key];
+  return Array.isArray(value) ? value.map(String).join(", ") : String(value ?? "—");
+}
+
+function intentLabels(row: Record<string, unknown>): string {
+  const labels = ["branded", "commercial", "informational", "local", "navigational", "transactional"];
+  const selected = labels.filter((label) => row[`is_${label}`] === true);
+  return selected.length ? selected.join(", ") : "—";
+}
+
+function ahrefsDetailSection(metric: BundleMetric): string {
+  const pages = recordRows(metric.current.top_pages);
+  const keywords = recordRows(metric.current.organic_keyword_rows);
+  const competitors = recordRows(metric.current.competitors);
+  if (!pages.length && !keywords.length && !competitors.length) return "";
+  const scope = `Estimated — Ahrefs · ${escapeHtml(metric.property_id)}${metric.country ? ` · rynek ${escapeHtml(metric.country.toUpperCase())}` : ""}${metric.generated_at ? ` · stan na ${escapeHtml(metric.generated_at.slice(0, 10))}` : ""}`;
+  const render = (values: unknown[]) => `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`;
+  const pagesHtml = pages.map((row) => {
+    const trafficPercent = finite(rowValue(row, "traffic_diff_percent"));
+    return render([rowValue(row, "url", "raw_url"), rowValue(row, "sum_traffic"), rowValue(row, "traffic_diff"), trafficPercent === null ? rowValue(row, "traffic_diff_percent") : formatPercent(trafficPercent), rowValue(row, "keywords"), rowValue(row, "top_keyword"), rowValue(row, "top_keyword_best_position"), rowValue(row, "top_keyword_best_position_diff"), rowValue(row, "referring_domains"), rowValue(row, "ur")]);
+  }).join("");
+  const keywordsHtml = keywords.map((row) => render([rowValue(row, "keyword"), rowValue(row, "keyword_country"), rowValue(row, "best_position"), rowValue(row, "best_position_diff"), rowValue(row, "best_position_set"), rowValue(row, "best_position_url"), rowValue(row, "sum_traffic"), rowValue(row, "sum_traffic_prev"), rowValue(row, "volume"), rowValue(row, "keyword_difficulty"), intentLabels(row), rowList(row, "serp_features"), rowValue(row, "status")])).join("");
+  const competitorsHtml = competitors.map((row) => render([rowValue(row, "competitor_domain"), rowValue(row, "domain_rating"), rowValue(row, "keywords_common"), rowValue(row, "keywords_target"), rowValue(row, "keywords_competitor"), rowValue(row, "share"), rowValue(row, "traffic"), rowValue(row, "traffic_diff"), rowValue(row, "value")])).join("");
+  const table = (title: string, description: string, headers: string[], rows: string, empty: string) => `<section class="page-break wide-table"><div class="eyebrow">AHREFS · ${escapeHtml(title)}</div><h2>${escapeHtml(title)}</h2><p class="muted"><span class="tag">${scope}</span> ${escapeHtml(description)}</p><div class="table-wrap"><table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${rows || `<tr><td colspan="${headers.length}" class="no-data">${escapeHtml(empty)}</td></tr>`}</tbody></table></div></section>`;
+  return [
+    table("Najważniejsze strony", "Wszystkie zwrócone wiersze profilu; zmiany są estymacjami Ahrefs i nie są sumowane z kliknięciami GSC.", ["URL", "Szac. ruch", "Zmiana ruchu", "Zmiana %", "Frazy", "Główna fraza", "Pozycja", "Zmiana pozycji", "Domeny odsyłające", "UR"], pagesHtml, "Brak zwróconych stron."),
+    table("Frazy organiczne", "Pełny zwrócony zbiór organicznych fraz profilu. Wartości pozycji i ruchu są estymacjami Ahrefs.", ["Fraza", "Kraj", "Pozycja", "Zmiana pozycji", "Zestaw pozycji", "URL", "Szac. ruch", "Poprzedni ruch", "Wolumen", "KD", "Intencje", "SERP features", "Status"], keywordsHtml, "Brak zwróconych fraz organicznych."),
+    table("Konkurenci organiczni", "Pełny zwrócony zbiór konkurentów profilu; to kontekst estymowany, nie ocena jakości domeny.", ["Domena", "DR", "Wspólne frazy", "Frazy celu", "Frazy konkurenta", "Udział", "Szac. ruch", "Zmiana ruchu", "Wartość"], competitorsHtml, "Brak zwróconych konkurentów."),
+  ].join("");
+}
+
 async function readVerifiedJsonBundle(bundleDir: string, expected: { client_id: string; property_id: string; provider: string; manifest_sha256: string }): Promise<Record<string, unknown>> {
   const manifestPath = join(bundleDir, "manifest.json");
   const manifestBytes = await readFile(manifestPath);
@@ -214,7 +255,9 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string): string {
   const signalRows = unit.insights.map((insight) => `<tr><td>${escapeHtml(insight.kind)}</td><td>${escapeHtml(insight.key)}</td><td>${escapeHtml(insight.evidence)}</td><td>${escapeHtml(insight.severity)}</td></tr>`).join("");
   const keywordRows = unit.keywordGroups.flatMap(({ group, rows }) => rows.map((row) => `<tr><td>${escapeHtml(group.host)}</td><td>${escapeHtml(row.keyword)}</td><td>${escapeHtml(row.volume)}</td><td>${escapeHtml(row.clicks)}</td><td>${escapeHtml(row.difficulty)}</td><td>${escapeHtml(row.traffic_potential)}</td><td>${escapeHtml(row.parent_topic)}</td><td>${escapeHtml(row.parent_volume)}</td></tr>`)).join("");
   const sourceRows = unit.sources.map((source) => `<tr><td>${escapeHtml(source.provider)}</td><td>${escapeHtml(source.status === "unavailable" ? "Unavailable — źródło niepodłączone" : source.status)}</td><td>${escapeHtml(source.reason ?? "Dane zweryfikowane")}</td></tr>`).join("");
-  const keywordSection = unit.keywordGroups.length ? `<section class="page-break wide-table"><div class="eyebrow">ANALIZA FRAZ</div><h2>Dane fraz kluczowych</h2><p class="muted">Estimated — Ahrefs Keywords Explorer. Wszystkie zwrócone wiersze są pokazane; to nie jest pełna inwentaryzacja fraz.</p><div class="table-wrap"><table><thead><tr><th>Domena</th><th>Fraza</th><th>Szac. wyszukiwania / mies.</th><th>Szac. kliknięcia / mies.</th><th>Trudność KD</th><th>Szac. potencjał ruchu</th><th>Temat nadrzędny</th><th>Wolumen tematu</th></tr></thead><tbody>${keywordRows}</tbody></table></div></section>` : "";
+  let keywordSection = unit.keywordGroups.length ? `<section class="page-break wide-table"><div class="eyebrow">ANALIZA FRAZ</div><h2>Dane fraz kluczowych</h2><p class="muted">Estimated — Ahrefs Keywords Explorer. Wszystkie zwrócone wiersze są pokazane; to nie jest pełna inwentaryzacja fraz.</p><div class="table-wrap"><table><thead><tr><th>Domena</th><th>Fraza</th><th>Szac. wyszukiwania / mies.</th><th>Szac. kliknięcia / mies.</th><th>Trudność KD</th><th>Szac. potencjał ruchu</th><th>Temat nadrzędny</th><th>Wolumen tematu</th></tr></thead><tbody>${keywordRows}</tbody></table></div></section>` : "";
+  const ahrefsDetails = ahrefs.map(ahrefsDetailSection).join("");
+  keywordSection += ahrefsDetails;
   const readySources = [...new Set(unit.sources.filter((source) => source.status === "ready").map((source) => source.provider))];
   const unavailableSources = [...new Set(unit.sources.filter((source) => source.status !== "ready").map((source) => source.provider))];
   const clientStatus = unavailableSources.length

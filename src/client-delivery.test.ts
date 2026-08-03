@@ -105,3 +105,38 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("client delivery renders the complete bounded Ahrefs profile context", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-ahrefs-delivery-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    const gscDir = join(artifacts, "gsc");
+    const ahrefsDir = join(artifacts, "ahrefs");
+    await mkdir(gscDir, { recursive: true });
+    await mkdir(ahrefsDir, { recursive: true });
+    const gscReport = JSON.stringify({ client_id: "bodymove", provider: "google-search-console", property_refs: ["sc-domain:bodymove.pl"], analytics: { current: { clicks: 1, impressions: 2, ctr: 0.5, position: 4 } } });
+    const ahrefsReport = JSON.stringify({ client_id: "bodymove", provider: "ahrefs", property_refs: ["bodymove.pl"], generated_at: "2026-07-29T00:00:00.000Z", request: { country: "pl" }, analytics: { current: { organic_traffic: 100, organic_keywords: 20, organic_keywords_top_3: 3, top_pages: [{ url: "https://bodymove.pl/usluga", sum_traffic: 80, traffic_diff: 10, traffic_diff_percent: 0.14, keywords: 7, top_keyword: "rehabilitacja", top_keyword_best_position: 5, top_keyword_best_position_diff: -1, referring_domains: 4, ur: 12 }], organic_keyword_rows: [{ keyword: "rehabilitacja", keyword_country: "pl", best_position: 5, best_position_diff: -1, best_position_url: "https://bodymove.pl/usluga", sum_traffic: 80, sum_traffic_prev: 70, volume: 500, keyword_difficulty: 23, serp_features: ["local_pack"], status: "active" }], competitors: [{ competitor_domain: "konkurent.pl", domain_rating: 31, keywords_common: 4, keywords_target: 7, keywords_competitor: 9, share: 0.12, traffic: 55, traffic_diff: 3, value: 20 }] } } });
+    const gscManifest = manifest({ "report.json": gscReport });
+    const ahrefsManifest = manifest({ "report.json": ahrefsReport });
+    await writeFile(join(gscDir, "report.json"), gscReport);
+    await writeFile(join(gscDir, "manifest.json"), gscManifest);
+    await writeFile(join(ahrefsDir, "report.json"), ahrefsReport);
+    await writeFile(join(ahrefsDir, "manifest.json"), ahrefsManifest);
+    const summary = { schema_version: "1", report_status: "partial", generated_at: "2026-08-03T00:00:00.000Z", scope: { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "ready", entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] }, { client_id: "bodymove", client_display_name: "Bodymove", property_id: "bodymove.pl", provider: "ahrefs", status: "ready", reason: null, metrics: [] }] }, source_status: [{ client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, bundle_path: "gsc" }, { client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs", status: "ready", reason: null, bundle_path: "ahrefs" }], accepted_bundles: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", manifest_sha256: hash(gscManifest), bundle_path: "gsc" }, { client_id: "bodymove", client_display_name: "Bodymove", property_id: "bodymove.pl", provider: "ahrefs", manifest_sha256: hash(ahrefsManifest), bundle_path: "ahrefs" }], blocked_sources: [], cross_source_context: [], insights: [], executive: {} } as unknown as AgencyReportSummary;
+    const agencyPath = join(root, "agency-report.json");
+    const agencyText = JSON.stringify(summary);
+    await writeFile(agencyPath, agencyText);
+    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": agencyText }));
+    await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery") });
+    const html = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
+    assert.match(html, /AHREFS · Najważniejsze strony/);
+    assert.match(html, /14\.00%/);
+    assert.match(html, /AHREFS · Frazy organiczne/);
+    assert.match(html, /local_pack/);
+    assert.match(html, /AHREFS · Konkurenci organiczni/);
+    assert.match(html, /konkurent\.pl/);
+    assert.match(html, /stan na 2026-07-29/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
