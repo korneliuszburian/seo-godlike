@@ -356,3 +356,20 @@ auth or schema is unknown.
 - Monthly scheduling now runs the local history dashboard step after the
   agency delivery step, with a deterministic per-month history output root;
   the schedule test proves the ordering and artifact-root wiring.
+
+## OpenCode fixed-point follow-up — 2026-08-03
+
+- Review target: `8bad915`; OpenCode used `opencode-go/deepseek-v4-flash` in
+  read-only non-interactive mode. The review stopped at its bounded step limit
+  after inspecting registry, capability and manifest seams; it did not inspect
+  the larger delivery/schedule/CLI files or run tests, so it is partial and not
+  a PASS.
+- One concrete construction risk was verified: `reportEntry` initialized
+  `manifest_sha256` to an empty string before a later mutation. Commit
+  `8379570` now requires the hash as a constructor argument, and the report
+  package test asserts a 64-character SHA-256 value. No provider or artifact
+  collection was rerun.
+- Remaining review output is unverified or deferred: Semstorm ready-target
+  syntax has no provider contract yet; the Keywords Explorer capability is
+  backed by the existing bounded local proof; a full external review remains
+  required before advancing the provider-boundary slice.
