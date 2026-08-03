@@ -257,6 +257,10 @@ auth or schema is unknown.
   occurred.
 - Source registry extension is proven by a focused test for unavailable rank
   and visibility entries; full local gates remain green.
+- A `ready` SERPROBOT registry entry now requires a numeric project ID. This
+  matches the official connector setup contract; the live endpoint/response
+  schema remains intentionally unimplemented until verified from operator
+  documentation, so no API request was made.
 
 ## Manifest-bound operator inputs — 2026-08-03
 

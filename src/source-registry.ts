@@ -12,6 +12,7 @@ export function validateSourceRegistry(registry: SourceRegistry, clients: Client
     if (source.status === "ready" && !source.target) throw new Error(`ready source '${source.source_id}' must declare target`);
     if (source.status === "ready" && source.provider === "google-analytics" && !/^properties\/[1-9]\d*$/.test(source.target ?? "")) throw new Error(`ready source '${source.source_id}' must declare a numeric GA4 property target`);
     if (source.status === "ready" && source.provider === "localo" && !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/i.test(source.target ?? "")) throw new Error(`ready source '${source.source_id}' must declare a domain target`);
+    if (source.status === "ready" && source.provider === "serprobot" && !/^[1-9]\d*$/.test(source.target ?? "")) throw new Error(`ready source '${source.source_id}' must declare a numeric SERPROBOT project target`);
     if (!clients.clients.some((client) => client.client_id === source.client_id)) throw new Error(`source '${source.source_id}' references unknown client '${source.client_id}'`);
     seen.add(source.source_id);
   }

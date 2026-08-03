@@ -33,3 +33,9 @@ test("ready external sources require provider-specific target syntax", () => {
   const registry: SourceRegistry = { sources: [{ source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "not-registered", status: "ready", reason: null }] };
   assert.throws(() => validateSourceRegistry(registry, clients), /numeric GA4 property target/);
 });
+
+test("ready SERPROBOT source requires a numeric project id", () => {
+  const registry: SourceRegistry = { sources: [{ source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "project-bodymove", status: "ready", reason: null }] };
+  assert.throws(() => validateSourceRegistry(registry, clients), /numeric SERPROBOT project target/);
+  assert.doesNotThrow(() => validateSourceRegistry({ sources: [{ ...registry.sources[0], target: "12345" }] }, clients));
+});
