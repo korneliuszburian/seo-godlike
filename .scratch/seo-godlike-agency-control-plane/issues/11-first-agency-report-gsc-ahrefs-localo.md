@@ -385,3 +385,12 @@ auth or schema is unknown.
   normalized input and rejects malformed project IDs before writing. Delivery
   displays that provenance next to the rank period. This is an import seam,
   not a live provider connector; no SERPROBOT request was made.
+
+## History comparison follow-up — 2026-08-03
+
+- The local history dashboard now derives a comparison per `client_id` and
+  canonical property from the previous non-overlapping verified period. It
+  exposes clicks, impressions, CTR, and position deltas in JSON, Markdown, and
+  Polish HTML; position deltas retain the lower-is-better semantics.
+- The comparison is derived only from existing manifest-verified analytics
+  bundles. No provider call, rerun, or new evidence collection was performed.
