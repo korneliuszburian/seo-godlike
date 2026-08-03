@@ -1184,11 +1184,28 @@ auth or schema is unknown.
   GA4, Localo, SERPROBOT/Semstorm evidence and client mapping/actions are not
   present in the accepted inputs.
 
+## Ahrefs appendix percentage consistency — 2026-08-03
+
+- Fixed point `4cdcfe3` makes the operator agency appendix render the same
+  canonical Ahrefs percentage as client delivery: legacy `-230` is shown as
+  `-2.30%` in both Markdown and HTML, while normalized ratio fields remain
+  authoritative.
+- Added an end-to-end falsifier through `writeAgencyReport` for a legacy-only
+  profile row; both appendix surfaces are asserted. Local proof passes with
+  157 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`.
+- OpenCode/DeepSeek (`opencode-go/deepseek-v4-flash`, non-interactive,
+  read-only) re-reviewed the fixed point and found no blocker. Deferred risks:
+  provider unit semantics for unusual non-integer values, recurring schedule
+  installation, and pinned Chromium reproducibility. No provider request or
+  Ahrefs rerun occurred.
+
 ## Client delivery completeness and Ahrefs display follow-up — 2026-08-03
 
 - Fixed point `59c0857` makes missing client supplements explicit: every mapped
-  client report now shows `Unavailable` for the absent actions register and
-  SERPROBOT rank snapshot instead of silently omitting those surfaces.
+  client report with a declared SERPROBOT source now shows `Unavailable` for
+  the absent actions register and SERPROBOT rank snapshot instead of silently
+  omitting those surfaces.
 - The client renderer now normalizes Ahrefs `traffic_diff_percent` values from
   the provider's hundredths-of-a-percent representation (for example `-230`
   renders as `-2,30%`), while preserving normalized fixture ratios.
