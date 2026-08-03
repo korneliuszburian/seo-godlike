@@ -1286,3 +1286,17 @@ auth or schema is unknown.
   report rerun was performed. The correct operator state is `needs operator
   action`: either provide an accepted bundle matching the current input or
   explicitly keep the older 4-group bundle under its original input identity.
+
+## OpenCode provenance follow-up — 2026-08-03
+
+- OpenCode/DeepSeek (`opencode-go/deepseek-v4-flash`, non-interactive,
+  read-only) reviewed fixed point `c176dbb` and found no blocker. It confirmed
+  the request/report/input group binding and the existing 159 TypeScript + 3
+  context test proof.
+- The review identified the retained ignored delivery proof as stale relative
+  to the portability fix; it is not used as current evidence and was not
+  regenerated to avoid a report rerun. The `|value| == 1` Ahrefs percentage
+  interpretation remains deferred technical debt, not a blocker.
+- Map pointer was refreshed to `c176dbb`. Remaining operator gates are live
+  SERPROBOT/GA4/Localo evidence, explicit client mapping/actions, and any
+  publication authority.
