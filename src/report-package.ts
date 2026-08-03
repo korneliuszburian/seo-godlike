@@ -8,6 +8,7 @@ interface Manifest { files: Record<string, ManifestFile> }
 
 interface PackageEntry {
   bundle_path: string;
+  manifest_sha256: string;
   run_id: string;
   client_id: string;
   client_display_name: string;
@@ -88,6 +89,7 @@ function reportEntry(value: unknown, bundlePath: string): PackageEntry {
   if (!isRecord(range) || typeof range.start !== "string" || typeof range.end !== "string") throw new Error("invalid current date range");
   return {
     bundle_path: bundlePath,
+    manifest_sha256: "",
     run_id: value.run_id,
     client_id: value.client_id,
     client_display_name: value.client_display_name,
@@ -120,6 +122,7 @@ async function readVerifiedEntry(manifestPath: string, artifactsDir: string): Pr
   const { canonical_json_hash: _, ...reportWithoutHash } = report;
   if (hashText(canonicalJson(reportWithoutHash)) !== declaredHash) throw new Error("canonical_json_hash mismatch");
   const entry = reportEntry(report, relative(artifactsDir, bundleDir) || ".");
+  entry.manifest_sha256 = sha256(await readFile(manifestPath));
   const requestBytes = files.get("request.json");
   if (!requestBytes) throw new Error("reportability metadata is incomplete: request.json missing");
   const request = JSON.parse(requestBytes.toString("utf8")) as Record<string, unknown>;

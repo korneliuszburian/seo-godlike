@@ -99,9 +99,11 @@ function hostFromProperty(value: string): string | null {
   try { return new URL(value).hostname.toLowerCase(); } catch { return value.toLowerCase(); }
 }
 
-async function readVerifiedJsonBundle(bundleDir: string, expected: { client_id: string; property_id: string; provider: string }): Promise<Record<string, unknown>> {
+async function readVerifiedJsonBundle(bundleDir: string, expected: { client_id: string; property_id: string; provider: string; manifest_sha256: string }): Promise<Record<string, unknown>> {
   const manifestPath = join(bundleDir, "manifest.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
+  const manifestBytes = await readFile(manifestPath);
+  if (hashBytes(manifestBytes) !== expected.manifest_sha256) throw new Error(`source manifest provenance mismatch: ${bundleDir}`);
+  const manifest = JSON.parse(manifestBytes.toString("utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
   if (!manifest.files) throw new Error(`invalid manifest: ${manifestPath}`);
   const files = new Map<string, string>();
   for (const [name, entry] of Object.entries(manifest.files)) {
@@ -140,7 +142,7 @@ async function readAgencyReport(path: string): Promise<AgencyReportSummary> {
     if (!isRecord(entry) || typeof entry.client_id !== "string" || typeof entry.client_display_name !== "string" || typeof entry.property_id !== "string" || typeof entry.provider !== "string" || typeof entry.status !== "string") throw new Error("agency report scope entry validation failed");
   }
   for (const bundle of value.accepted_bundles) {
-    if (!isRecord(bundle) || typeof bundle.bundle_path !== "string" || typeof bundle.client_id !== "string" || typeof bundle.property_id !== "string" || typeof bundle.provider !== "string") throw new Error("agency report accepted bundle validation failed");
+    if (!isRecord(bundle) || typeof bundle.bundle_path !== "string" || typeof bundle.manifest_sha256 !== "string" || typeof bundle.client_id !== "string" || typeof bundle.property_id !== "string" || typeof bundle.provider !== "string") throw new Error("agency report accepted bundle validation failed");
     resolveInside(root, bundle.bundle_path, "agency bundle_path");
   }
   return value as AgencyReportSummary;
@@ -165,6 +167,22 @@ async function collectSourceManifestHashes(summary: AgencyReportSummary, artifac
     hashes[bundle.bundle_path] = hashBytes(await readFile(manifestPath));
   }
   return hashes;
+}
+
+async function verifyKeywordBundle(keyword: NonNullable<AgencyReportSummary["keyword_research"]>, artifactsDir: string): Promise<string> {
+  const root = resolve(keyword.bundle_path);
+  const artifactsRoot = resolve(artifactsDir);
+  if (root !== artifactsRoot && !root.startsWith(`${artifactsRoot}${sep}`)) throw new Error("keyword bundle_path escapes artifactsDir");
+  const manifestPath = join(root, "manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
+  if (!manifest.files || Object.keys(keyword.manifest_files).length === 0) throw new Error("keyword bundle manifest provenance is missing");
+  for (const [name, expected] of Object.entries(keyword.manifest_files)) {
+    const entry = manifest.files[name];
+    if (!entry || entry.sha256 !== expected.sha256 || entry.bytes !== expected.bytes || name.startsWith("/") || name.includes("..")) throw new Error(`keyword bundle manifest provenance mismatch: ${name}`);
+    const bytes = await readFile(join(root, name));
+    if (bytes.byteLength !== expected.bytes || hashBytes(bytes) !== expected.sha256) throw new Error(`keyword bundle hash mismatch: ${name}`);
+  }
+  return hashBytes(await readFile(manifestPath));
 }
 
 function unitHtml(unit: DeliveryUnit, generatedAt: string): string {
@@ -243,6 +261,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const agencyReportBytes = await readFile(options.agencyReportPath);
   const clientContent = options.clientContentPath ? await readClientContent(options.clientContentPath) : null;
   const sourceManifestHashes = await collectSourceManifestHashes(summary, options.artifactsDir);
+  const keywordManifestSha256 = summary.keyword_research ? await verifyKeywordBundle(summary.keyword_research, options.artifactsDir) : null;
   const outputDir = resolve(options.outputDir);
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
   const clientIds = [...new Set(summary.scope.entries.map((entry) => entry.client_id).concat(summary.source_status.map((source) => source.client_id)))].sort();
@@ -292,7 +311,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   await writeFile(join(outputDir, "index.html"), index, { encoding: "utf8", flag: "wx", mode: 0o600 });
   const files: Record<string, string | Buffer> = { "index.html": index };
   for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); }
-  const manifest = { schema_version: "1", source: resolve(options.agencyReportPath), agency_report_sha256: hashBytes(agencyReportBytes), source_manifest_sha256: sourceManifestHashes, client_content_sha256: options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
+  const manifest = { schema_version: "1", source: resolve(options.agencyReportPath), agency_report_sha256: hashBytes(agencyReportBytes), source_manifest_sha256: sourceManifestHashes, keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
   await writeFile(join(outputDir, "manifest.json"), canonicalJson(manifest), { encoding: "utf8", flag: "wx", mode: 0o600 });
-  return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + summary.accepted_bundles.length + (rankBundle ? 1 : 0) };
+  return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + summary.accepted_bundles.length + (keywordManifestSha256 ? 1 : 0) + (rankBundle ? 1 : 0) };
 }
