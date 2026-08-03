@@ -216,7 +216,7 @@ async function main(): Promise<void> {
     const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
     validateSourceRegistry(sourceRegistry, registry);
     const scope = buildScopePlan(registry, capabilities);
-    const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry);
+    const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"));
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
     return;
   }

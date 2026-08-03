@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { ScopePlan, SourceRegistry } from "./domain.js";
 import { composeCrossSourceContext, composeExecutiveSummary, writeAgencyReport } from "./agency-report.js";
+import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 
 test("agency report preserves unavailable sources instead of inventing metrics", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-report-test-"));
@@ -74,4 +75,32 @@ test("cross-source context joins GSC pages and queries to Ahrefs without merging
     },
   ]);
   assert.deepEqual(context.map((entry) => [entry.key_type, entry.join_type, entry.key, entry.gsc?.clicks ?? null, entry.ahrefs?.estimated_traffic ?? null]), [["page", "matched", "https://bodymove.pl/a", 10, 200], ["page", "ahrefs_only", "https://bodymove.pl/ahrefs-only", null, 50], ["page", "gsc_only", "https://bodymove.pl/gsc-only", 2, null], ["query", "matched", "rehabilitacja", 4, 80]]);
+});
+
+test("agency report preserves every supplied keyword group and full returned rows", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-keyword-report-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    const inputPath = join(root, "phrases.txt");
+    await writeFile(inputPath, "https://wilmed.pl/\nTUTAJ nie mamy fraz\n\nhttps://cmr-ostroleka.pl/\nfraza jedna\n");
+    const keywordBundle = join(root, "keywords");
+    await writeAhrefsKeywordResearch({
+      inputPath,
+      outputDir: keywordBundle,
+      capabilities: { capabilities: [{ capability_id: "ahrefs.keywords-explorer.overview", provider: "ahrefs", operation_id: "keywords-explorer.overview", api_version: "v3", metric_ids: ["ahrefs.keyword_metrics"], read_write: "read", state: "schema_verified" }] },
+      apiKey: "test-key",
+      fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "fraza jedna", volume: 12, clicks: 3, difficulty: 7, serp_features: ["local_pack"] }] }), { status: 200 }),
+    });
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] };
+    const output = join(root, "report");
+    const summary = await writeAgencyReport(artifacts, output, scope, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath);
+    assert.deepEqual(summary.keyword_research?.input_groups.map((group) => [group.host, group.phrases.length]), [["wilmed.pl", 0], ["cmr-ostroleka.pl", 1]]);
+    assert.equal(summary.keyword_research?.groups[0]?.rows[0]?.difficulty, 7);
+    const appendix = await readFile(join(output, "agency-report-appendix.md"), "utf8");
+    assert.match(appendix, /wilmed\.pl/);
+    assert.match(appendix, /local_pack/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

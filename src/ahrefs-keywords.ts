@@ -44,6 +44,7 @@ export interface KeywordResearchReport {
   source_label: "Estimated — Ahrefs Keywords Explorer";
   country: string;
   input_sha256: string;
+  input_groups: PhraseGroup[];
   notes: string[];
   groups: Array<{ host: string; phrases: string[]; rows: Array<Record<string, unknown>> }>;
 }
@@ -149,7 +150,7 @@ export async function writeAhrefsKeywordResearch(options: KeywordResearchOptions
   }
   results.sort((left, right) => left.host.localeCompare(right.host));
   for (const group of results) group.rows.sort((left, right) => String(left.keyword ?? "").localeCompare(String(right.keyword ?? "")));
-  const report: KeywordResearchReport = { schema_version: "1", provider: "ahrefs", operation: "keywords-explorer.overview", source_label: "Estimated — Ahrefs Keywords Explorer", country, input_sha256: sha256(inputText), notes: input.notes, groups: results };
+  const report: KeywordResearchReport = { schema_version: "1", provider: "ahrefs", operation: "keywords-explorer.overview", source_label: "Estimated — Ahrefs Keywords Explorer", country, input_sha256: sha256(inputText), input_groups: input.groups, notes: input.notes, groups: results };
   const request = { schema_version: "1", provider: "ahrefs", operation: "keywords-explorer.overview", country, max_requests: maxRequests, max_api_units: maxApiUnits, estimated_api_units: groups.length * MIN_UNITS_PER_REQUEST, groups: groups.map((group) => ({ host: group.host, phrases: group.phrases })), credential_ref: "keyring:seo-godlike/ahrefs-api-key", policy_mode: "read_only" as const };
   const markdown = ["# Ahrefs keyword research", "", `- Source: ${report.source_label}`, `- Country: ${country}`, `- Groups: ${results.length}`, "- Values are estimates; no GSC metrics are included.", "", ...results.flatMap((group) => [
     `## ${group.host}`, "", `- Phrases: ${group.phrases.length}`, `- Returned rows: ${group.rows.length}`, "", "| Phrase | Volume | Clicks | CPC | Difficulty | Traffic potential |", "| --- | ---: | ---: | ---: | ---: | ---: |",

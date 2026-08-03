@@ -58,6 +58,14 @@ auth or schema is unknown.
   and byte counts verify. `wilmed.pl` was intentionally skipped because its
   supplied section contained no phrases. This proves the phrase endpoint and
   bundle path, not a complete keyword universe or client-facing report.
+- Local report composition completed without provider rerun at
+  `artifacts/analysis/bodymove-full-seo-report-20260803-final-v2/`. It combines
+  the existing 3 accepted Bodymove bundles with the verified phrase bundle,
+  preserves all 5 supplied input groups and 41 phrases (including empty
+  `wilmed.pl`), renders all 41 returned keyword rows and selected fields, and
+  verifies the five-file executive/appendix manifest. Final status remains
+  `partial` because GA4 and Localo are unavailable; this is a complete local
+  evidence report, not a claim of complete provider coverage.
 - Localo: MCP discovery now succeeds with protocol `2025-03-26` and server
   `localo 1.0.0`. The current schema exposes read-only `query` and `docs`
   tools; `mutation` exists but remains outside this slice. A read-only search

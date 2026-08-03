@@ -5,6 +5,7 @@ import { ReportPackageSummary, writeReportPackage } from "./report-package.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { composeReportInsights, ReportInsight } from "./report-insights.js";
+import { parsePhraseInput, PhraseGroup } from "./ahrefs-keywords.js";
 
 interface AgencyReportSourceStatus {
   source_id?: string;
@@ -51,6 +52,18 @@ export interface AgencyReportSummary {
   cross_source_context: CrossSourceContextEntry[];
   insights: ReportInsight[];
   executive: AgencyExecutiveSummary;
+  keyword_research?: AgencyKeywordResearch;
+}
+
+export interface AgencyKeywordResearch {
+  source_label: "Estimated — Ahrefs Keywords Explorer";
+  country: string;
+  input_sha256: string;
+  input_groups: PhraseGroup[];
+  notes: string[];
+  groups: Array<{ host: string; phrases: string[]; rows: Array<Record<string, unknown>> }>;
+  bundle_path: string;
+  manifest_files: Record<string, { sha256: string; bytes: number }>;
 }
 
 type AgencyInputReport = { client_id: string; client_display_name?: string; property_id?: string; provider: string; analytics: Record<string, unknown> };
@@ -72,6 +85,38 @@ function normalizedText(value: unknown): string | null {
 
 function finiteOrNull(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function safeManifestName(name: string): boolean {
+  return !name.startsWith("/") && !name.split("/").includes("..") && !name.includes("..\\") && !name.includes("../");
+}
+
+async function readKeywordResearchBundle(bundlePath: string, inputPath?: string): Promise<AgencyKeywordResearch> {
+  const root = resolve(bundlePath);
+  const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
+  if (!manifest.files || typeof manifest.files !== "object") throw new Error("invalid keyword research manifest");
+  const verified = new Map<string, string>();
+  const manifestFiles: Record<string, { sha256: string; bytes: number }> = {};
+  for (const [name, entry] of Object.entries(manifest.files)) {
+    if (!safeManifestName(name) || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number" || !Number.isInteger(entry.bytes)) throw new Error(`invalid keyword manifest entry '${name}'`);
+    const content = await readFile(join(root, name), "utf8");
+    if (Buffer.byteLength(content) !== entry.bytes || sha256(content) !== entry.sha256) throw new Error(`keyword manifest hash mismatch for '${name}'`);
+    verified.set(name, content);
+    manifestFiles[name] = { sha256: entry.sha256, bytes: entry.bytes };
+  }
+  const report = JSON.parse(verified.get("report.json") ?? "null") as Partial<AgencyKeywordResearch> & { provider?: unknown; operation?: unknown; input_sha256?: unknown };
+  if (report.provider !== "ahrefs" || report.operation !== "keywords-explorer.overview" || typeof report.input_sha256 !== "string" || !Array.isArray(report.groups)) throw new Error("invalid keyword research report");
+  let inputGroups = Array.isArray(report.input_groups) ? report.input_groups : report.groups.map((group) => ({ host: group.host, phrases: group.phrases }));
+  let notes = Array.isArray(report.notes) ? report.notes : [];
+  if (inputPath) {
+    const inputText = await readFile(resolve(inputPath), "utf8");
+    if (sha256(inputText) !== report.input_sha256) throw new Error("keyword input hash does not match bundle");
+    const parsed = parsePhraseInput(inputText);
+    inputGroups = parsed.groups;
+    notes = parsed.notes;
+  }
+  if (typeof report.country !== "string" || !Array.isArray(report.groups) || !report.groups.every((group) => typeof group.host === "string" && Array.isArray(group.phrases) && Array.isArray(group.rows))) throw new Error("invalid keyword research groups");
+  return { source_label: "Estimated — Ahrefs Keywords Explorer", country: report.country, input_sha256: report.input_sha256, input_groups: inputGroups, notes, groups: report.groups as AgencyKeywordResearch["groups"], bundle_path: root, manifest_files: manifestFiles };
 }
 
 export function composeCrossSourceContext(reports: Array<{ client_id: string; provider: string; analytics: Record<string, unknown> }>): CrossSourceContextEntry[] {
@@ -182,6 +227,16 @@ function markdown(summary: AgencyReportSummary): string {
   const preview = contextRows(summary);
   const gscRows = summary.executive.observed_gsc.map((entry) => `| ${entry.client_id} | ${entry.property_id} | ${entry.date_range.start} to ${entry.date_range.end} | ${entry.clicks} | ${entry.impressions} | ${(entry.ctr * 100).toFixed(2)}% | ${entry.position.toFixed(2)} |`);
   const ahrefsRows = summary.executive.estimated_ahrefs.map((entry) => `| ${entry.client_id} | ${entry.property_id} | ${entry.organic_traffic} | ${entry.organic_keywords} | ${entry.organic_keywords_top_3} |`);
+  const keywordSection = summary.keyword_research ? [
+    "## Estimated — Ahrefs Keywords Explorer",
+    "",
+    `- Input groups: ${summary.keyword_research.input_groups.length}`,
+    `- Non-empty queried groups: ${summary.keyword_research.groups.length}`,
+    `- Returned keyword rows: ${summary.keyword_research.groups.reduce((total, group) => total + group.rows.length, 0)}`,
+    `- Country: ${summary.keyword_research.country}`,
+    "- Full phrase rows and empty input groups are preserved in the evidence appendix.",
+    "",
+  ] : [];
   return [
     "# Agency SEO report",
     "",
@@ -222,6 +277,7 @@ function markdown(summary: AgencyReportSummary): string {
     "",
     ...summary.executive.top_signals.map((insight) => `- **${insight.kind}** — ${insight.key}: ${insight.evidence} (${insight.severity})`),
     "",
+    ...keywordSection,
     "## Opportunities preview",
     "",
     `Showing ${summary.executive.preview.context_shown} of ${summary.executive.preview.context_total} context entries; full appendix available locally in \\[agency-report-appendix.md](agency-report-appendix.md).`,
@@ -248,10 +304,34 @@ function html(summary: AgencyReportSummary): string {
   const gscCards = summary.executive.observed_gsc.map((entry) => `<div class="card"><span class="badge observed">Observed — Google Search Console</span><h3>${escapeHtml(entry.client_id)} · ${escapeHtml(entry.property_id)}</h3><p>${entry.clicks} clicks · ${entry.impressions} impressions · ${(entry.ctr * 100).toFixed(2)}% CTR · position ${entry.position.toFixed(2)}</p></div>`).join("");
   const ahrefsCards = summary.executive.estimated_ahrefs.map((entry) => `<div class="card"><span class="badge estimated">Estimated — Ahrefs</span><h3>${escapeHtml(entry.client_id)} · ${escapeHtml(entry.property_id)}</h3><p>${entry.organic_traffic} organic traffic · ${entry.organic_keywords} keywords · ${entry.organic_keywords_top_3} Top 3</p></div>`).join("");
   const signals = summary.executive.top_signals.map((insight) => `<li><span class="badge signal">Rule-based signal — not a recommendation</span> ${escapeHtml(insight.kind)} — ${escapeHtml(insight.key)}: ${escapeHtml(insight.evidence)}</li>`).join("");
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agency SEO report</title><style>:root{font-family:system-ui,sans-serif;color:#172033;background:#f6f8fb}body{margin:0;padding:2rem;max-width:1200px;margin-inline:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}.card,section{background:#fff;border:1px solid #dbe2ec;border-radius:12px;padding:1rem;margin-block:1rem}.badge{display:inline-block;border-radius:999px;padding:.2rem .55rem;font-size:.8rem;font-weight:700}.observed{background:#dceeff;color:#075985}.estimated{background:#eee5ff;color:#5b21b6}.signal{background:#fff1c2;color:#854d0e}.blocked{background:#e5e7eb;color:#374151}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #e5e7eb}th{background:#f1f5f9}a{color:#075985}@media print{body{background:#fff;padding:.5rem}.card,section{break-inside:avoid}}</style></head><body><header id="summary"><h1>Agency SEO report</h1><p>Status: <strong>${escapeHtml(summary.report_status)}</strong> · accepted evidence: ${summary.accepted_bundles.length} · blocked sources: ${summary.blocked_sources.length}</p></header><section id="kpis"><h2>Observed and estimated KPIs</h2><div class="grid">${gscCards}${ahrefsCards}</div></section><section><h2>Source availability</h2><ul>${summary.source_status.map((source) => `<li><strong>${escapeHtml(source.provider)}</strong>: ${escapeHtml(source.status)}${source.reason ? ` — ${escapeHtml(source.reason)}` : ""}</li>`).join("")}</ul></section><section id="queries"><h2>Executive opportunities preview</h2><p>Showing ${summary.executive.preview.context_shown} of ${summary.executive.preview.context_total}; full appendix available locally.</p><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Join</th><th>Key</th><th>GSC clicks</th><th>GSC impressions</th><th>Ahrefs traffic</th></tr></thead><tbody>${preview}</tbody></table></div></section><section><h2>Rule-based signals</h2><ul>${signals}</ul></section><section id="limitations"><h2>Limitations</h2><ul><li>Ahrefs values are estimated context and are not added to GSC metrics.</li><li>Unavailable sources are not converted to zero.</li><li>Bounded responses are not full inventories.</li><li>Signals are not recommendations or causal conclusions.</li></ul><p><a href="agency-report-appendix.html">Open full evidence appendix</a></p></section></body></html>\n`;
+  const keywordCard = summary.keyword_research ? `<div class="card"><span class="badge estimated">Estimated — Ahrefs Keywords Explorer</span><h3>Phrase research</h3><p>${summary.keyword_research.input_groups.length} input groups · ${summary.keyword_research.groups.reduce((total, group) => total + group.rows.length, 0)} returned rows · ${escapeHtml(summary.keyword_research.country)} market</p></div>` : "";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agency SEO report</title><style>:root{font-family:system-ui,sans-serif;color:#172033;background:#f6f8fb}body{margin:0;padding:2rem;max-width:1200px;margin-inline:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}.card,section{background:#fff;border:1px solid #dbe2ec;border-radius:12px;padding:1rem;margin-block:1rem}.badge{display:inline-block;border-radius:999px;padding:.2rem .55rem;font-size:.8rem;font-weight:700}.observed{background:#dceeff;color:#075985}.estimated{background:#eee5ff;color:#5b21b6}.signal{background:#fff1c2;color:#854d0e}.blocked{background:#e5e7eb;color:#374151}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #e5e7eb}th{background:#f1f5f9}a{color:#075985}@media print{body{background:#fff;padding:.5rem}.card,section{break-inside:avoid}}</style></head><body><header id="summary"><h1>Agency SEO report</h1><p>Status: <strong>${escapeHtml(summary.report_status)}</strong> · accepted evidence: ${summary.accepted_bundles.length} · blocked sources: ${summary.blocked_sources.length}</p></header><section id="kpis"><h2>Observed and estimated KPIs</h2><div class="grid">${gscCards}${ahrefsCards}${keywordCard}</div></section><section><h2>Source availability</h2><ul>${summary.source_status.map((source) => `<li><strong>${escapeHtml(source.provider)}</strong>: ${escapeHtml(source.status)}${source.reason ? ` — ${escapeHtml(source.reason)}` : ""}</li>`).join("")}</ul></section><section id="queries"><h2>Executive opportunities preview</h2><p>Showing ${summary.executive.preview.context_shown} of ${summary.executive.preview.context_total}; full appendix available locally.</p><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Join</th><th>Key</th><th>GSC clicks</th><th>GSC impressions</th><th>Ahrefs traffic</th></tr></thead><tbody>${preview}</tbody></table></div></section><section><h2>Rule-based signals</h2><ul>${signals}</ul></section><section id="limitations"><h2>Limitations</h2><ul><li>Ahrefs values are estimated context and are not added to GSC metrics.</li><li>Unavailable sources are not converted to zero.</li><li>Bounded responses are not full inventories.</li><li>Signals are not recommendations or causal conclusions.</li></ul><p><a href="agency-report-appendix.html">Open full evidence appendix</a></p></section></body></html>\n`;
 }
 
 function appendixMarkdown(summary: AgencyReportSummary, details: string[]): string {
+  const keywordRows = summary.keyword_research ? [
+    "## Full Ahrefs Keywords Explorer phrase research",
+    "",
+    "Values are estimated provider context. Every supplied input group is retained; no phrase rows are merged into GSC metrics.",
+    "",
+    "### Supplied input groups",
+    "",
+    "| Host | Supplied phrases | Returned rows |",
+    "| --- | ---: | ---: |",
+    ...summary.keyword_research.input_groups.map((group) => `| ${group.host} | ${group.phrases.length} | ${summary.keyword_research?.groups.find((result) => result.host === group.host)?.rows.length ?? 0} |`),
+    "",
+    ...summary.keyword_research.groups.flatMap((group) => [
+      `### ${group.host}`,
+      "",
+      "| Keyword | Volume | Monthly volume | Global volume | Clicks | CPC | CPS | Difficulty | Traffic potential | Parent topic | Parent volume | Intents | SERP features | SERP last update |",
+      "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | --- | --- | --- |",
+      ...group.rows.map((row) => `| ${row.keyword ?? "—"} | ${row.volume ?? "—"} | ${row.volume_monthly ?? "—"} | ${row.global_volume ?? "—"} | ${row.clicks ?? "—"} | ${row.cpc ?? "—"} | ${row.cps ?? "—"} | ${row.difficulty ?? "—"} | ${row.traffic_potential ?? "—"} | ${row.parent_topic ?? "—"} | ${row.parent_volume ?? "—"} | ${Array.isArray(row.intents) ? row.intents.join(", ") : row.intents ?? "—"} | ${Array.isArray(row.serp_features) ? row.serp_features.join(", ") : row.serp_features ?? "—"} | ${row.serp_last_update ?? "—"} |`),
+      "",
+    ]),
+    "Notes:",
+    ...summary.keyword_research.notes.map((note) => `- ${note}`),
+    "",
+  ] : [];
   return [
     "# Agency SEO report — evidence appendix",
     "",
@@ -277,6 +357,7 @@ function appendixMarkdown(summary: AgencyReportSummary, details: string[]): stri
     "| --- | --- | --- | --- | --- |",
     ...summary.insights.map((insight) => `| ${insight.client_id} | ${insight.kind} | ${insight.key} | ${insight.evidence} | ${insight.severity} |`),
     "",
+    ...keywordRows,
     "## Evidence reports",
     "",
     ...details,
@@ -287,14 +368,15 @@ function appendixMarkdown(summary: AgencyReportSummary, details: string[]): stri
 function appendixHtml(summary: AgencyReportSummary, details: string[]): string {
   const contextRows = summary.cross_source_context.map((entry) => `<tr>${[entry.client_id, entry.key_type, entry.join_type, entry.key, entry.gsc?.clicks ?? "—", entry.gsc?.impressions ?? "—", entry.gsc ? entry.gsc.position.toFixed(2) : "—", entry.ahrefs?.estimated_traffic ?? "—", entry.ahrefs?.position ?? "—"].map((value) => `<td>${escapeHtml(String(value))}</td>`).join("")}</tr>`).join("\n");
   const insightRows = summary.insights.map((insight) => `<tr>${[insight.client_id, insight.kind, insight.key, insight.evidence, insight.severity].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("\n");
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agency SEO evidence appendix</title><style>body{font-family:system-ui,sans-serif;margin:2rem;color:#172033}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:900px}th,td{text-align:left;padding:.45rem;border-bottom:1px solid #ddd}th{background:#f1f5f9}pre{white-space:pre-wrap;background:#f8fafc;padding:1rem;border:1px solid #e5e7eb}@media print{pre{break-inside:avoid}}</style></head><body><h1>Agency SEO report — evidence appendix</h1><p>Full deterministic context and findings. GSC is observed; Ahrefs is estimated context; unavailable sources are not zero.</p><h2 id="pages">Full cross-source context</h2><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Join</th><th>Key</th><th>GSC clicks</th><th>GSC impressions</th><th>GSC position</th><th>Ahrefs traffic</th><th>Ahrefs position</th></tr></thead><tbody>${contextRows}</tbody></table></div><h2 id="findings">Full rule-based signals</h2><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Key</th><th>Evidence</th><th>Severity</th></tr></thead><tbody>${insightRows}</tbody></table></div><h2 id="evidence">Evidence reports</h2>${details.map(escapeHtml).map((detail) => `<pre>${detail}</pre>`).join("")}</body></html>\n`;
+  const keywordHtml = summary.keyword_research ? `<h2 id="keyword-research">Full Ahrefs Keywords Explorer phrase research</h2><p><span class="badge estimated">Estimated — Ahrefs Keywords Explorer</span> Every supplied input group is retained. Returned rows: ${summary.keyword_research.groups.reduce((total, group) => total + group.rows.length, 0)}.</p>${summary.keyword_research.input_groups.map((group) => { const result = summary.keyword_research?.groups.find((candidate) => candidate.host === group.host); const rows = result?.rows ?? []; return `<h3>${escapeHtml(group.host)}</h3><p>Supplied phrases: ${group.phrases.length}; returned rows: ${rows.length}</p><div class="table-wrap"><table><thead><tr><th>Keyword</th><th>Volume</th><th>Monthly volume</th><th>Global volume</th><th>Clicks</th><th>CPC</th><th>CPS</th><th>Difficulty</th><th>Traffic potential</th><th>Parent topic</th><th>Parent volume</th><th>Intents</th><th>SERP features</th><th>SERP last update</th></tr></thead><tbody>${rows.map((row) => [row.keyword, row.volume, row.volume_monthly, row.global_volume, row.clicks, row.cpc, row.cps, row.difficulty, row.traffic_potential, row.parent_topic, row.parent_volume, Array.isArray(row.intents) ? row.intents.join(", ") : row.intents, Array.isArray(row.serp_features) ? row.serp_features.join(", ") : row.serp_features, row.serp_last_update].map((value) => `<td>${escapeHtml(String(value ?? "—"))}</td>`).join("")).map((row) => `<tr>${row}</tr>`).join("")}</tbody></table></div>`; }).join("")}<h3>Input notes</h3><ul>${summary.keyword_research.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : "";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agency SEO evidence appendix</title><style>body{font-family:system-ui,sans-serif;margin:2rem;color:#172033}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:900px}th,td{text-align:left;padding:.45rem;border-bottom:1px solid #ddd}th{background:#f1f5f9}.badge{display:inline-block;border-radius:999px;padding:.2rem .55rem;font-size:.8rem;font-weight:700;background:#eee5ff;color:#5b21b6}pre{white-space:pre-wrap;background:#f8fafc;padding:1rem;border:1px solid #e5e7eb}@media print{pre{break-inside:avoid}}</style></head><body><h1>Agency SEO report — evidence appendix</h1><p>Full deterministic context and findings. GSC is observed; Ahrefs is estimated context; unavailable sources are not zero.</p><h2 id="pages">Full cross-source context</h2><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Join</th><th>Key</th><th>GSC clicks</th><th>GSC impressions</th><th>GSC position</th><th>Ahrefs traffic</th><th>Ahrefs position</th></tr></thead><tbody>${contextRows}</tbody></table></div><h2 id="findings">Full rule-based signals</h2><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Key</th><th>Evidence</th><th>Severity</th></tr></thead><tbody>${insightRows}</tbody></table></div>${keywordHtml}<h2 id="evidence">Evidence reports</h2>${details.map(escapeHtml).map((detail) => `<pre>${detail}</pre>`).join("")}</body></html>\n`;
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
   await writeFile(path, content, { encoding: "utf8", flag: "wx" });
 }
 
-export async function writeAgencyReport(artifactsDir: string, outputDir: string, scope: ScopePlan, generatedAt = new Date().toISOString(), sourceRegistry: SourceRegistry = { sources: [] }): Promise<AgencyReportSummary> {
+export async function writeAgencyReport(artifactsDir: string, outputDir: string, scope: ScopePlan, generatedAt = new Date().toISOString(), sourceRegistry: SourceRegistry = { sources: [] }, keywordBundlePath?: string, keywordInputPath?: string): Promise<AgencyReportSummary> {
   const clients: ClientRegistry = { clients: [...new Set(scope.entries.map((entry) => entry.client_id))].map((client_id) => ({ client_id, properties: [] })) };
   validateSourceRegistry(sourceRegistry, clients);
   const resolvedArtifacts = resolve(artifactsDir);
@@ -315,7 +397,8 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   }));
   const crossSourceContext = composeCrossSourceContext(reports);
   const insights = composeReportInsights(reports);
-  const summary: AgencyReportSummary = { schema_version: "1", report_status: packageSummary.accepted_bundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: packageSummary.accepted_bundles, blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: crossSourceContext, insights, executive: composeExecutiveSummary(reports, crossSourceContext, insights) };
+  const keywordResearch = keywordBundlePath ? await readKeywordResearchBundle(keywordBundlePath, keywordInputPath) : undefined;
+  const summary: AgencyReportSummary = { schema_version: "1", report_status: packageSummary.accepted_bundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: packageSummary.accepted_bundles, blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: crossSourceContext, insights, executive: composeExecutiveSummary(reports, crossSourceContext, insights), ...(keywordResearch ? { keyword_research: keywordResearch } : {}) };
   const details: string[] = [];
   for (const accepted of packageSummary.accepted_bundles) {
     const path = join(resolvedArtifacts, accepted.bundle_path, "report.md");
