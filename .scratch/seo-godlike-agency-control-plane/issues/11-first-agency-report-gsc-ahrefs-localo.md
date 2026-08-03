@@ -1343,3 +1343,16 @@ auth or schema is unknown.
 - Local proof after the fix: 160 TypeScript tests + 3 context tests, build,
   zero high audit vulnerabilities, and `git diff --check`. No provider
   request, credential read, or Ahrefs rerun occurred.
+
+## Operator configuration truthfulness — 2026-08-03
+
+- OpenCode/DeepSeek follow-up on `2efc936` found no blocker. It identified
+  that `.env.example` described variables which the CLI does not load; the
+  actual contract is explicit CLI flags plus keyring references.
+- Fixed point `ba28613` replaces the inert dotenv template with a truthful
+  operator reference and aligns the remaining analytics-batch output directory
+  with the `0700` permission policy.
+- Local proof passes with 160 TypeScript tests + 3 context tests, build, zero
+  high audit vulnerabilities, and `git diff --check`. No provider request,
+  credential read, or Ahrefs rerun occurred. Legacy percentage ambiguity and
+  recurring-job installation remain deferred as previously recorded.
