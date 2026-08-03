@@ -101,6 +101,7 @@ test("agency report preserves every supplied keyword group and full returned row
       outputDir: keywordBundle,
       capabilities: { capabilities: [{ capability_id: "ahrefs.keywords-explorer.overview", provider: "ahrefs", operation_id: "keywords-explorer.overview", api_version: "v3", metric_ids: ["ahrefs.keyword_metrics"], read_write: "read", state: "schema_verified" }] },
       apiKey: "test-key",
+      allowEstimatedBudget: true,
       fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "fraza jedna", volume: 12, clicks: 3, difficulty: 7, parent_topic: "a|b\nc", serp_features: ["local_pack"] }] }), { status: 200 }),
     });
     const scope: ScopePlan = { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] };

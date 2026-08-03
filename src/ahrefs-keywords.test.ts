@@ -74,7 +74,7 @@ test("keyword research writes a hash-bound deterministic bundle and refuses over
     await writeFile(inputPath, "https://example.pl/\nfraza\n");
     const outputDir = join(directory, "output");
     const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({ keywords: [{ keyword: "fraza", volume: 100 }] }), { status: 200 });
-    const report = await writeAhrefsKeywordResearch({ inputPath, outputDir, capabilities, apiKey: "test-key", fetchImpl });
+    const report = await writeAhrefsKeywordResearch({ inputPath, outputDir, capabilities, apiKey: "test-key", allowEstimatedBudget: true, fetchImpl });
     assert.equal(report.groups[0]?.rows[0]?.keyword, "fraza");
     const manifest = JSON.parse(await readFile(join(outputDir, "manifest.json"), "utf8"));
     assert.equal(Object.keys(manifest.files).length, 4);
@@ -92,6 +92,19 @@ test("keyword writer rejects an insufficient unit budget before network", async 
     const inputPath = join(directory, "phrases.txt");
     await writeFile(inputPath, "https://example.pl/\nfraza\n");
     await assert.rejects(() => writeAhrefsKeywordResearch({ inputPath, outputDir: join(directory, "output"), capabilities, apiKey: "test-key", maxApiUnits: 49, fetchImpl: async () => { calls += 1; return new Response("{}"); } }), /keyword API unit budget exceeded/);
+    assert.equal(calls, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("keyword writer fails closed without explicit estimated-budget acceptance before network", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-godlike-keywords-explicit-budget-"));
+  let calls = 0;
+  try {
+    const inputPath = join(directory, "phrases.txt");
+    await writeFile(inputPath, "https://example.pl/\nfraza\n");
+    await assert.rejects(() => writeAhrefsKeywordResearch({ inputPath, outputDir: join(directory, "output"), capabilities, apiKey: "test-key", fetchImpl: async () => { calls += 1; return new Response("{}"); } }), /requires explicit --allow-estimated-budget/);
     assert.equal(calls, 0);
   } finally {
     await rm(directory, { recursive: true, force: true });

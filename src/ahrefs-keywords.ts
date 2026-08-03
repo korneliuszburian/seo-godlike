@@ -28,6 +28,7 @@ export interface KeywordResearchOptions {
   country?: string;
   maxRequests?: number;
   maxApiUnits?: number;
+  allowEstimatedBudget?: boolean;
   capabilities: CapabilityRegistry;
   apiKey?: string;
   fetchImpl?: typeof fetch;
@@ -142,6 +143,9 @@ export async function writeAhrefsKeywordResearch(options: KeywordResearchOptions
   const maxRequests = options.maxRequests ?? DEFAULT_MAX_REQUESTS;
   const maxApiUnits = options.maxApiUnits ?? DEFAULT_MAX_API_UNITS;
   const groups = assertRequestBudget(input.groups, maxRequests, maxApiUnits);
+  if (!options.allowEstimatedBudget) {
+    throw new Error("Ahrefs keyword research requires explicit --allow-estimated-budget because provider unit cost depends on returned rows and selected fields");
+  }
   const apiKey = options.apiKey ?? await getAhrefsApiKey();
   const fetchImpl = options.fetchImpl ?? fetch;
   const results: KeywordResearchReport["groups"] = [];
@@ -155,7 +159,7 @@ export async function writeAhrefsKeywordResearch(options: KeywordResearchOptions
   results.sort((left, right) => left.host.localeCompare(right.host));
   for (const group of results) group.rows.sort((left, right) => String(left.keyword ?? "").localeCompare(String(right.keyword ?? "")));
   const report: KeywordResearchReport = { schema_version: "1", provider: "ahrefs", operation: "keywords-explorer.overview", source_label: "Estimated — Ahrefs Keywords Explorer", country, input_sha256: sha256(inputText), input_groups: input.groups, notes: input.notes, groups: results };
-  const request = { schema_version: "1", provider: "ahrefs", operation: "keywords-explorer.overview", country, max_requests: maxRequests, max_api_units: maxApiUnits, estimated_api_units: groups.length * MIN_UNITS_PER_REQUEST, groups: groups.map((group) => ({ host: group.host, phrases: group.phrases })), credential_ref: "keyring:seo-godlike/ahrefs-api-key", policy_mode: "read_only" as const };
+  const request = { schema_version: "1", provider: "ahrefs", operation: "keywords-explorer.overview", country, max_requests: maxRequests, max_api_units: maxApiUnits, estimated_api_units: groups.length * MIN_UNITS_PER_REQUEST, budget_basis: "minimum_request_cost_only; actual_cost_depends_on_returned_rows_and_selected_fields", estimated_budget_explicitly_accepted: true, groups: groups.map((group) => ({ host: group.host, phrases: group.phrases })), credential_ref: "keyring:seo-godlike/ahrefs-api-key", policy_mode: "read_only" as const };
   const markdown = ["# Ahrefs keyword research", "", `- Source: ${report.source_label}`, `- Country: ${country}`, `- Groups: ${results.length}`, "- Values are estimates; no GSC metrics are included.", "", ...results.flatMap((group) => [
     `## ${group.host}`, "", `- Phrases: ${group.phrases.length}`, `- Returned rows: ${group.rows.length}`, "", "| Phrase | Volume | Clicks | CPC | Difficulty | Traffic potential |", "| --- | ---: | ---: | ---: | ---: | ---: |",
     ...group.rows.map((row) => `| ${markdownCell(row.keyword)} | ${markdownCell(row.volume)} | ${markdownCell(row.clicks)} | ${markdownCell(row.cpc)} | ${markdownCell(row.difficulty)} | ${markdownCell(row.traffic_potential)} |`), "",

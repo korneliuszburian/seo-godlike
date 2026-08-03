@@ -397,6 +397,7 @@ async function main(): Promise<void> {
       country: optionalArgument("--country"),
       maxRequests: maxRequestsValue ? Number(maxRequestsValue) : undefined,
       maxApiUnits: maxApiUnitsValue ? Number(maxApiUnitsValue) : undefined,
+      allowEstimatedBudget: process.argv.includes("--allow-estimated-budget"),
     });
     process.stdout.write(`${JSON.stringify({ provider: report.provider, operation: report.operation, groups: report.groups.length, output: resolve(argument("--output")) }, null, 2)}\n`);
     return;
