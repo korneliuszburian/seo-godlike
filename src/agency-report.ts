@@ -575,7 +575,13 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
     if (source.status === "ready") return { ...source, status: "unavailable" as const, reason: "No accepted evidence bundle was found for this source", reason_code: "missing_evidence_bundle" as const, bundle_path: null };
     return source;
   });
-  const externalStatus = sourceRegistry.sources.map((source) => ({ source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: null } satisfies AgencyReportSourceStatus));
+  const rankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
+  const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
+  const externalStatus = sourceRegistry.sources.map((source) => {
+    const hasEvidence = source.provider === "serprobot" && rankMonitoringEvidence.some((snapshot) => snapshot.client_id === source.client_id && snapshot.source_config?.project_id === source.target);
+    if (source.status === "ready" && !hasEvidence) return { source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: "unavailable" as const, reason: "No accepted evidence bundle was found for this source", reason_code: "missing_evidence_bundle" as const, bundle_path: null } satisfies AgencyReportSourceStatus;
+    return { source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: null } satisfies AgencyReportSourceStatus;
+  });
   const sourceStatus = [...propertyStatus, ...externalStatus];
   const currentAcceptedBundles = [...new Map(sourceStatus.map((source) => [source.bundle_path, source.bundle_path ? packageSummary.accepted_bundles.find((accepted) => accepted.bundle_path === source.bundle_path) : undefined]).filter((entry): entry is [string, ReportPackageSummary["accepted_bundles"][number]] => Boolean(entry[0] && entry[1]))).values()];
   const reports = await Promise.all(currentAcceptedBundles.map(async (accepted) => {
@@ -585,8 +591,6 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const crossSourceContext = composeCrossSourceContext(reports);
   const insights = composeReportInsights(reports);
   const keywordResearch = keywordBundlePath ? await verifyKeywordResearchBundle(keywordBundlePath, keywordBundleRoot ?? resolvedArtifacts, keywordInputPath) : undefined;
-  const rankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
-  const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
   const rankMonitoring = rankMonitoringEvidence[0];
   const profileContext = composeAhrefsProfileContext(reports);
   const summary: AgencyReportSummary = { schema_version: "1", report_status: currentAcceptedBundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: currentAcceptedBundles, history_bundle_paths: packageSummary.accepted_bundles.map((entry) => entry.bundle_path), blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: crossSourceContext, insights, executive: composeExecutiveSummary(reports, crossSourceContext, insights), ...(profileContext.length ? { ahrefs_profile_context: profileContext } : {}), ...(keywordResearch ? { keyword_research: keywordResearch } : {}), ...(rankMonitoring ? { rank_monitoring: rankMonitoring } : {}), ...(rankMonitoringEvidence.length > 1 ? { rank_monitoring_snapshots: rankMonitoringEvidence } : {}) };

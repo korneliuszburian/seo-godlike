@@ -1444,3 +1444,14 @@ auth or schema is unknown.
   3 context tests, build, zero high audit vulnerabilities, and
   `git diff --check`. No provider request, credential read, Ahrefs rerun,
   report regeneration, or publication occurred.
+
+- Follow-up OpenCode/DeepSeek review confirmed the same boundary for
+  standalone external sources: a ready SERPROBOT/Localo/GA4/visibility
+  registry entry without its corresponding evidence is now unavailable and
+  blocked. SERPROBOT becomes ready only when a matching, verified rank
+  snapshot is supplied.
+- A second focused falsifier covers one accepted GSC bundle plus one ready
+  external source without rank evidence. Proof now passes with 168 TypeScript
+  tests + 3 context tests, build, zero high audit vulnerabilities, and
+  `git diff --check`. No provider request, credential read, Ahrefs rerun,
+  report regeneration, or publication occurred.
