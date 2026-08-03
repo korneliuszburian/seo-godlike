@@ -323,13 +323,13 @@ function html(summary: HistorySummary): string {
 }
 
 async function writeExclusive(path: string, content: string): Promise<void> {
-  await writeFile(path, content, { encoding: "utf8", flag: "wx" });
+  await writeFile(path, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 
 export async function writeHistoryDashboard(artifactsDir: string, outputDir: string): Promise<HistorySummary> {
   const history = await readHistory(artifactsDir);
   const summary = summarizeHistory(history.entries, history.skippedBundles);
-  await mkdir(outputDir, { recursive: false });
+  await mkdir(outputDir, { recursive: false, mode: 0o700 });
   const files = { "executive-summary.json": `${JSON.stringify(summary, null, 2)}\n`, "executive-summary.md": markdown(summary), "executive-summary.html": html(summary) };
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
   await writeExclusive(join(outputDir, "manifest.json"), JSON.stringify({ schema_version: "1", source_artifacts_dir: "artifacts", files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: sha256(Buffer.from(content)), bytes: Buffer.byteLength(content) }])) }, null, 2) + "\n");

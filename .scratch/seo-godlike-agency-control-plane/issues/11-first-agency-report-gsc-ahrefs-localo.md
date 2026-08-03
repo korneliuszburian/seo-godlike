@@ -1541,3 +1541,16 @@ auth or schema is unknown.
 - Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
+
+## History dashboard permission hardening — 2026-08-04
+
+- The final OpenCode/DeepSeek review found that history dashboard output used
+  process defaults instead of the repository's private evidence modes.
+- History output directories now use `0700` and generated JSON/Markdown/HTML/
+  manifest files use `0600`; a focused test asserts both boundaries.
+- History totals' zero-vs-unavailable representation remains explicitly
+  deferred because it requires a nullable metric contract across all history
+  renderers.
+- Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.

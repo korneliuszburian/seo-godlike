@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -105,6 +105,8 @@ test("history aggregates two bundles chronologically and writes deterministic da
   assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /2026-06-30/);
   assert.match(await readFile(join(output, "executive-summary.html"), "utf8"), /<table>/);
   assert.equal(JSON.parse(await readFile(join(output, "executive-summary.json"), "utf8")).bundle_count, 2);
+  assert.equal((await stat(output)).mode & 0o777, 0o700);
+  assert.equal((await stat(join(output, "executive-summary.html"))).mode & 0o777, 0o600);
   const dashboardManifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, { sha256: string; bytes: number }> };
   assert.deepEqual(Object.keys(dashboardManifest.files).sort(), ["executive-summary.html", "executive-summary.json", "executive-summary.md"]);
   for (const [name, expected] of Object.entries(dashboardManifest.files)) {
