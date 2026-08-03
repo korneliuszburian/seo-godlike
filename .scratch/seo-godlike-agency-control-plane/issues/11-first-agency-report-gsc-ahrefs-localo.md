@@ -50,6 +50,14 @@ auth or schema is unknown.
   before network IO, a preflight unit budget, and one raw response artifact per
   group. A prior manual smoke observed four HTTP 200 responses but did not
   persist raw output; it is not accepted as the final phrase research bundle.
+- Bounded live phrase research completed on 2026-08-03 using 4 Ahrefs
+  Keywords Explorer requests, lowercase country `pl`, and an explicit 200-unit
+  ceiling. The ignored bundle
+  `artifacts/analysis/ahrefs-keyword-research-20260803/` contains 4 groups,
+  41 returned rows, 3 retained notes, and 7 manifest-bound files; all hashes
+  and byte counts verify. `wilmed.pl` was intentionally skipped because its
+  supplied section contained no phrases. This proves the phrase endpoint and
+  bundle path, not a complete keyword universe or client-facing report.
 - Localo: MCP discovery now succeeds with protocol `2025-03-26` and server
   `localo 1.0.0`. The current schema exposes read-only `query` and `docs`
   tools; `mutation` exists but remains outside this slice. A read-only search
