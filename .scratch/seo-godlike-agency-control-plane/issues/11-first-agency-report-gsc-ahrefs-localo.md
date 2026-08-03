@@ -422,3 +422,12 @@ auth or schema is unknown.
   no reviewer finding is accepted from it without a reproducible claim.
 - No provider request, credential read, edit, commit, or tracker mutation was
   performed by the reviewer.
+
+## Recurring rank task follow-up — 2026-08-03
+
+- Commit `7a41b13` gives the monthly agency run an explicit local SERPROBOT
+  source task. A matching manifest-bound snapshot is verified read-only and
+  succeeds; a missing snapshot is recorded as `blocked`; unsupported external
+  providers no longer appear as ready tasks without an executor.
+- Focused agency-run/rank proof passes. This remains an import-based source
+  until a stable direct SERPROBOT response contract is verified.
