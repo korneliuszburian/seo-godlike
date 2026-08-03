@@ -1430,3 +1430,17 @@ auth or schema is unknown.
   tests, build, zero high audit vulnerabilities, and `git diff --check`.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
+
+## Fail-closed missing evidence — 2026-08-04
+
+- OpenCode/DeepSeek review of `628b5f4` found a medium truthfulness gap: a
+  capability-ready source without an accepted evidence bundle could remain
+  `ready`, and a mixed report could be marked `reportable`.
+- Fixed in the follow-up slice: such a source is now `unavailable` with the
+  typed `reason_code: missing_evidence_bundle`, is included in
+  `blocked_sources`, and cannot make the report reportable. Client delivery
+  renders an explicit Polish missing-evidence explanation.
+- Focused mixed-source falsifier plus full proof pass: 167 TypeScript tests +
+  3 context tests, build, zero high audit vulnerabilities, and
+  `git diff --check`. No provider request, credential read, Ahrefs rerun,
+  report regeneration, or publication occurred.

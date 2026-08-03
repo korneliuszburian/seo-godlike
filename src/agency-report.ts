@@ -9,7 +9,7 @@ import { parsePhraseInput, PhraseGroup } from "./ahrefs-keywords.js";
 import { RANK_MONITORING_SOURCE_LABEL, rankMonitoringClientIds, readRankMonitoringBundle, RankMonitoringSnapshot } from "./rank-monitoring.js";
 import { resolveExistingInside } from "./path-confinement.js";
 
-export type AgencyReportSourceReasonCode = "stale_snapshot";
+export type AgencyReportSourceReasonCode = "missing_evidence_bundle" | "stale_snapshot";
 
 interface AgencyReportSourceStatus {
   source_id?: string;
@@ -572,6 +572,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
     const accepted = acceptedBundleFor(source, packageSummary);
     if (accepted && !ahrefsSnapshotFreshForGsc(accepted, packageSummary)) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", reason_code: "stale_snapshot" as const, bundle_path: null };
     if (accepted) return { ...source, status: "ready" as const, reason: null, bundle_path: accepted.bundle_path };
+    if (source.status === "ready") return { ...source, status: "unavailable" as const, reason: "No accepted evidence bundle was found for this source", reason_code: "missing_evidence_bundle" as const, bundle_path: null };
     return source;
   });
   const externalStatus = sourceRegistry.sources.map((source) => ({ source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: null } satisfies AgencyReportSourceStatus));

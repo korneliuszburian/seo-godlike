@@ -74,6 +74,27 @@ test("agency report selects the newest accepted bundle per current source identi
   }
 });
 
+test("agency report fails closed when a ready source has no accepted evidence bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-missing-evidence-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    await writeAgencySelectionBundle(artifacts, "gsc", "2026-07-29T08:00:00.000Z", 2);
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "ready", entries: [
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "bodymove.pl", provider: "ahrefs", status: "ready", reason: null, metrics: [] },
+    ] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", { sources: [] });
+    const ahrefsStatus = summary.source_status.find((source) => source.provider === "ahrefs");
+    assert.equal(ahrefsStatus?.status, "unavailable");
+    assert.equal(ahrefsStatus?.reason_code, "missing_evidence_bundle");
+    assert.equal(summary.blocked_sources.some((source) => source.provider === "ahrefs"), true);
+    assert.equal(summary.report_status, "partial");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("agency report excludes an Ahrefs snapshot older than the selected GSC period", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-period-test-"));
   try {
