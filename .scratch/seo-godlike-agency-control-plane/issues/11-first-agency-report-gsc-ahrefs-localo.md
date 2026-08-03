@@ -544,3 +544,17 @@ auth or schema is unknown.
 - Current local proof remains: 111 TypeScript tests + 3 context tests, build,
   audit with zero high vulnerabilities, and `git diff --check`. No provider
   request, rerun, credential read, or artifact regeneration was performed.
+
+## Agency appendix completeness follow-up — 2026-08-03
+
+- The canonical agency report now preserves the complete bounded Ahrefs
+  `site-explorer.profile` context already present in accepted bundles: top
+  pages, organic keyword rows and organic competitors, scoped by client,
+  canonical property, market and snapshot date.
+- The same normalized rows are rendered in the agency Markdown and HTML
+  evidence appendices. Empty profile sections remain explicit and Ahrefs is
+  labelled as estimated context; no GSC/Ahrefs metric aggregation was added.
+- A focused test proves deterministic profile extraction and preservation of
+  representative page, keyword and competitor rows. The full local suite,
+  build, audit and whitespace checks are the proof boundary; no provider
+  request, Ahrefs rerun, credential read or generated-report rerun was made.

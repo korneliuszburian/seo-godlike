@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { ScopePlan, SourceRegistry } from "./domain.js";
-import { composeCrossSourceContext, composeExecutiveSummary, writeAgencyReport } from "./agency-report.js";
+import { composeAhrefsProfileContext, composeCrossSourceContext, composeExecutiveSummary, writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 
@@ -86,6 +86,29 @@ test("cross-source context preserves missing GSC fields as unavailable instead o
   ]);
   assert.equal(context[0]?.gsc?.clicks, null);
   assert.equal(context[0]?.gsc?.ctr, null);
+});
+
+test("agency report preserves every returned Ahrefs profile row for the appendix", () => {
+  const profiles = composeAhrefsProfileContext([{
+    client_id: "bodymove",
+    property_id: "bodymove.pl",
+    provider: "ahrefs",
+    operation: "site-explorer.profile",
+    generated_at: "2026-07-29T08:00:00.000Z",
+    request: { country: "pl" },
+    analytics: {
+      current: {
+        top_pages: [{ url: "https://bodymove.pl/usluga", sum_traffic: 80 }],
+        organic_keyword_rows: [{ keyword: "rehabilitacja", best_position: 5, serp_features: ["local_pack"], is_local: true }],
+        competitors: [{ competitor_domain: "konkurent.pl", traffic: 55 }],
+      },
+    },
+  }]);
+  assert.equal(profiles.length, 1);
+  assert.equal(profiles[0]?.country, "pl");
+  assert.equal(profiles[0]?.top_pages.length, 1);
+  assert.equal(profiles[0]?.organic_keyword_rows[0]?.keyword, "rehabilitacja");
+  assert.equal(profiles[0]?.competitors[0]?.competitor_domain, "konkurent.pl");
 });
 
 test("agency report preserves every supplied keyword group and full returned rows", async () => {
