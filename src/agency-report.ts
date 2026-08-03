@@ -227,6 +227,21 @@ function profileValue(row: Record<string, unknown>, key: string): string {
   return String(value);
 }
 
+function profileTrafficDiffPercent(row: Record<string, unknown>): string {
+  const canonical = finiteOrNull(row.traffic_diff_percent_ratio);
+  if (canonical !== null) return displayPercent(canonical);
+  const legacy = finiteOrNull(row.traffic_diff_percent);
+  if (legacy === null) return "—";
+  // Older normalized bundles stored this field either as a ratio (0.14)
+  // or as hundredths of a percent (-230). Render both representations
+  // through the same canonical percentage surface.
+  return Math.abs(legacy) > 1 ? `${(legacy / 100).toFixed(2)}%` : displayPercent(legacy);
+}
+
+function profileColumns(row: Record<string, unknown>, columns: string[]): string[] {
+  return columns.map((key) => key === "traffic_diff_percent" ? profileTrafficDiffPercent(row) : profileValue(row, key));
+}
+
 function profileIntents(row: Record<string, unknown>): string {
   const labels = ["branded", "commercial", "informational", "local", "navigational", "transactional"];
   const selected = labels.filter((label) => row[`is_${label}`] === true);
@@ -258,7 +273,7 @@ function ahrefsProfileMarkdown(profiles: AhrefsProfileEvidence[]): string[] {
     const scope = `${profile.client_id} | ${profile.property_id} | ${profile.country ?? "—"} | ${profile.generated_at?.slice(0, 10) ?? "—"}`;
     lines.push(`## Estimated — Ahrefs profile: ${scope}`, "", "Wszystkie zwrócone wiersze profilu są zachowane; to ograniczony kontekst estymowany, nie pełna inwentaryzacja.", "");
     lines.push("### Najważniejsze strony", "", "| URL | Szac. ruch | Zmiana ruchu | Zmiana % | Frazy | Główna fraza | Pozycja | Zmiana pozycji | Domeny odsyłające | UR |", "| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |");
-    for (const row of profile.top_pages) lines.push(`| ${["url", "sum_traffic", "traffic_diff", "traffic_diff_percent", "keywords", "top_keyword", "top_keyword_best_position", "top_keyword_best_position_diff", "referring_domains", "ur"].map((key) => markdownCell(profileValue(row, key))).join(" | ")} |`);
+    for (const row of profile.top_pages) lines.push(`| ${profileColumns(row, ["url", "sum_traffic", "traffic_diff", "traffic_diff_percent", "keywords", "top_keyword", "top_keyword_best_position", "top_keyword_best_position_diff", "referring_domains", "ur"]).map(markdownCell).join(" | ")} |`);
     if (!profile.top_pages.length) lines.push("| — | — | — | — | — | — | — | — | — | — |");
     lines.push("", "### Frazy organiczne", "", "| Fraza | Kraj | Pozycja | Zmiana pozycji | Zestaw pozycji | URL | Szac. ruch | Poprzedni ruch | Wolumen | KD | Intencje | SERP features | Status |", "| --- | --- | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |");
     for (const row of profile.organic_keyword_rows) lines.push(`| ${["keyword", "keyword_country", "best_position", "best_position_diff", "best_position_set", "best_position_url", "sum_traffic", "sum_traffic_prev", "volume", "keyword_difficulty"].map((key) => markdownCell(profileValue(row, key))).concat([markdownCell(profileIntents(row)), markdownCell(profileValue(row, "serp_features")), markdownCell(profileValue(row, "status"))]).join(" | ")} |`);
@@ -501,7 +516,7 @@ function ahrefsProfileHtml(profiles: AhrefsProfileEvidence[]): string {
   return profiles.map((profile) => {
     const label = `${profile.client_id} · ${profile.property_id} · ${profile.country ?? "—"} · ${profile.generated_at?.slice(0, 10) ?? "—"}`;
     const row = (values: string[]) => `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`;
-    const pages = profile.top_pages.map((item) => row(["url", "sum_traffic", "traffic_diff", "traffic_diff_percent", "keywords", "top_keyword", "top_keyword_best_position", "top_keyword_best_position_diff", "referring_domains", "ur"].map((key) => profileValue(item, key)))).join("");
+    const pages = profile.top_pages.map((item) => row(profileColumns(item, ["url", "sum_traffic", "traffic_diff", "traffic_diff_percent", "keywords", "top_keyword", "top_keyword_best_position", "top_keyword_best_position_diff", "referring_domains", "ur"]))).join("");
     const keywords = profile.organic_keyword_rows.map((item) => row(["keyword", "keyword_country", "best_position", "best_position_diff", "best_position_set", "best_position_url", "sum_traffic", "sum_traffic_prev", "volume", "keyword_difficulty"].map((key) => profileValue(item, key)).concat([profileIntents(item), profileValue(item, "serp_features"), profileValue(item, "status")]))).join("");
     const competitors = profile.competitors.map((item) => row(["competitor_domain", "domain_rating", "keywords_common", "keywords_target", "keywords_competitor", "share", "traffic", "traffic_diff", "value"].map((key) => profileValue(item, key)))).join("");
     return `<section id="ahrefs-profile-${escapeHtml(profile.client_id)}-${escapeHtml(profile.property_id.replaceAll(/[^a-zA-Z0-9_-]/g, "-") )}"><h2>Estimated — Ahrefs site-explorer profile</h2><p><span class="badge estimated">Estimated — Ahrefs</span> ${escapeHtml(label)}. Wszystkie zwrócone wiersze profilu są zachowane.</p>${table("Najważniejsze strony", ["URL", "Szac. ruch", "Zmiana ruchu", "Zmiana %", "Frazy", "Główna fraza", "Pozycja", "Zmiana pozycji", "Domeny odsyłające", "UR"], pages, "Brak zwróconych stron.")}${table("Frazy organiczne", ["Fraza", "Kraj", "Pozycja", "Zmiana pozycji", "Zestaw pozycji", "URL", "Szac. ruch", "Poprzedni ruch", "Wolumen", "KD", "Intencje", "SERP features", "Status"], keywords, "Brak zwróconych fraz organicznych.")}${table("Konkurenci organiczni", ["Domena", "DR", "Wspólne frazy", "Frazy celu", "Frazy konkurenta", "Udział", "Szac. ruch", "Zmiana ruchu", "Wartość"], competitors, "Brak zwróconych konkurentów.")}</section>`;

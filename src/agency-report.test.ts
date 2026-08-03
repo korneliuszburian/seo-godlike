@@ -164,7 +164,7 @@ test("agency report preserves every returned Ahrefs profile row for the appendix
     request: { country: "pl" },
     analytics: {
       current: {
-        top_pages: [{ url: "https://bodymove.pl/usluga", sum_traffic: 80 }],
+        top_pages: [{ url: "https://bodymove.pl/usluga", sum_traffic: 80, traffic_diff_percent: -230, traffic_diff_percent_ratio: -0.023 }],
         organic_keyword_rows: [{ keyword: "rehabilitacja", best_position: 5, serp_features: ["local_pack"], is_local: true }],
         competitors: [{ competitor_domain: "konkurent.pl", traffic: 55 }],
       },
@@ -173,8 +173,46 @@ test("agency report preserves every returned Ahrefs profile row for the appendix
   assert.equal(profiles.length, 1);
   assert.equal(profiles[0]?.country, "pl");
   assert.equal(profiles[0]?.top_pages.length, 1);
+  assert.equal(profiles[0]?.top_pages[0]?.traffic_diff_percent_ratio, -0.023);
   assert.equal(profiles[0]?.organic_keyword_rows[0]?.keyword, "rehabilitacja");
   assert.equal(profiles[0]?.competitors[0]?.competitor_domain, "konkurent.pl");
+});
+
+test("agency report renders legacy Ahrefs percentage units consistently in both appendices", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-ahrefs-percent-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    const bundle = join(artifacts, "ahrefs-profile");
+    await mkdir(bundle, { recursive: true });
+    const withoutHash = {
+      schema_version: "1", run_id: "run-ahrefs-profile", client_id: "bodymove", client_display_name: "Bodymove",
+      property_refs: ["bodymove.pl"], generated_at: "2026-07-29T08:00:00.000Z", evidence_manifest_ref: "manifest.json",
+      provider: "ahrefs", operation: "site-explorer.profile", request: { country: "pl" },
+      analytics: { current_date_range: { start: "2026-07-29", end: "2026-07-29" }, current: {
+        organic_traffic: 100, organic_keywords: 50, organic_keywords_top_3: 5,
+        top_pages: [{ url: "https://bodymove.pl/usluga", sum_traffic: 80, traffic_diff_percent: -230 }],
+        organic_keyword_rows: [], competitors: [],
+      } },
+    };
+    const files = {
+      "report.json": canonicalJson({ ...withoutHash, canonical_json_hash: sha256(canonicalJson(withoutHash)) }),
+      "request.json": canonicalJson({ run_id: "run-ahrefs-profile", client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs", operation: "site-explorer.profile", policy_mode: "read_only" }),
+      "report.md": "# Ahrefs profile\n",
+    };
+    for (const [name, content] of Object.entries(files)) await writeFile(join(bundle, name), content);
+    const manifestFiles = Object.fromEntries(Object.keys(files).map((name) => {
+      const bytes = readFileSync(join(bundle, name));
+      return [name, { sha256: createHash("sha256").update(bytes).digest("hex"), bytes: bytes.byteLength }];
+    }));
+    await writeFile(join(bundle, "manifest.json"), canonicalJson({ schema_version: "1", files: manifestFiles }));
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "ready", entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "bodymove.pl", provider: "ahrefs", status: "ready", reason: null, metrics: [] }] };
+    const output = join(root, "report");
+    await writeAgencyReport(artifacts, output, scope, "2026-08-03T00:00:00.000Z", { sources: [] });
+    assert.match(await readFile(join(output, "agency-report-appendix.md"), "utf8"), /\| -2\.30% \|/);
+    assert.match(await readFile(join(output, "agency-report-appendix.html"), "utf8"), />-2\.30%<\/td>/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("agency report preserves every supplied keyword group and full returned rows", async () => {
