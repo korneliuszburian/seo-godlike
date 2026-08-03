@@ -84,10 +84,10 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
 
 export async function writeRankMonitoringBundle(inputPath: string, outputDir: string): Promise<RankMonitoringBundle> {
   const snapshots = parseRankMonitoringCollection(JSON.parse(await readFile(inputPath, "utf8")) as unknown);
-  const report = canonicalJson(snapshots.length === 1 ? snapshots[0] : { schema_version: "1", provider: "serprobot", snapshots });
+  const report = canonicalJson(snapshots.length === 1 ? snapshots[0] : { schema_version: "1", provider: RANK_MONITORING_PROVIDER, snapshots });
   const snapshot = snapshots[0]!;
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
-  const manifest = canonicalJson({ schema_version: "1", provider: "serprobot", client_id: snapshots.length === 1 ? snapshot.client_id : "multi-client", client_ids: snapshots.map((item) => item.client_id), files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
+  const manifest = canonicalJson({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, client_id: snapshots.length === 1 ? snapshot.client_id : "multi-client", client_ids: snapshots.map((item) => item.client_id), files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
   await writeFile(join(outputDir, "report.json"), report, { encoding: "utf8", flag: "wx", mode: 0o600 });
   await writeFile(join(outputDir, "manifest.json"), manifest, { encoding: "utf8", flag: "wx", mode: 0o600 });
   return { snapshot, snapshots, manifest_sha256: sha256(manifest) };

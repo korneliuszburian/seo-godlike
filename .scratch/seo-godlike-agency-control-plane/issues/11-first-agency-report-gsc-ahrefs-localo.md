@@ -984,3 +984,11 @@ auth or schema is unknown.
 - Local proof remains green: 140 TypeScript tests + 3 context tests, build,
   zero high audit vulnerabilities and `git diff --check`. No provider request,
   credential read, Ahrefs rerun or production report rerun occurred.
+
+## Rank provider literal deduplication — 2026-08-03
+
+- The shared rank-provider constant now also owns the serialized report and
+  manifest provider fields; no independent runtime write literal remains.
+- Focused rank/report proof and `git diff --check` pass. OpenCode's final
+  bounded review found no blocker; its only retained note was this low-risk
+  literal drift, now closed. No provider request or production rerun occurred.
