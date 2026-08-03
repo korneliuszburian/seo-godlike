@@ -693,3 +693,18 @@ auth or schema is unknown.
   Ahrefs rerun or generated production report rerun was performed.
 - Independent OpenCode bounded review found no blocker; it recorded only the
   non-blocking coupling between the omission helper and current section markup.
+
+## Client delivery Polish copy slice — 2026-08-03
+
+- Client-facing HTML, action tables, notes and draft email now render provider,
+  action-type and action-status identifiers as deterministic Polish labels.
+  Unavailable source status is also rendered in Polish; evidence values and
+  manifest structure are unchanged apart from rendered output bytes.
+- The supplied Looker/Data Studio PDF was used only as a presentation and copy
+  reference. No metrics were imported and no provider or Ahrefs request was
+  performed.
+- Local proof: 116 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`.
+- OpenCode/DeepSeek bounded read-only review found no blockers. It noted and
+  this slice addressed cosmetic email/HTML status-case drift; the remaining
+  provider label fallback is intentionally defensive for future schema values.

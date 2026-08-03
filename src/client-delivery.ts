@@ -61,6 +61,23 @@ function finite(value: unknown): number | null { return typeof value === "number
 function escapeHtml(value: unknown): string {
   return String(value ?? "—").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
+function providerLabel(provider: string): string {
+  return ({
+    "google-search-console": "Google Search Console",
+    "google-analytics": "Google Analytics 4",
+    ahrefs: "Ahrefs",
+    "ahrefs-keywords-explorer": "Ahrefs Keywords Explorer",
+    serprobot: "SERPROBOT",
+    localo: "Localo",
+    semstorm: "Semstorm",
+  } as Record<string, string>)[provider] ?? provider;
+}
+function actionTypeLabel(type: string): string {
+  return ({ sponsored_article: "Artykuł sponsorowany", forum_marketing: "Marketing szeptany", nap_listing: "Wizytówka NAP", on_site: "Działanie na stronie", other: "Inne" } as Record<string, string>)[type] ?? type;
+}
+function actionStatusLabel(status: string): string {
+  return ({ planned: "Zaplanowane", in_progress: "W toku", published: "Opublikowane", paused: "Wstrzymane", cancelled: "Anulowane" } as Record<string, string>)[status] ?? status;
+}
 function safeSegment(value: string): string { return value.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "report"; }
 function hashBytes(value: string | Buffer): string { return createHash("sha256").update(value).digest("hex"); }
 function normalizePdfMetadata(bytes: Buffer): Buffer {
@@ -265,7 +282,7 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string): string {
   const gsc = unit.metrics.filter((metric) => metric.provider === "google-search-console");
   const ahrefs = unit.metrics.filter((metric) => metric.provider === "ahrefs");
   const currentPeriod = gsc.find((metric) => metric.current_range)?.current_range;
-  const sourceSummary = unit.sources.map((source) => source.status === "unavailable" ? `Unavailable — ${source.provider}` : source.provider).join(", ");
+  const sourceSummary = unit.sources.map((source) => source.status === "unavailable" ? `Niedostępne — ${providerLabel(source.provider)}` : providerLabel(source.provider)).join(", ");
   const cards = gsc.flatMap((metric) => [
     [`Observed — Google Search Console · ${metric.property_id} · Kliknięcia`, formatNumber(metricValue(metric, "clicks")), `Zmiana: ${comparisonText(metric, "clicks", "count")}`],
     [`Observed — Google Search Console · ${metric.property_id} · Wyświetlenia`, formatNumber(metricValue(metric, "impressions")), `Zmiana: ${comparisonText(metric, "impressions", "count")}`],
@@ -276,16 +293,16 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string): string {
   const contextRows = unit.context.map((entry) => `<tr><td>${escapeHtml(entry.key_type)}</td><td><span class="tag">${escapeHtml(entry.join_type)}</span></td><td>${escapeHtml(entry.key)}</td><td>${formatNumber(entry.gsc?.clicks ?? null)}</td><td>${formatNumber(entry.gsc?.impressions ?? null)}</td><td>${formatNumber(entry.ahrefs?.estimated_traffic ?? null)}</td></tr>`).join("");
   const signalRows = unit.insights.map((insight) => `<tr><td>${escapeHtml(insight.kind)}</td><td>${escapeHtml(insight.key)}</td><td>${escapeHtml(insight.evidence)}</td><td>${escapeHtml(insight.severity)}</td></tr>`).join("");
   const keywordRows = unit.keywordGroups.flatMap(({ group, rows }) => rows.map((row) => `<tr><td>${escapeHtml(group.host)}</td><td>${escapeHtml(row.keyword)}</td><td>${escapeHtml(row.volume)}</td><td>${escapeHtml(row.clicks)}</td><td>${escapeHtml(row.difficulty)}</td><td>${escapeHtml(row.traffic_potential)}</td><td>${escapeHtml(row.parent_topic)}</td><td>${escapeHtml(row.parent_volume)}</td></tr>`)).join("");
-  const sourceRows = unit.sources.map((source) => `<tr><td>${escapeHtml(source.provider)}</td><td>${escapeHtml(source.status === "unavailable" ? "Unavailable — źródło niepodłączone" : source.status)}</td><td>${escapeHtml(source.reason ?? "Dane zweryfikowane")}</td></tr>`).join("");
+  const sourceRows = unit.sources.map((source) => `<tr><td>${escapeHtml(providerLabel(source.provider))}</td><td>${escapeHtml(source.status === "unavailable" ? "Niedostępne — źródło niepodłączone" : source.status === "ready" ? "Dostępne" : "Zablokowane")}</td><td>${escapeHtml(source.reason ?? "Dane zweryfikowane")}</td></tr>`).join("");
   let keywordSection = unit.keywordGroups.length ? `<section class="page-break wide-table"><div class="eyebrow">ANALIZA FRAZ</div><h2>Dane fraz kluczowych</h2><p class="muted">Estimated — Ahrefs Keywords Explorer. Wszystkie zwrócone wiersze są pokazane; to nie jest pełna inwentaryzacja fraz.</p><div class="table-wrap"><table><thead><tr><th>Domena</th><th>Fraza</th><th>Szac. wyszukiwania / mies.</th><th>Szac. kliknięcia / mies.</th><th>Trudność KD</th><th>Szac. potencjał ruchu</th><th>Temat nadrzędny</th><th>Wolumen tematu</th></tr></thead><tbody>${keywordRows}</tbody></table></div></section>` : "";
   const ahrefsDetails = ahrefs.map(ahrefsDetailSection).join("");
   keywordSection += ahrefsDetails;
   const readySources = [...new Set(unit.sources.filter((source) => source.status === "ready").map((source) => source.provider))];
   const unavailableSources = [...new Set(unit.sources.filter((source) => source.status !== "ready").map((source) => source.provider))];
   const clientStatus = unavailableSources.length
-    ? `Raport częściowy — dostępne: ${readySources.join(", ") || "brak"}; niepodłączone: ${unavailableSources.join(", ")}`
+    ? `Raport częściowy — dostępne: ${readySources.map(providerLabel).join(", ") || "brak"}; niepodłączone: ${unavailableSources.map(providerLabel).join(", ")}`
     : readySources.length
-      ? `Raport gotowy — źródła: ${readySources.join(", ")}`
+      ? `Raport gotowy — źródła: ${readySources.map(providerLabel).join(", ")}`
       : "Raport częściowy — brak zweryfikowanych źródeł";
   const comparisonMetric = gsc.find((metric) => hasAdjacentPeriods(metric));
   const previousLabel = comparisonMetric?.previous_range
@@ -298,7 +315,7 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string): string {
 
 function appendClientContent(html: string, content: ClientContent | null, rankMonitoring: RankMonitoringSnapshot | null): string {
   if (!content && !rankMonitoring) return html;
-  const actions = content ? content.actions.map((action) => `<tr><td>${escapeHtml(action.period.start)} — ${escapeHtml(action.period.end)}</td><td>${escapeHtml(action.type)}</td><td>${escapeHtml(action.status)}</td><td>${escapeHtml(action.title)}</td><td>${escapeHtml(action.target_url ?? "—")}</td></tr>`).join("") : "";
+  const actions = content ? content.actions.map((action) => `<tr><td>${escapeHtml(action.period.start)} — ${escapeHtml(action.period.end)}</td><td>${escapeHtml(actionTypeLabel(action.type))}</td><td>${escapeHtml(actionStatusLabel(action.status))}</td><td>${escapeHtml(action.title)}</td><td>${escapeHtml(action.target_url ?? "—")}</td></tr>`).join("") : "";
   const glossary = content ? content.glossary.map((entry) => `<tr><td>${escapeHtml(entry.term)}</td><td>${escapeHtml(entry.explanation)}</td></tr>`).join("") : "";
   const contact = content?.contact ? `<p><strong>Kontakt:</strong> ${escapeHtml(content.contact.name)}${content.contact.email ? ` · ${escapeHtml(content.contact.email)}` : ""}${content.contact.phone ? ` · ${escapeHtml(content.contact.phone)}` : ""}</p>` : "";
   const rankRows = rankMonitoring?.rows.map((row) => `<tr><td>${escapeHtml(row.keyword)}</td><td>${escapeHtml(row.position ?? "—")}</td><td>${escapeHtml(row.previous_position ?? "—")}</td><td>${escapeHtml(row.search_engine)}</td><td>${escapeHtml(row.location ?? "—")}</td><td>${escapeHtml(row.url ?? "—")}</td></tr>`).join("") ?? "";
@@ -311,7 +328,7 @@ function emailDraft(unit: DeliveryUnit, generatedAt: string, htmlPath: string, p
   const subject = `Raport SEO — ${headerValue(unit.title)}`;
   const recipient = unit.content?.contact?.email ? `To: ${headerValue(unit.content.contact.email)}\r\n` : "";
   const currentPeriod = unit.metrics.find((metric) => metric.current_range)?.current_range;
-  const sourceLabels = unit.sources.map((source) => `${source.provider}: ${source.status}`).join(", ") || "brak podłączonych źródeł";
+  const sourceLabels = unit.sources.map((source) => `${providerLabel(source.provider)}: ${source.status === "ready" ? "Dostępne" : source.status === "unavailable" ? "Niedostępne" : "Zablokowane"}`).join(", ") || "Brak podłączonych źródeł";
   const gscComparisons = unit.metrics.filter((metric) => metric.provider === "google-search-console").map((metric) => `${metric.property_id}: kliknięcia ${comparisonText(metric, "clicks", "count")}; wyświetlenia ${comparisonText(metric, "impressions", "count")}; CTR ${comparisonText(metric, "ctr", "ratio")}; pozycja ${comparisonText(metric, "position", "position")}`);
   const attachments = [htmlPath, ...(pdfPath ? [pdfPath] : [])].join(", ");
   return [
@@ -402,7 +419,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
       clientKeywordGroups.set(owner.client_id, groups);
     }
   }
-  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContentById.get(clientId) ?? (directClientContent?.client_id === clientId ? directClientContent : null); const rankMonitoring = rankBundle?.snapshots.find((snapshot) => snapshot.client_id === clientId) ?? null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${action.status}: ${action.title}`) : [], content, rankMonitoring }; });
+  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContentById.get(clientId) ?? (directClientContent?.client_id === clientId ? directClientContent : null); const rankMonitoring = rankBundle?.snapshots.find((snapshot) => snapshot.client_id === clientId) ?? null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${actionStatusLabel(action.status)}: ${action.title}`) : [], content, rankMonitoring }; });
   if (keyword) {
     for (const inputGroup of keyword.input_groups) {
       if (summary.scope.entries.some((entry) => hostFromProperty(entry.property_id) === inputGroup.host.toLowerCase())) continue;
