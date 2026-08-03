@@ -1052,3 +1052,18 @@ auth or schema is unknown.
 - The reviewer confirmed no blocker. Remaining operator/product gate:
   recurring rank collection still consumes an existing manifest-bound export;
   no direct SERPROBOT API schema is invented.
+
+## Rank-root fail-closed and confinement follow-up — 2026-08-03
+
+- The follow-up OpenCode review identified two risks: an unparseable root
+  manifest could be silently skipped, and a rank root had no explicit
+  realpath confinement to the analytics artifacts directory.
+- Fixed point `6948d31` now fails on an unparseable manifest, preserves the
+  existing skip-only policy for valid stale identity-mismatch bundles, and
+  keeps hash-invalid matching bundles fail-closed. Rank-root resolution is
+  confined to `artifactsDir` through realpath validation in CLI and delivery.
+- Focused falsifiers cover corrupt manifests, root confinement, stale foreign
+  exports and tampered matching exports. Local proof passes with 146
+  TypeScript tests + 3 context tests, build, zero high audit vulnerabilities
+  and `git diff --check`. No provider request, credential read, Ahrefs rerun
+  or production report rerun occurred.
