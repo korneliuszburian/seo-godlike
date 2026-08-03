@@ -314,8 +314,9 @@ async function main(): Promise<void> {
     const keywordMaxRequests = optionalPositiveIntegerArgument("--keyword-max-requests");
     const keywordMaxApiUnits = optionalPositiveIntegerArgument("--keyword-max-api-units");
     const keywordResearchTaskId = keywordResearchOutputPath ? `ahrefs:keywords-explorer:${keywordResearchOutputPath}` : null;
+    const existingKeywordBundleRoot = keywordBundleRoot ?? artifactsDir ?? outputRoot;
     if (existingKeywordBundlePath && keywordInputPath) {
-      await verifyKeywordResearchBundle(existingKeywordBundlePath, keywordBundleRoot ?? outputRoot, keywordInputPath);
+      await verifyKeywordResearchBundle(existingKeywordBundlePath, existingKeywordBundleRoot, keywordInputPath);
     }
     await mkdir(outputRoot, { recursive: false, mode: 0o700 });
     const propertyTasks = scope.entries.map((entry) => {
@@ -354,7 +355,7 @@ async function main(): Promise<void> {
     let generatedDelivery: string | undefined;
     if (agencyReportOutput) {
       const keywordBundlePath = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? keywordResearchOutputPath : existingKeywordBundlePath;
-      const reportKeywordBundleRoot = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? outputRoot : keywordBundleRoot;
+      const reportKeywordBundleRoot = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? outputRoot : existingKeywordBundleRoot;
       const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath, reportKeywordBundleRoot);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
