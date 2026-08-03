@@ -1120,3 +1120,19 @@ auth or schema is unknown.
   normalized SERPROBOT export per the runbook or a provider-confirmed API
   request/response fixture. The existing recurring schedule and report delivery
   can consume that immutable snapshot without rerunning Ahrefs.
+
+## Final fixed-point hardening — 2026-08-03
+
+- The final OpenCode/DeepSeek review of `a895d23` found no blocker and noted
+  three low-risk improvements: symlink confinement asymmetry in content/rank
+  readers, absolute source paths in the delivery manifest, and a stale map
+  pointer.
+- Fixed point `68bfdc9` introduces the shared realpath confinement helper for
+  manifest readers, adds symlink-escape falsifiers, and makes the delivery
+  manifest source field deterministic (`agency-report.json`). The map now
+  points to this fixed point.
+- Local proof passes with 152 TypeScript tests + 3 context tests, build, zero
+  high audit vulnerabilities and `git diff --check`. PDF renderer execution
+  remains host-gated and SERPROBOT collection remains operator-gated; no
+  provider request, credential read, Ahrefs rerun or production report rerun
+  occurred.
