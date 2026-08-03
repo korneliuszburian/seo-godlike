@@ -35,8 +35,8 @@ export interface AgencyExecutiveSummary {
     heuristic: "Rule-based signal — not a recommendation";
     unavailable: "Unavailable — access/profile proof pending";
   };
-  observed_gsc: Array<{ client_id: string; property_id: string; date_range: { start: string; end: string }; clicks: number; impressions: number; ctr: number; position: number }>;
-  estimated_ahrefs: Array<{ client_id: string; property_id: string; organic_traffic: number; organic_keywords: number; organic_keywords_top_3: number }>;
+  observed_gsc: Array<{ client_id: string; property_id: string; date_range: { start: string; end: string }; clicks: number | null; impressions: number | null; ctr: number | null; position: number | null }>;
+  estimated_ahrefs: Array<{ client_id: string; property_id: string; organic_traffic: number | null; organic_keywords: number | null; organic_keywords_top_3: number | null }>;
   join_coverage: { matched: number; gsc_only: number; ahrefs_only: number; total: number };
   top_signals: ReportInsight[];
   preview: { context_limit: number; context_shown: number; context_total: number; findings_limit: number; findings_shown: number; findings_total: number };
@@ -197,8 +197,20 @@ function joinCoverage(context: CrossSourceContextEntry[]): AgencyExecutiveSummar
   return coverage;
 }
 
-function finiteMetric(value: unknown): number {
-  return finiteOrNull(value) ?? 0;
+function finiteMetric(value: unknown): number | null {
+  return finiteOrNull(value);
+}
+
+function displayNumber(value: number | null): string {
+  return value === null ? "—" : String(value);
+}
+
+function displayDecimal(value: number | null): string {
+  return value === null ? "—" : value.toFixed(2);
+}
+
+function displayPercent(value: number | null): string {
+  return value === null ? "—" : `${(value * 100).toFixed(2)}%`;
 }
 
 function recordRows(value: unknown): Array<Record<string, unknown>> {
@@ -321,8 +333,8 @@ function contextRows(summary: AgencyReportSummary): CrossSourceContextEntry[] {
 
 function markdown(summary: AgencyReportSummary): string {
   const preview = contextRows(summary);
-  const gscRows = summary.executive.observed_gsc.map((entry) => `| ${entry.client_id} | ${entry.property_id} | ${entry.date_range.start} to ${entry.date_range.end} | ${entry.clicks} | ${entry.impressions} | ${(entry.ctr * 100).toFixed(2)}% | ${entry.position.toFixed(2)} |`);
-  const ahrefsRows = summary.executive.estimated_ahrefs.map((entry) => `| ${entry.client_id} | ${entry.property_id} | ${entry.organic_traffic} | ${entry.organic_keywords} | ${entry.organic_keywords_top_3} |`);
+  const gscRows = summary.executive.observed_gsc.map((entry) => `| ${entry.client_id} | ${entry.property_id} | ${entry.date_range.start} to ${entry.date_range.end} | ${displayNumber(entry.clicks)} | ${displayNumber(entry.impressions)} | ${displayPercent(entry.ctr)} | ${displayDecimal(entry.position)} |`);
+  const ahrefsRows = summary.executive.estimated_ahrefs.map((entry) => `| ${entry.client_id} | ${entry.property_id} | ${displayNumber(entry.organic_traffic)} | ${displayNumber(entry.organic_keywords)} | ${displayNumber(entry.organic_keywords_top_3)} |`);
   const keywordSection = summary.keyword_research ? [
     "## Estimated — Ahrefs Keywords Explorer",
     "",
@@ -405,8 +417,8 @@ function markdown(summary: AgencyReportSummary): string {
 
 function html(summary: AgencyReportSummary): string {
   const preview = contextRows(summary).map((entry) => `<tr>${[entry.client_id, entry.key_type, entry.join_type, entry.key, entry.gsc?.clicks ?? "—", entry.gsc?.impressions ?? "—", entry.ahrefs?.estimated_traffic ?? "—"].map((value) => `<td>${escapeHtml(String(value))}</td>`).join("")}</tr>`).join("\n");
-  const gscCards = summary.executive.observed_gsc.map((entry) => `<div class="card"><span class="badge observed">Observed — Google Search Console</span><h3>${escapeHtml(entry.client_id)} · ${escapeHtml(entry.property_id)}</h3><p>${entry.clicks} clicks · ${entry.impressions} impressions · ${(entry.ctr * 100).toFixed(2)}% CTR · position ${entry.position.toFixed(2)}</p></div>`).join("");
-  const ahrefsCards = summary.executive.estimated_ahrefs.map((entry) => `<div class="card"><span class="badge estimated">Estimated — Ahrefs</span><h3>${escapeHtml(entry.client_id)} · ${escapeHtml(entry.property_id)}</h3><p>${entry.organic_traffic} organic traffic · ${entry.organic_keywords} keywords · ${entry.organic_keywords_top_3} Top 3</p></div>`).join("");
+  const gscCards = summary.executive.observed_gsc.map((entry) => `<div class="card"><span class="badge observed">Observed — Google Search Console</span><h3>${escapeHtml(entry.client_id)} · ${escapeHtml(entry.property_id)}</h3><p>${displayNumber(entry.clicks)} clicks · ${displayNumber(entry.impressions)} impressions · ${displayPercent(entry.ctr)} CTR · position ${displayDecimal(entry.position)}</p></div>`).join("");
+  const ahrefsCards = summary.executive.estimated_ahrefs.map((entry) => `<div class="card"><span class="badge estimated">Estimated — Ahrefs</span><h3>${escapeHtml(entry.client_id)} · ${escapeHtml(entry.property_id)}</h3><p>${displayNumber(entry.organic_traffic)} organic traffic · ${displayNumber(entry.organic_keywords)} keywords · ${displayNumber(entry.organic_keywords_top_3)} Top 3</p></div>`).join("");
   const signals = summary.executive.top_signals.map((insight) => `<li><span class="badge signal">Rule-based signal — not a recommendation</span> ${escapeHtml(insight.kind)} — ${escapeHtml(insight.key)}: ${escapeHtml(insight.evidence)}</li>`).join("");
   const keywordCard = summary.keyword_research ? `<div class="card"><span class="badge estimated">Estimated — Ahrefs Keywords Explorer</span><h3>Phrase research</h3><p>${summary.keyword_research.input_groups.length} input groups · ${summary.keyword_research.groups.reduce((total, group) => total + group.rows.length, 0)} returned rows · ${escapeHtml(summary.keyword_research.country)} market</p></div>` : "";
   const rankEvidence = summary.rank_monitoring_snapshots ?? (summary.rank_monitoring ? [summary.rank_monitoring] : []);

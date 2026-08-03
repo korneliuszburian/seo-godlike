@@ -509,5 +509,12 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); files[unit.email] = await readFile(join(outputDir, unit.email), "utf8"); }
   const manifest = { schema_version: "1", source: resolve(options.agencyReportPath), agency_report_sha256: hashBytes(agencyReportBytes), agency_run_record_sha256: agencyRunRecord?.sha256 ?? null, source_manifest_sha256: sourceManifestHashes, history_manifest_sha256: [...new Set(historyEntries.map((entry) => entry.manifest_sha256))].sort(), keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
   await writeFile(join(outputDir, "manifest.json"), canonicalJson(manifest), { encoding: "utf8", flag: "wx", mode: 0o600 });
-  return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + summary.accepted_bundles.length + new Set(historyEntries.map((entry) => entry.manifest_sha256)).size + (keywordManifestSha256 ? 1 : 0) + (rankBundle ? 1 : 0) + (clientContentBundle ? 1 : 0) };
+  const verifiedManifestHashes = new Set<string>([
+    ...Object.values(sourceManifestHashes),
+    ...historyEntries.map((entry) => entry.manifest_sha256),
+    ...(keywordManifestSha256 ? [keywordManifestSha256] : []),
+    ...(rankBundle ? [rankBundle.manifest_sha256] : []),
+    ...(clientContentBundle ? [clientContentBundle.manifest_sha256] : []),
+  ]);
+  return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + verifiedManifestHashes.size };
 }

@@ -63,6 +63,39 @@ test("executive summary labels sources and preserves complete join coverage", ()
   assert.equal(summary.preview.context_shown, 3);
 });
 
+test("executive summary preserves missing metrics as unavailable", () => {
+  const summary = composeExecutiveSummary([
+    {
+      client_id: "bodymove",
+      property_id: "sc-domain:bodymove.pl",
+      provider: "google-search-console",
+      analytics: { current_date_range: { start: "2026-07-01", end: "2026-07-28" }, current: { impressions: 30 } },
+    },
+    {
+      client_id: "bodymove",
+      property_id: "bodymove.pl",
+      provider: "ahrefs",
+      analytics: { current: { organic_keywords: 50 } },
+    },
+  ], [], []);
+  assert.deepEqual(summary.observed_gsc[0], {
+    client_id: "bodymove",
+    property_id: "sc-domain:bodymove.pl",
+    date_range: { start: "2026-07-01", end: "2026-07-28" },
+    clicks: null,
+    impressions: 30,
+    ctr: null,
+    position: null,
+  });
+  assert.deepEqual(summary.estimated_ahrefs[0], {
+    client_id: "bodymove",
+    property_id: "bodymove.pl",
+    organic_traffic: null,
+    organic_keywords: 50,
+    organic_keywords_top_3: null,
+  });
+});
+
 test("cross-source context joins GSC pages and queries to Ahrefs without merging metrics", () => {
   const context = composeCrossSourceContext([
     {
