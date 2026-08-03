@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { canonicalJson, sha256 } from "./serialize.js";
 
-export interface RankRow { keyword: string; position: number | null; previous_position: number | null; search_engine: string; location: string | null; url: string | null; }
+export interface RankRow { keyword: string; position: number | null; previous_position: number | null; search_engine: string; location: string | null; device: string | null; url: string | null; }
 export interface RankMonitoringSourceConfig { project_id: string; search_engine: string; location: string | null; device: string | null; }
 export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; source_config: RankMonitoringSourceConfig | null; rows: RankRow[]; }
 
@@ -19,7 +19,7 @@ export function parseRankMonitoringSnapshot(value: unknown): RankMonitoringSnaps
     if (!record(configValue) || typeof configValue.project_id !== "string" || !/^[1-9]\d*$/.test(configValue.project_id) || typeof configValue.search_engine !== "string") throw new Error("invalid SERPROBOT source configuration");
     source_config = { project_id: configValue.project_id, search_engine: configValue.search_engine, location: nullableString(configValue.location, "source_config.location"), device: nullableString(configValue.device, "source_config.device") };
   }
-  const rows = value.rows.map((row, index) => { if (!record(row) || typeof row.keyword !== "string" || typeof row.search_engine !== "string") throw new Error(`invalid rank row ${index}`); return { keyword: row.keyword, position: nullableNumber(row.position, `rank row ${index}.position`), previous_position: nullableNumber(row.previous_position, `rank row ${index}.previous_position`), search_engine: row.search_engine, location: nullableString(row.location, `rank row ${index}.location`), url: nullableString(row.url, `rank row ${index}.url`) }; }).sort((a, b) => a.keyword.localeCompare(b.keyword) || (a.position ?? Infinity) - (b.position ?? Infinity));
+  const rows = value.rows.map((row, index) => { if (!record(row) || typeof row.keyword !== "string" || typeof row.search_engine !== "string") throw new Error(`invalid rank row ${index}`); return { keyword: row.keyword, position: nullableNumber(row.position, `rank row ${index}.position`), previous_position: nullableNumber(row.previous_position, `rank row ${index}.previous_position`), search_engine: row.search_engine, location: nullableString(row.location, `rank row ${index}.location`), device: nullableString(row.device, `rank row ${index}.device`), url: nullableString(row.url, `rank row ${index}.url`) }; }).sort((a, b) => a.keyword.localeCompare(b.keyword) || a.search_engine.localeCompare(b.search_engine) || (a.location ?? "").localeCompare(b.location ?? "") || (a.device ?? "").localeCompare(b.device ?? "") || (a.position ?? Infinity) - (b.position ?? Infinity));
   return { schema_version: "1", provider: "serprobot", client_id: value.client_id, captured_at: value.captured_at, date_range: { start: value.date_range.start, end: value.date_range.end }, source_config, rows };
 }
 

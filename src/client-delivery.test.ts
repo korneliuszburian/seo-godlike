@@ -51,6 +51,11 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.match(email, /X-SEO-Godlike-Delivery: draft-only/);
     assert.match(email, /bodymove-seo-report\.html/);
     assert.match(await readFile(join(root, "delivery", "index.html"), "utf8"), /Draft email/);
+    const ambiguousSummary = { ...summary, scope: { ...summary.scope, entries: [...summary.scope.entries, { client_id: "other-client", client_display_name: "Other", property_id: "https://bodymove.pl/", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] } };
+    const ambiguousText = JSON.stringify(ambiguousSummary);
+    await writeFile(agencyPath, ambiguousText);
+    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": ambiguousText }));
+    await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "ambiguous-delivery") }), /maps to multiple clients/);
     const deliveryManifest = JSON.parse(await readFile(join(root, "delivery", "manifest.json"), "utf8")) as { files: Record<string, unknown> };
     assert.ok(deliveryManifest.files["bodymove/bodymove-seo-report.eml"]);
     assert.match(await readFile(join(root, "delivery", "domain-other.pl", "domain-other.pl-seo-report.html"), "utf8"), /Przypisanie do klienta: oczekuje na potwierdzenie operatora/);

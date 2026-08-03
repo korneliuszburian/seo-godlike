@@ -292,7 +292,9 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const clientKeywordGroups = new Map<string, Array<{ group: PhraseGroup; rows: Array<Record<string, unknown>> }>>();
   if (keyword) {
     for (const inputGroup of keyword.input_groups) {
-      const owner = summary.scope.entries.find((entry) => hostFromProperty(entry.property_id) === inputGroup.host.toLowerCase());
+      const owners = [...new Set(summary.scope.entries.filter((entry) => hostFromProperty(entry.property_id) === inputGroup.host.toLowerCase()).map((entry) => entry.client_id))];
+      if (owners.length > 1) throw new Error(`keyword host '${inputGroup.host}' maps to multiple clients`);
+      const owner = owners.length === 1 ? summary.scope.entries.find((entry) => entry.client_id === owners[0]) : undefined;
       if (!owner) continue;
       const result = keyword.groups.find((group) => group.host === inputGroup.host);
       const groups = clientKeywordGroups.get(owner.client_id) ?? [];
@@ -333,7 +335,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
     await writeFile(join(outputDir, emailRelative), emailDraft(unit, generatedAt, htmlRelative, pdfRelative), { encoding: "utf8", flag: "wx", mode: 0o600 });
     resultUnits.push({ id: unit.id, kind: unit.kind, html: htmlRelative, pdf: pdfRelative, email: emailRelative });
   }
-  const index = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Raporty SEO — Bodymove</title><style>body{font:16px/1.5 system-ui;max-width:900px;margin:4rem auto;padding:0 1.5rem;color:#172b36}a{color:#176b70}li{margin:1rem 0}small{color:#667}</style></head><body><h1>Raporty SEO</h1><p>Wyniki przygotowane wyłącznie z istniejących, zweryfikowanych danych. Nie wykonano ponownych zapytań do dostawców.</p><ul>${resultUnits.map((unit) => `<li><strong>${escapeHtml(unit.id)}</strong> — <a href="${escapeHtml(unit.html)}">Raport HTML</a>${unit.pdf ? ` · <a href="${escapeHtml(unit.pdf)}">Raport PDF</a>` : ""} · <a href="${escapeHtml(unit.email)}">Draft email</a></li>`).join("")}</ul><small>Źródła, zakres i ograniczenia są opisane w każdym raporcie.</small></body></html>`;
+  const index = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Raporty SEO — pakiet operatorski</title><style>body{font:16px/1.5 system-ui;max-width:900px;margin:4rem auto;padding:0 1.5rem;color:#172b36}a{color:#176b70}li{margin:1rem 0}small{color:#667}</style></head><body><h1>Raporty SEO</h1><p>Wyniki przygotowane wyłącznie z istniejących, zweryfikowanych danych. Nie wykonano ponownych zapytań do dostawców.</p><ul>${resultUnits.map((unit) => `<li><strong>${escapeHtml(unit.id)}</strong> — <a href="${escapeHtml(unit.html)}">Raport HTML</a>${unit.pdf ? ` · <a href="${escapeHtml(unit.pdf)}">Raport PDF</a>` : ""} · <a href="${escapeHtml(unit.email)}">Draft email</a></li>`).join("")}</ul><small>Źródła, zakres i ograniczenia są opisane w każdym raporcie.</small></body></html>`;
   await writeFile(join(outputDir, "index.html"), index, { encoding: "utf8", flag: "wx", mode: 0o600 });
   const files: Record<string, string | Buffer> = { "index.html": index };
   for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); files[unit.email] = await readFile(join(outputDir, unit.email), "utf8"); }

@@ -24,7 +24,36 @@ test("rank history compares shared keywords across verified non-overlapping snap
     const summary = await writeRankHistoryDashboard(root, join(root, "dashboard"));
     assert.equal(summary.snapshot_count, 2);
     assert.deepEqual(summary.comparisons.map((entry) => [entry.keyword, entry.previous_position, entry.current_position, entry.position_delta]), [["rehabilitacja", 9, 7, -2]]);
+    assert.equal(summary.comparisons[0]?.manifest_sha256, summary.snapshots.find((snapshot) => snapshot.date_range.start === "2026-07-01")?.manifest_sha256);
     assert.match(await readFile(join(root, "dashboard", "rank-history.md"), "utf8"), /Historia monitoringu fraz/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rank history keeps search configuration separate for the same keyword", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-config-"));
+  try {
+    const input = async (path: string, start: string, end: string, desktop: number, mobile: number) => {
+      await writeFile(path, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: `${end}T12:00:00.000Z`, date_range: { start, end }, source_config: { project_id: "123", search_engine: "google.pl", location: "Warszawa", device: "desktop" }, rows: [
+        { keyword: "rehabilitacja", position: desktop, previous_position: null, search_engine: "google.pl", location: "Warszawa", url: "https://bodymove.pl/" },
+        { keyword: "rehabilitacja", position: mobile, previous_position: null, search_engine: "google.pl", location: "Warszawa", url: "https://bodymove.pl/", device: "mobile" },
+      ] }));
+    };
+    await mkdir(join(root, "old"));
+    await mkdir(join(root, "new"));
+    const oldInput = join(root, "old-input.json");
+    const newInput = join(root, "new-input.json");
+    await input(oldInput, "2026-06-01", "2026-06-30", 9, 12);
+    await input(newInput, "2026-07-01", "2026-07-31", 7, 8);
+    await writeRankMonitoringBundle(oldInput, join(root, "old", "bundle"));
+    await writeRankMonitoringBundle(newInput, join(root, "new", "bundle"));
+    const summary = await writeRankHistoryDashboard(root, join(root, "dashboard"));
+    assert.equal(summary.comparisons.length, 2);
+    const desktop = summary.comparisons.find((entry) => entry.device === "desktop");
+    const mobile = summary.comparisons.find((entry) => entry.device === "mobile");
+    assert.equal(desktop?.position_delta, -2);
+    assert.equal(mobile?.position_delta, -4);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
