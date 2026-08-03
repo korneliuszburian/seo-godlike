@@ -50,3 +50,17 @@ test("standalone keyword research rejects malformed budget before output", async
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("standalone client delivery rejects conflicting rank snapshot inputs before reading evidence", async () => {
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      "dist/cli.js", "--client-delivery",
+      "--agency-report-json", "/operator-only/agency-report.json",
+      "--artifacts-dir", "/operator-only/artifacts",
+      "--output", "/operator-only/output",
+      "--rank-monitoring", "/operator-only/rank.json",
+      "--rank-monitoring-root", "/operator-only/rank-exports",
+    ], { cwd: process.cwd() }),
+    /--rank-monitoring and --rank-monitoring-root are mutually exclusive/,
+  );
+});

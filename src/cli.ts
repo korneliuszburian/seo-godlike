@@ -266,7 +266,20 @@ async function main(): Promise<void> {
     return;
   }
   if (process.argv.includes("--client-delivery")) {
-    const result = await writeClientDelivery({ agencyReportPath: argument("--agency-report-json"), artifactsDir: argument("--artifacts-dir"), outputDir: argument("--output"), renderPdf: process.argv.includes("--pdf"), clientContentPath: optionalArgument("--client-content"), clientContentBundlePath: optionalArgument("--client-content-bundle"), rankMonitoringPath: optionalArgument("--rank-monitoring"), rankMonitoringRoot: optionalArgument("--rank-monitoring-root"), keywordBundleRoot: optionalArgument("--keyword-bundle-root") });
+    const rankMonitoringPath = optionalArgument("--rank-monitoring");
+    const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
+    if (rankMonitoringPath && rankMonitoringRoot) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
+    const result = await writeClientDelivery({
+      agencyReportPath: argument("--agency-report-json"),
+      artifactsDir: argument("--artifacts-dir"),
+      outputDir: argument("--output"),
+      renderPdf: process.argv.includes("--pdf"),
+      clientContentPath: optionalArgument("--client-content"),
+      clientContentBundlePath: optionalArgument("--client-content-bundle"),
+      rankMonitoringPath,
+      rankMonitoringRoot,
+      keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
+    });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
