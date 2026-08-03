@@ -1490,3 +1490,13 @@ auth or schema is unknown.
   Proof: 171 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`; no provider request, credential
   read, Ahrefs rerun, report regeneration, or publication.
+
+## Delivery status semantics — 2026-08-04
+
+- Client delivery now distinguishes stale, missing-bundle, and no-evidence-path
+  sources in the headline status, not only in the detailed source table.
+- A verified rank-only report counts as reportable evidence when no analytics
+  bundle exists; an entirely empty evidence set remains blocked.
+- Proof: 171 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.

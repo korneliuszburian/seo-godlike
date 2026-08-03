@@ -54,7 +54,7 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.equal(result.manifests_verified, 3);
     assert.deepEqual(result.units.map((unit) => [unit.kind, unit.id]), [["client", "bodymove"], ["domain", "domain-other.pl"]]);
     const clientHtml = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
-    assert.match(clientHtml, /Raport częściowy — dostępne: Google Search Console; niepodłączone: Ahrefs/);
+    assert.match(clientHtml, /Raport częściowy — dostępne: Google Search Console; niedostępne: Ahrefs — dane nieaktualne/);
     assert.match(clientHtml, /Dane nieaktualne — snapshot Ahrefs jest starszy niż wybrany okres Google Search Console/);
     assert.doesNotMatch(clientHtml, /Ahrefs snapshot is older/);
     assert.match(clientHtml, /Observed — Google Search Console · sc-domain:bodymove\.pl · Kliknięcia/);

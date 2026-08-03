@@ -125,6 +125,12 @@ function sourceReasonLabel(source: AgencyReportSummary["source_status"][number])
   if (source.reason_code === "no_evidence_path") return "Dla tego zewnętrznego źródła nie ma jeszcze obsługiwanej ścieżki importu evidence; nie pokazujemy danych ani wartości zero.";
   return source.reason ?? "Dane zweryfikowane";
 }
+function sourceHeadlineLabel(source: AgencyReportSummary["source_status"][number]): string {
+  if (source.reason_code === "stale_snapshot") return `${providerLabel(source.provider)} — dane nieaktualne`;
+  if (source.reason_code === "no_evidence_path") return `${providerLabel(source.provider)} — brak ścieżki evidence`;
+  if (source.reason_code === "missing_evidence_bundle") return `${providerLabel(source.provider)} — brak pakietu evidence`;
+  return providerLabel(source.provider);
+}
 function actionTypeLabel(type: string): string {
   return ({ sponsored_article: "Artykuł sponsorowany", forum_marketing: "Marketing szeptany", nap_listing: "Wizytówka NAP", on_site: "Działanie na stronie", other: "Inne" } as Record<string, string>)[type] ?? type;
 }
@@ -378,7 +384,7 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string, clientLinks: UnitNavi
   const gsc = unit.metrics.filter((metric) => metric.provider === "google-search-console");
   const ahrefs = unit.metrics.filter((metric) => metric.provider === "ahrefs");
   const currentPeriod = gsc.find((metric) => metric.current_range)?.current_range;
-  const sourceSummary = unit.sources.map((source) => source.status === "unavailable" ? `Niedostępne — ${providerLabel(source.provider)}` : providerLabel(source.provider)).join(", ");
+  const sourceSummary = unit.sources.map((source) => source.status === "unavailable" ? `Niedostępne — ${sourceHeadlineLabel(source)}` : sourceHeadlineLabel(source)).join(", ");
   const cards = gsc.flatMap((metric) => [
     [`Observed — Google Search Console · ${metric.property_id} · Kliknięcia`, formatNumber(metricValue(metric, "clicks")), `Zmiana: ${comparisonText(metric, "clicks", "count")}`],
     [`Observed — Google Search Console · ${metric.property_id} · Wyświetlenia`, formatNumber(metricValue(metric, "impressions")), `Zmiana: ${comparisonText(metric, "impressions", "count")}`],
@@ -394,9 +400,9 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string, clientLinks: UnitNavi
   const ahrefsDetails = ahrefs.map(ahrefsDetailSection).join("");
   keywordSection += ahrefsDetails;
   const readySources = [...new Set(unit.sources.filter((source) => source.status === "ready").map((source) => source.provider))];
-  const unavailableSources = [...new Set(unit.sources.filter((source) => source.status !== "ready").map((source) => source.provider))];
+  const unavailableSources = unit.sources.filter((source) => source.status !== "ready");
   const clientStatus = unavailableSources.length
-    ? `Raport częściowy — dostępne: ${readySources.map(providerLabel).join(", ") || "brak"}; niepodłączone: ${unavailableSources.map(providerLabel).join(", ")}`
+    ? `Raport częściowy — dostępne: ${readySources.map(providerLabel).join(", ") || "brak"}; niedostępne: ${unavailableSources.map(sourceHeadlineLabel).join(", ")}`
     : readySources.length
       ? `Raport gotowy — źródła: ${readySources.map(providerLabel).join(", ")}`
       : "Raport częściowy — brak zweryfikowanych źródeł";

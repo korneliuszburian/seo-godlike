@@ -483,7 +483,7 @@ test("agency report accepts a rank-only client owned by the source registry", as
     assert.equal(summary.rank_monitoring?.client_id, "rank-only");
     assert.equal(summary.source_status[0]?.client_id, "rank-only");
     assert.equal(summary.source_status[0]?.status, "ready");
-    assert.equal(summary.report_status, "blocked");
+    assert.equal(summary.report_status, "reportable");
     const foreignInput = join(root, "foreign-rank.json");
     await writeFile(foreignInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [
       { schema_version: "1", provider: "serprobot", client_id: "rank-only", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "456", search_engine: "google.pl", location: null, device: null }, rows: [] },
