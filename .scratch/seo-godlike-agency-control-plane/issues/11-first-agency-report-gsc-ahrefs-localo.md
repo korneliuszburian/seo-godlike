@@ -1479,3 +1479,14 @@ auth or schema is unknown.
   an older ready bundle. Proof: 170 TypeScript tests + 3 context tests, build,
   zero high audit vulnerabilities, and `git diff --check`; no provider request,
   credential read, Ahrefs rerun, report regeneration, or publication.
+
+## Current-bundle freshness scope — 2026-08-04
+
+- The freshness guard now compares Ahrefs only against the selected current GSC
+  bundle periods, not every historical GSC bundle retained in the artifacts
+  directory. This prevents a non-current historical period from rejecting a
+  valid current Ahrefs snapshot.
+- An end-to-end falsifier covers the historical-later/current-selected case.
+  Proof: 171 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`; no provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication.
