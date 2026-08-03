@@ -449,9 +449,8 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const sourceManifestHashes = await collectSourceManifestHashes(summary, options.artifactsDir);
   const agencyRunRecord = options.agencyRunRecordPath ? await readAgencyRunRecord(options.agencyRunRecordPath) : null;
   const historyIdentities = summary.accepted_bundles.map((entry) => ({ client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider })).filter((entry): entry is { client_id: string; property_id: string; provider: "google-search-console" | "google-analytics" | "ahrefs" } => entry.provider === "google-search-console" || entry.provider === "google-analytics" || entry.provider === "ahrefs");
-  const historyBundlePaths = summary.accepted_bundles
-    .filter((entry) => entry.provider === "google-search-console" || entry.provider === "google-analytics" || entry.provider === "ahrefs")
-    .map((entry) => entry.bundle_path);
+  const historyBundlePaths = (summary.history_bundle_paths ?? summary.accepted_bundles.map((entry) => entry.bundle_path))
+    .filter((path) => typeof path === "string");
   const acceptedHistoryPaths = new Set(historyBundlePaths.map((path) => resolve(options.artifactsDir, path)));
   const historyEntries = (await readProviderHistory(options.artifactsDir, historyIdentities, historyBundlePaths)).filter((entry) => acceptedHistoryPaths.has(resolve(options.artifactsDir, entry.bundle_path)));
   const keywordManifestSha256 = summary.keyword_research ? await verifyKeywordBundle(summary.keyword_research, options.keywordBundleRoot ?? options.artifactsDir) : null;

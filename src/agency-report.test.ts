@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +9,21 @@ import { ScopePlan, SourceRegistry } from "./domain.js";
 import { composeAhrefsProfileContext, composeCrossSourceContext, composeExecutiveSummary, writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
+import { canonicalJson, sha256 } from "./serialize.js";
+
+async function writeAgencySelectionBundle(root: string, name: string, generatedAt: string, clicks: number): Promise<void> {
+  const bundle = join(root, name);
+  await mkdir(bundle, { recursive: true });
+  const withoutHash = { schema_version: "1", run_id: `run-${name}`, client_id: "bodymove", client_display_name: "Bodymove", property_refs: ["sc-domain:bodymove.pl"], generated_at: generatedAt, evidence_manifest_ref: "manifest.json", provider: "google-search-console", operation: "search_analytics.query", analytics: { current_date_range: { start: "2026-07-01", end: "2026-07-28" }, current: { clicks, impressions: clicks * 10, ctr: 0.1, position: 2 } } };
+  const report = canonicalJson({ ...withoutHash, canonical_json_hash: sha256(canonicalJson(withoutHash)) });
+  const request = canonicalJson({ run_id: `run-${name}`, client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", operation: "search_analytics.query", policy_mode: "read_only" });
+  const markdown = `# ${name}\n`;
+  await writeFile(join(bundle, "report.json"), report);
+  await writeFile(join(bundle, "request.json"), request);
+  await writeFile(join(bundle, "report.md"), markdown);
+  const files = Object.fromEntries(["report.json", "request.json", "report.md"].map((file) => { const bytes = readFileSync(join(bundle, file)); return [file, { sha256: createHash("sha256").update(bytes).digest("hex"), bytes: bytes.byteLength }]; }));
+  await writeFile(join(bundle, "manifest.json"), canonicalJson({ schema_version: "1", files }));
+}
 
 test("agency report preserves unavailable sources instead of inventing metrics", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-report-test-"));
@@ -38,6 +54,23 @@ test("agency report preserves unavailable sources instead of inventing metrics",
     assert.equal((await stat(join(output, name))).mode & 0o777, 0o600);
   }
   await rm(root, { recursive: true, force: true });
+});
+
+test("agency report selects the newest accepted bundle per current source identity", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-selection-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    await writeAgencySelectionBundle(artifacts, "older", "2026-07-29T08:00:00.000Z", 2);
+    await writeAgencySelectionBundle(artifacts, "newer", "2026-07-30T08:00:00.000Z", 7);
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "ready", entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", { sources: [] });
+    assert.deepEqual(summary.accepted_bundles.map((entry) => entry.bundle_path), ["newer"]);
+    assert.equal(summary.executive.observed_gsc[0]?.clicks, 7);
+    assert.equal(summary.insights.length, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("executive summary labels sources and preserves complete join coverage", () => {

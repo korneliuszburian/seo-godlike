@@ -50,6 +50,7 @@ export interface AgencyReportSummary {
   scope: ScopePlan;
   source_status: AgencyReportSourceStatus[];
   accepted_bundles: ReportPackageSummary["accepted_bundles"];
+  history_bundle_paths?: string[];
   blocked_sources: AgencyReportSourceStatus[];
   cross_source_context: CrossSourceContextEntry[];
   insights: ReportInsight[];
@@ -326,7 +327,9 @@ function markdownCell(value: unknown): string {
 }
 
 function acceptedBundleFor(source: AgencyReportSourceStatus, packageSummary: ReportPackageSummary): ReportPackageSummary["accepted_bundles"][number] | undefined {
-  return packageSummary.accepted_bundles.find((entry) => entry.client_id === source.client_id && entry.property_id === source.property_id && entry.provider === source.provider);
+  return packageSummary.accepted_bundles
+    .filter((entry) => entry.client_id === source.client_id && entry.property_id === source.property_id && entry.provider === source.provider)
+    .sort((a, b) => b.generated_at.localeCompare(a.generated_at) || b.bundle_path.localeCompare(a.bundle_path))[0];
 }
 
 function contextRows(summary: AgencyReportSummary): CrossSourceContextEntry[] {
@@ -532,7 +535,8 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   });
   const externalStatus = sourceRegistry.sources.map((source) => ({ source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: null } satisfies AgencyReportSourceStatus));
   const sourceStatus = [...propertyStatus, ...externalStatus];
-  const reports = await Promise.all(packageSummary.accepted_bundles.map(async (accepted) => {
+  const currentAcceptedBundles = [...new Map(sourceStatus.map((source) => [source.bundle_path, source.bundle_path ? packageSummary.accepted_bundles.find((accepted) => accepted.bundle_path === source.bundle_path) : undefined]).filter((entry): entry is [string, ReportPackageSummary["accepted_bundles"][number]] => Boolean(entry[0] && entry[1]))).values()];
+  const reports = await Promise.all(currentAcceptedBundles.map(async (accepted) => {
     const report = JSON.parse(await readFile(join(resolvedArtifacts, accepted.bundle_path, "report.json"), "utf8")) as AgencyInputReport;
     return { ...report, client_id: accepted.client_id, client_display_name: accepted.client_display_name, property_id: accepted.property_id };
   }));
@@ -543,9 +547,9 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
   const rankMonitoring = rankMonitoringEvidence[0];
   const profileContext = composeAhrefsProfileContext(reports);
-  const summary: AgencyReportSummary = { schema_version: "1", report_status: packageSummary.accepted_bundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: packageSummary.accepted_bundles, blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: crossSourceContext, insights, executive: composeExecutiveSummary(reports, crossSourceContext, insights), ...(profileContext.length ? { ahrefs_profile_context: profileContext } : {}), ...(keywordResearch ? { keyword_research: keywordResearch } : {}), ...(rankMonitoring ? { rank_monitoring: rankMonitoring } : {}), ...(rankMonitoringEvidence.length > 1 ? { rank_monitoring_snapshots: rankMonitoringEvidence } : {}) };
+  const summary: AgencyReportSummary = { schema_version: "1", report_status: currentAcceptedBundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: currentAcceptedBundles, history_bundle_paths: packageSummary.accepted_bundles.map((entry) => entry.bundle_path), blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: crossSourceContext, insights, executive: composeExecutiveSummary(reports, crossSourceContext, insights), ...(profileContext.length ? { ahrefs_profile_context: profileContext } : {}), ...(keywordResearch ? { keyword_research: keywordResearch } : {}), ...(rankMonitoring ? { rank_monitoring: rankMonitoring } : {}), ...(rankMonitoringEvidence.length > 1 ? { rank_monitoring_snapshots: rankMonitoringEvidence } : {}) };
   const details: string[] = [];
-  for (const accepted of packageSummary.accepted_bundles) {
+  for (const accepted of currentAcceptedBundles) {
     const path = join(resolvedArtifacts, accepted.bundle_path, "report.md");
     const content = await readFile(path, "utf8");
     details.push(`### ${accepted.provider} — ${accepted.property_id}\n\nEvidence: [${accepted.bundle_path}](../${relative(resolvedOutput, join(resolvedArtifacts, accepted.bundle_path))})\n\n${content}`);
