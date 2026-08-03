@@ -9,7 +9,7 @@ import { PhraseGroup } from "./ahrefs-keywords.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { ClientContent, readClientContent, readClientContentBundle } from "./client-content.js";
 import { RankMonitoringSnapshot, readRankMonitoringBundle } from "./rank-monitoring.js";
-import { HistoryEntry, readAnalyticsHistory, summarizeHistory } from "./report-history.js";
+import { ProviderHistoryEntry, readProviderHistory } from "./provider-history.js";
 import { AgencyRunRecord, assertAgencyReadOnlyPolicy } from "./agency-run.js";
 
 const execFileAsync = promisify(execFile);
@@ -57,7 +57,7 @@ interface DeliveryUnit {
   notes: string[];
   content: ClientContent | null;
   rankMonitoring: RankMonitoringSnapshot | null;
-  history: HistoryEntry[];
+  history: ProviderHistoryEntry[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
@@ -144,10 +144,31 @@ function hostFromProperty(value: string): string | null {
   try { return new URL(value).hostname.toLowerCase(); } catch { return value.toLowerCase(); }
 }
 
-function historySection(entries: HistoryEntry[]): string {
+function historyMetricValue(metric: ProviderHistoryEntry["metrics"][number]): string {
+  if (metric.unit === "ratio") return formatPercent(metric.value);
+  if (metric.unit === "position") return formatDecimal(metric.value);
+  return formatNumber(metric.value);
+}
+
+function historyComparison(entry: ProviderHistoryEntry): string {
+  if (!entry.comparison) return "Brak porównywalnej bazy";
+  return entry.metrics.map((metric) => {
+    const comparison = entry.comparison?.metrics[metric.key];
+    if (!comparison) return `${metric.label}: brak porównywalnej bazy`;
+    if (metric.unit === "position") {
+      const improvement = comparison.delta < 0 ? "poprawa" : comparison.delta > 0 ? "pogorszenie" : "bez zmiany";
+      return `${metric.label}: ${improvement} (${formatDecimal(Math.abs(comparison.delta))})`;
+    }
+    if (metric.unit === "ratio") return `${metric.label}: ${formatPercent(comparison.previous)} → ${formatPercent(comparison.current)} (${formatDecimal(comparison.delta * 100)} p.p.)`;
+    const percentChange = comparison.previous === 0 ? null : (comparison.delta / comparison.previous) * 100;
+    return `${metric.label}: ${formatNumber(comparison.previous)} → ${formatNumber(comparison.current)}${percentChange === null ? "" : ` (${percentChange > 0 ? "+" : ""}${formatDecimal(percentChange)}%)`}`;
+  }).join("; ");
+}
+
+function historySection(entries: ProviderHistoryEntry[]): string {
   if (entries.length === 0) return "";
-  const rows = entries.map((entry) => { const comparison = entry.comparison ? `${formatNumber(entry.comparison.clicks_delta)} kliknięć; ${entry.comparison.position_delta > 0 ? "poprawa" : entry.comparison.position_delta < 0 ? "pogorszenie" : "bez zmiany"} ${formatDecimal(Math.abs(entry.comparison.position_delta))} pozycji` : "Brak porównywalnej bazy"; return `<tr><td>${escapeHtml(entry.period.start)} — ${escapeHtml(entry.period.end)}</td><td>${escapeHtml(entry.property_id)}</td><td>${escapeHtml(formatNumber(entry.metrics.clicks))}</td><td>${escapeHtml(formatNumber(entry.metrics.impressions))}</td><td>${escapeHtml(formatPercent(entry.metrics.ctr))}</td><td>${escapeHtml(formatDecimal(entry.metrics.position))}</td><td>${escapeHtml(comparison)}</td></tr>`; }).join("");
-  return `<section class="section"><div class="eyebrow">HISTORIA WYNIKÓW</div><h2>Okresy i porównania</h2><p class="muted">Zweryfikowana historia tej jednostki. Delta pozycji jest interpretowana tak, że niższa pozycja oznacza poprawę; brak sąsiedniego, niepokrywającego się okresu oznacza brak porównywalnej bazy.</p><div class="table-wrap"><table><thead><tr><th>Okres</th><th>Właściwość</th><th>Kliknięcia</th><th>Wyświetlenia</th><th>CTR</th><th>Śr. pozycja</th><th>Porównanie</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+  const rows = entries.map((entry) => `<tr><td>${escapeHtml(entry.period.start)} — ${escapeHtml(entry.period.end)}</td><td>${escapeHtml(providerLabel(entry.provider))}</td><td>${escapeHtml(entry.property_id)}</td><td>${entry.metrics.map((metric) => `${escapeHtml(metric.label)}: ${escapeHtml(historyMetricValue(metric))}`).join("<br>")}</td><td>${escapeHtml(historyComparison(entry))}</td></tr>`).join("");
+  return `<section class="section"><div class="eyebrow">HISTORIA WYNIKÓW</div><h2>Okresy i porównania</h2><p class="muted">Zweryfikowana historia GSC, GA4 i Ahrefs dla tej jednostki. Ahrefs pozostaje estymacją dostawcy; wartości różnych źródeł nie są sumowane. Dla pozycji niższa wartość oznacza poprawę.</p><div class="table-wrap"><table><thead><tr><th>Okres</th><th>Źródło</th><th>Właściwość</th><th>Metryki</th><th>Porównanie</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 
 function recordRows(value: unknown): Record<string, unknown>[] {
@@ -332,7 +353,7 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string): string {
   </style></head><body><main class="sheet"><section class="cover"><div class="brand">Rekurencja.com · SEO intelligence</div><h1>${escapeHtml(unit.title)}</h1><p class="subtitle">Raport wyników organicznych przygotowany wyłącznie na podstawie zweryfikowanych danych źródłowych.</p><div class="cover-meta"><span>${escapeHtml(unit.mappingLabel)}</span><span>${escapeHtml(currentPeriod ? `${currentPeriod.start} — ${currentPeriod.end}` : "Brak okresu GSC")}</span><span>${escapeHtml(generatedAt.slice(0,10))}</span></div></section><div class="content"><div class="eyebrow">PODSUMOWANIE</div><h2>Najważniejsze wyniki</h2><p><span class="status ${unit.kind === "domain" ? "pending" : ""}">${escapeHtml(unit.kind === "domain" ? "Przypisanie do klienta: oczekuje na potwierdzenie operatora" : clientStatus)}</span></p><div class="callout ${unit.kind === "domain" ? "warning" : ""}">${escapeHtml(unit.kind === "domain" ? "Ta domena pochodzi z dostarczonej listy fraz, ale nie ma jeszcze jawnego przypisania do klienta. Raport pokazuje wyłącznie jej wyniki i nie przypisuje własności automatycznie." : "GSC pokazuje obserwowane dane. Ahrefs pokazuje estymacje dostawcy. Tych wartości nie sumujemy. Źródła niepodłączone nie oznaczają wartości zero.")}</div><div class="grid">${cards}${ahrefsCards}</div><div class="section"><div class="eyebrow">OKRES RAPORTOWANIA</div><h2>Zakres danych</h2><p>${currentPeriod ? `GSC: ${escapeHtml(currentPeriod.start)} — ${escapeHtml(currentPeriod.end)}.` : "Brak okresu GSC."} ${escapeHtml(previousLabel)}</p></div><div class="section"><div class="eyebrow">STATUS ŹRÓDEŁ</div><h2>Źródła danych</h2><p class="muted">${escapeHtml(sourceSummary || "Dla tej jednostki nie ma jeszcze źródła pozycyjnego lub analitycznego.")}</p><div class="table-wrap"><table><thead><tr><th>Źródło</th><th>Status</th><th>Interpretacja</th></tr></thead><tbody>${sourceRows || `<tr><td colspan="3" class="no-data">Brak źródeł dla tej jednostki.</td></tr>`}</tbody></table></div></div>${keywordSection}<section class="page-break wide-table"><div class="eyebrow">SZCZEGÓŁY WIDOCZNOŚCI</div><h2>Widoczność organiczna</h2><p class="muted">Pełny zbiór wyników z zachowaniem rozróżnienia źródeł i typu dopasowania: w obu źródłach, tylko GSC albo tylko Ahrefs.</p><div class="table-wrap"><table><thead><tr><th>Typ</th><th>Pokrycie</th><th>Adres / zapytanie</th><th>GSC — kliknięcia</th><th>GSC — wyświetlenia</th><th>Ahrefs — szac. ruch</th></tr></thead><tbody>${contextRows || `<tr><td colspan="6" class="no-data">Brak cross-source context.</td></tr>`}</tbody></table></div></section><section class="page-break"><div class="eyebrow">SYGNAŁY REGUŁOWE</div><h2>Sygnały do omówienia</h2><p class="muted">Rule-based signal — not a recommendation. Sygnały wynikają z wymienionych danych; nie są rekomendacjami ani wnioskami przyczynowymi.</p><div class="table-wrap"><table><thead><tr><th>Typ</th><th>Obszar</th><th>Dowód</th><th>Waga</th></tr></thead><tbody>${signalRows || `<tr><td colspan="4" class="no-data">Brak sygnałów.</td></tr>`}</tbody></table></div></section><section class="section"><div class="eyebrow">OGRANICZENIA I NOTATKI</div><h2>Co należy wiedzieć</h2><ul><li>Raport nie wykonuje nowych requestów i nie rozszerza zakresu danych.</li><li>Ahrefs pokazuje szacunki w ograniczonym zakresie; nie jest to pełna inwentaryzacja.</li><li>GA4 i Localo są niepodłączone; ich brak nie oznacza wartości zero.</li><li>Dostęp do GSC nie potwierdza własności domeny.</li><li>Przypisanie tej jednostki do klienta pozostaje decyzją operatora.</li>${unit.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul><div class="footer"><span>Lokalny raport oparty na zweryfikowanych danych</span><span>${escapeHtml(unit.id)}</span></div></section></div></main></body></html>`;
 }
 
-function appendClientContent(html: string, content: ClientContent | null, rankMonitoring: RankMonitoringSnapshot | null, history: HistoryEntry[]): string {
+function appendClientContent(html: string, content: ClientContent | null, rankMonitoring: RankMonitoringSnapshot | null, history: ProviderHistoryEntry[]): string {
   if (!content && !rankMonitoring && history.length === 0) return html;
   const actions = content ? content.actions.map((action) => `<tr><td>${escapeHtml(action.period.start)} — ${escapeHtml(action.period.end)}</td><td>${escapeHtml(actionTypeLabel(action.type))}</td><td>${escapeHtml(actionStatusLabel(action.status))}</td><td>${escapeHtml(action.title)}</td><td>${escapeHtml(action.target_url ?? "—")}</td></tr>`).join("") : "";
   const glossary = content ? content.glossary.map((entry) => `<tr><td>${escapeHtml(entry.term)}</td><td>${escapeHtml(entry.explanation)}</td></tr>`).join("") : "";
@@ -413,8 +434,8 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const directClientContent = options.clientContentPath ? await readClientContent(options.clientContentPath) : null;
   const sourceManifestHashes = await collectSourceManifestHashes(summary, options.artifactsDir);
   const agencyRunRecord = options.agencyRunRecordPath ? await readAgencyRunRecord(options.agencyRunRecordPath) : null;
-  const historyIdentities = summary.scope.entries.filter((entry) => entry.provider === "google-search-console").map((entry) => ({ client_id: entry.client_id, property_id: entry.property_id, provider: "google-search-console" as const }));
-  const historySummary = summarizeHistory(await readAnalyticsHistory(options.artifactsDir, historyIdentities));
+  const historyIdentities = summary.accepted_bundles.map((entry) => ({ client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider })).filter((entry): entry is { client_id: string; property_id: string; provider: "google-search-console" | "google-analytics" | "ahrefs" } => entry.provider === "google-search-console" || entry.provider === "google-analytics" || entry.provider === "ahrefs");
+  const historyEntries = await readProviderHistory(options.artifactsDir, historyIdentities);
   const keywordManifestSha256 = summary.keyword_research ? await verifyKeywordBundle(summary.keyword_research, options.keywordBundleRoot ?? options.artifactsDir) : null;
   const outputDir = resolve(options.outputDir);
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
@@ -441,7 +462,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
       clientKeywordGroups.set(owner.client_id, groups);
     }
   }
-  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContentById.get(clientId) ?? (directClientContent?.client_id === clientId ? directClientContent : null); const rankMonitoring = rankBundle?.snapshots.find((snapshot) => snapshot.client_id === clientId) ?? null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${actionStatusLabel(action.status)}: ${action.title}`) : [], content, rankMonitoring, history: historySummary.periods.filter((entry) => entry.client_id === clientId) }; });
+  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContentById.get(clientId) ?? (directClientContent?.client_id === clientId ? directClientContent : null); const rankMonitoring = rankBundle?.snapshots.find((snapshot) => snapshot.client_id === clientId) ?? null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${actionStatusLabel(action.status)}: ${action.title}`) : [], content, rankMonitoring, history: historyEntries.filter((entry) => entry.client_id === clientId) }; });
   if (keyword) {
     for (const inputGroup of keyword.input_groups) {
       if (summary.scope.entries.some((entry) => hostFromProperty(entry.property_id) === inputGroup.host.toLowerCase())) continue;
@@ -478,7 +499,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   await writeFile(join(outputDir, "index.html"), index, { encoding: "utf8", flag: "wx", mode: 0o600 });
   const files: Record<string, string | Buffer> = { "index.html": index };
   for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); files[unit.email] = await readFile(join(outputDir, unit.email), "utf8"); }
-  const manifest = { schema_version: "1", source: resolve(options.agencyReportPath), agency_report_sha256: hashBytes(agencyReportBytes), agency_run_record_sha256: agencyRunRecord?.sha256 ?? null, source_manifest_sha256: sourceManifestHashes, history_manifest_sha256: [...new Set(historySummary.periods.map((entry) => entry.manifest_sha256))].sort(), keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
+  const manifest = { schema_version: "1", source: resolve(options.agencyReportPath), agency_report_sha256: hashBytes(agencyReportBytes), agency_run_record_sha256: agencyRunRecord?.sha256 ?? null, source_manifest_sha256: sourceManifestHashes, history_manifest_sha256: [...new Set(historyEntries.map((entry) => entry.manifest_sha256))].sort(), keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
   await writeFile(join(outputDir, "manifest.json"), canonicalJson(manifest), { encoding: "utf8", flag: "wx", mode: 0o600 });
-  return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + summary.accepted_bundles.length + new Set(historySummary.periods.map((entry) => entry.manifest_sha256)).size + (keywordManifestSha256 ? 1 : 0) + (rankBundle ? 1 : 0) + (clientContentBundle ? 1 : 0) };
+  return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + summary.accepted_bundles.length + new Set(historyEntries.map((entry) => entry.manifest_sha256)).size + (keywordManifestSha256 ? 1 : 0) + (rankBundle ? 1 : 0) + (clientContentBundle ? 1 : 0) };
 }

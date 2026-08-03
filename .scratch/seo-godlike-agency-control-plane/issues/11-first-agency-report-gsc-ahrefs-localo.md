@@ -882,3 +882,17 @@ auth or schema is unknown.
   the local history writers.
 - The fixed-point map was refreshed to `f6076bc`; no provider request or
   generated report rerun was performed.
+
+## Multi-provider history in client delivery — 2026-08-03
+
+- Client delivery now reads manifest-verified history for accepted GSC, GA4
+  and Ahrefs snapshots under one provider-scoped identity; it does not merge
+  values into a cross-provider total.
+- Comparisons are emitted only for directly adjacent, non-overlapping date
+  ranges. Position deltas retain the lower-is-better interpretation, while
+  ratios and counts use their native units.
+- The new history reader validates report shape, manifest bytes/hashes and
+  symlink confinement. Focused falsifiers cover provider separation, scope,
+  tampering, non-adjacent ranges and escaping manifest entries.
+- No provider request, credential read, Ahrefs rerun or generated production
+  report rerun was performed.
