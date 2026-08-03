@@ -413,7 +413,6 @@ function emailDraft(unit: DeliveryUnit, generatedAt: string, htmlPath: string, p
 }
 
 async function renderPdf(htmlPath: string, pdfPath: string): Promise<void> {
-  await assertPdfRendererAvailable();
   const profile = await mkdtemp(join(tmpdir(), "seo-godlike-chromium-"));
   const normalized = `${pdfPath}.normalized`;
   const outputRoot = dirname(resolve(pdfPath));
@@ -442,6 +441,8 @@ async function renderPdf(htmlPath: string, pdfPath: string): Promise<void> {
 }
 
 export async function writeClientDelivery(options: ClientDeliveryOptions): Promise<ClientDeliveryResult> {
+  if (!options.artifactsDir) throw new Error("client delivery requires artifactsDir");
+  if (options.renderPdf) await assertPdfRendererAvailable();
   const summary = await readAgencyReport(options.agencyReportPath, options.artifactsDir);
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   const resolvedRankMonitoringPath = options.rankMonitoringRoot

@@ -124,6 +124,20 @@ test("provider history fails closed when an accepted bundle report is malformed"
   await rm(root, { recursive: true, force: true });
 });
 
+test("provider history fails closed when an accepted report loses its identity", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-provider-history-"));
+  const bundle = join(root, "identity-stripped");
+  await mkdir(bundle);
+  const content = canonicalJson({ foo: "identity removed" });
+  await writeFile(join(bundle, "report.json"), content, "utf8");
+  await writeFile(join(bundle, "manifest.json"), canonicalJson({ files: { "report.json": { sha256: hash(content), bytes: Buffer.byteLength(content) } } }), "utf8");
+  await assert.rejects(
+    readProviderHistory(root, [{ client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }], ["identity-stripped"]),
+    /required report is invalid/,
+  );
+  await rm(root, { recursive: true, force: true });
+});
+
 test("provider history follows an in-root bundle symlink without dropping the bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-provider-history-"));
   await writeBundle(root, "real-bundle", report("ahrefs", "2026-06-29", "2026-07-26", 40, "symlinked-manifest"));
