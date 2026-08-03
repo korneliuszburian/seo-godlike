@@ -359,6 +359,16 @@ function acceptedBundleFor(source: AgencyReportSourceStatus, packageSummary: Rep
     .sort((a, b) => b.generated_at.localeCompare(a.generated_at) || b.bundle_path.localeCompare(a.bundle_path))[0];
 }
 
+function ahrefsSnapshotFreshForGsc(entry: ReportPackageSummary["accepted_bundles"][number], packageSummary: ReportPackageSummary): boolean {
+  if (entry.provider !== "ahrefs") return true;
+  const latestGscEnd = packageSummary.accepted_bundles
+    .filter((candidate) => candidate.client_id === entry.client_id && candidate.provider === "google-search-console")
+    .map((candidate) => candidate.period.end)
+    .sort()
+    .at(-1);
+  return !latestGscEnd || entry.period.end >= latestGscEnd;
+}
+
 function contextRows(summary: AgencyReportSummary): CrossSourceContextEntry[] {
   return rankedContext(summary.cross_source_context).slice(0, EXECUTIVE_CONTEXT_LIMIT);
 }
@@ -557,6 +567,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const propertyStatus = scope.entries.map((entry) => {
     const source: AgencyReportSourceStatus = { client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null };
     const accepted = acceptedBundleFor(source, packageSummary);
+    if (accepted && !ahrefsSnapshotFreshForGsc(accepted, packageSummary)) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", bundle_path: null };
     if (accepted) return { ...source, status: "ready" as const, reason: null, bundle_path: accepted.bundle_path };
     return source;
   });

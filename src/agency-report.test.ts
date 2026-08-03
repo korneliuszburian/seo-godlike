@@ -5,8 +5,9 @@ import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { ScopePlan, SourceRegistry } from "./domain.js";
+import { AhrefsAnalyticsRequest, CapabilityRegistry, ClientRegistry, ScopePlan, SourceRegistry } from "./domain.js";
 import { composeAhrefsProfileContext, composeCrossSourceContext, composeExecutiveSummary, writeAgencyReport } from "./agency-report.js";
+import { runAhrefsAnalytics } from "./ahrefs.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { canonicalJson, sha256 } from "./serialize.js";
@@ -68,6 +69,31 @@ test("agency report selects the newest accepted bundle per current source identi
     assert.deepEqual(summary.accepted_bundles.map((entry) => entry.bundle_path), ["newer"]);
     assert.equal(summary.executive.observed_gsc[0]?.clicks, 7);
     assert.equal(summary.insights.length, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agency report excludes an Ahrefs snapshot older than the selected GSC period", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-period-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    await writeAgencySelectionBundle(artifacts, "gsc", "2026-07-29T08:00:00.000Z", 2);
+    const registry: ClientRegistry = { clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "bodymove.pl", provider: "ahrefs", canonical_property: true }] }] };
+    const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "ahrefs.site-explorer.metrics", provider: "ahrefs", operation_id: "site-explorer.metrics", api_version: "v3", read_write: "read", state: "schema_verified" }] };
+    const request: AhrefsAnalyticsRequest = { schema_version: "1", run_id: "ahrefs-stale", client_id: "bodymove", property_id: "bodymove.pl", provider: "ahrefs", operation: "site-explorer.metrics", metric: "org_traffic", date_range: { start: "2026-06-30", end: "2026-06-30" }, credential_ref: "keyring:seo-godlike/ahrefs-api-key", policy_mode: "read_only", captured_at: "2026-07-01T08:00:00.000Z" };
+    await runAhrefsAnalytics(request, registry, capabilities, JSON.stringify({ metrics: { org_traffic: 10, org_keywords: 2, org_keywords_1_3: 1 } }), join(artifacts, "ahrefs-stale"));
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "partial", entries: [
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
+      { client_id: "bodymove", client_display_name: "Bodymove", property_id: "bodymove.pl", provider: "ahrefs", status: "ready", reason: null, metrics: [] },
+    ] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", { sources: [] });
+    const ahrefsStatus = summary.source_status.find((source) => source.provider === "ahrefs");
+    assert.equal(ahrefsStatus?.status, "unavailable");
+    assert.match(ahrefsStatus?.reason ?? "", /older than the selected Google Search Console observation period/);
+    assert.equal(summary.cross_source_context.length, 0);
+    assert.equal(summary.report_status, "partial");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

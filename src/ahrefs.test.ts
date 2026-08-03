@@ -18,6 +18,7 @@ test("Ahrefs metrics writes a manifest-verified read-only bundle", async () => {
   const report = await runAhrefsAnalytics(request, registry, capabilities, `${JSON.stringify({ metrics: { org_traffic: 123, org_keywords: 456, org_keywords_1_3: 12 } })}\n`, output);
   assert.equal(report.provider, "ahrefs");
   assert.equal(report.analytics.current.organic_traffic, 123);
+  assert.equal(JSON.parse(await readFile(join(output, "claim.json"), "utf8")).confidence, "estimated");
   const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, { sha256: string; bytes: number }> };
   for (const [name, expected] of Object.entries(manifest.files)) {
     const content = await readFile(join(output, name));
@@ -71,6 +72,7 @@ test("Ahrefs profile persists bounded pages, keyword, and competitor context", a
   assert.equal(report.analytics.current.top_pages[0]?.traffic_diff_percent_ratio, -0.023);
   assert.equal(report.analytics.current.organic_keyword_rows[0]?.keyword, "rehabilitacja");
   assert.equal(report.analytics.current.competitors[0]?.competitor_domain, "competitor.example");
+  assert.equal(JSON.parse(await readFile(join(output, "claim.json"), "utf8")).confidence, "estimated");
   const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, { sha256: string; bytes: number; request_row_limit?: number; response_row_count?: number }> };
   assert.deepEqual(manifest.files["raw-response.top-pages.json"], { sha256: manifest.files["raw-response.top-pages.json"]?.sha256, bytes: manifest.files["raw-response.top-pages.json"]?.bytes, request_row_limit: 100, response_row_count: 1 });
   assert.equal(manifest.files["raw-response.organic-keywords.json"]?.request_row_limit, 500);

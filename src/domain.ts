@@ -180,7 +180,7 @@ export interface Claim {
   claim_id: string;
   statement: string;
   observation_refs: string[];
-  confidence: "observed";
+  confidence: "observed" | "estimated";
   validation: "passed";
   created_at: string;
 }
