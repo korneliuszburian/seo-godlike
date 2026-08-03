@@ -1067,3 +1067,20 @@ auth or schema is unknown.
   TypeScript tests + 3 context tests, build, zero high audit vulnerabilities
   and `git diff --check`. No provider request, credential read, Ahrefs rerun
   or production report rerun occurred.
+
+## Delivery prerequisite and history fail-closed follow-up — 2026-08-03
+
+- Executive metrics now preserve missing provider values as `null` and render
+  them as `—`; delivery manifest counting deduplicates the same manifest when
+  it appears in both current and historical evidence.
+- Provider history now fails closed for a required malformed history report,
+  while continuing to ignore accepted non-history Ahrefs profile bundles.
+- PDF delivery performs a preflight for the four required host binaries and
+  `XDG_RUNTIME_DIR` before creating renderer output. The SERPROBOT runbook now
+  documents the required build and user-systemd prerequisites for scheduled
+  PDF runs.
+- Fixed point `5be4c62`; OpenCode/DeepSeek review of the preceding fixed point
+  `0366758` found no blocker and identified these risks. Local proof after the
+  fixes passes with 149 TypeScript tests + 3 context tests, build, zero high
+  audit vulnerabilities and `git diff --check`. No provider request,
+  credential read, Ahrefs rerun or generated production report rerun occurred.
