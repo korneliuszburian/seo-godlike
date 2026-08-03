@@ -1578,3 +1578,13 @@ auth or schema is unknown.
 - Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
+
+## Unsupported source summary — 2026-08-04
+
+- Client delivery now labels non-ready sources explicitly in the source
+  summary: ready sources remain named directly, stale sources are
+  `Niedostępne`, and unsupported sources are `Zablokowane`. The detailed
+  source table and the headline status retain their existing semantics.
+- A focused delivery falsifier covers a mixed GSC/Ahrefs/Semstorm source set;
+  no provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.

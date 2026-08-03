@@ -385,7 +385,9 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string, clientLinks: UnitNavi
   const gsc = unit.metrics.filter((metric) => metric.provider === "google-search-console");
   const ahrefs = unit.metrics.filter((metric) => metric.provider === "ahrefs");
   const currentPeriod = gsc.find((metric) => metric.current_range)?.current_range;
-  const sourceSummary = unit.sources.map((source) => source.status === "unavailable" ? `Niedostępne — ${sourceHeadlineLabel(source)}` : sourceHeadlineLabel(source)).join(", ");
+  const sourceSummary = unit.sources.map((source) => source.status === "ready"
+    ? sourceHeadlineLabel(source)
+    : `${source.status === "unavailable" ? "Niedostępne" : "Zablokowane"} — ${sourceHeadlineLabel(source)}`).join(", ");
   const cards = gsc.flatMap((metric) => [
     [`Observed — Google Search Console · ${metric.property_id} · Kliknięcia`, formatNumber(metricValue(metric, "clicks")), `Zmiana: ${comparisonText(metric, "clicks", "count")}`],
     [`Observed — Google Search Console · ${metric.property_id} · Wyświetlenia`, formatNumber(metricValue(metric, "impressions")), `Zmiana: ${comparisonText(metric, "impressions", "count")}`],
