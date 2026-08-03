@@ -1300,3 +1300,15 @@ auth or schema is unknown.
 - Map pointer was refreshed to `c176dbb`. Remaining operator gates are live
   SERPROBOT/GA4/Localo evidence, explicit client mapping/actions, and any
   publication authority.
+
+## Bundle-only report rebuild — 2026-08-03
+
+- A local rebuild using only the already accepted artifacts and the existing
+  four-group Ahrefs keyword bundle succeeded with `report_status: partial`, 3
+  accepted source bundles, and 41 returned keyword rows. The rebuild omitted
+  the current phrase input intentionally, so it did not call Ahrefs or any
+  other provider and is not a fresh collection.
+- The current 5-group/44-phrase input remains separate from that historical
+  evidence. Passing it to the report writer correctly fails closed; no report
+  is allowed to imply coverage for the two additional Babka phrases or the
+  Wilmed phrase until a matching accepted bundle exists.
