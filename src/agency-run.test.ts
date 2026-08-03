@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { assertAgencyReadOnlyPolicy, executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
+import { assertAgencyReadOnlyPolicy, buildExternalSourceTasks, executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
+import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 
 test("agency executor continues after one provider failure and preserves blockers", async () => {
   const completed: string[] = [];
@@ -49,4 +50,23 @@ test("agency executor preserves identity across multiple clients and properties"
     "bodymove:ahrefs:bodymove.pl",
     "acme:google-search-console:sc-domain:acme.example",
   ]);
+});
+
+test("SERPROBOT snapshot is a local read-only source task and missing input is blocked", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-source-task-"));
+  try {
+    const input = join(root, "rank.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [] }));
+    const bundle = join(root, "rank-bundle");
+    await writeRankMonitoringBundle(input, bundle);
+    const sourceRegistry = { sources: [{ source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot" as const, target: "123", status: "ready" as const, reason: null }] };
+    const withSnapshot = await executeAgencyTasks(buildExternalSourceTasks(sourceRegistry, bundle));
+    assert.equal(withSnapshot.status, "ready");
+    assert.deepEqual(withSnapshot.completed, ["bodymove:serprobot:123"]);
+    const withoutSnapshot = await executeAgencyTasks(buildExternalSourceTasks(sourceRegistry));
+    assert.equal(withoutSnapshot.status, "blocked");
+    assert.deepEqual(withoutSnapshot.blocked, [{ id: "bodymove:serprobot:123", reason: "SERPROBOT rank snapshot was not supplied" }]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

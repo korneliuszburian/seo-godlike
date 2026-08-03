@@ -18,7 +18,7 @@ import { buildDailyAnalyticsCron, buildMonthlyAgencyCron } from "./schedule.js";
 import { runSequentialBatch } from "./batch.js";
 import { buildScopePlan } from "./scope-plan.js";
 import { buildAgentRunPlan } from "./agent-plan.js";
-import { executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
+import { buildExternalSourceTasks, executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
 import { writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeClientDelivery } from "./client-delivery.js";
@@ -253,6 +253,7 @@ async function main(): Promise<void> {
     const startedAt = new Date().toISOString();
     const scope = buildScopePlan(registry, capabilities);
     const ranges = calculateDateRanges();
+    const rankMonitoringPath = optionalArgument("--rank-monitoring");
     await mkdir(outputRoot, { recursive: false });
     const propertyTasks = scope.entries.map((entry) => {
       const id = `${entry.client_id}:${entry.provider}:${entry.property_id}`;
@@ -262,7 +263,7 @@ async function main(): Promise<void> {
       if (entry.provider === "google-analytics") return { id, status: "ready" as const, run: async () => { if (!oauthClientPath) throw new Error("missing --oauth-client for Google Analytics"); await runSingleGa4Analytics({ oauthClientPath, propertyId: entry.property_id, clientId: entry.client_id, registry, capabilities, outputDir }); } };
       return { id, status: "ready" as const, run: async () => runSingleAhrefsAnalytics({ clientId: entry.client_id, propertyId: entry.property_id, date: ahrefsDate, country: ahrefsCountry, registry, capabilities, outputDir }) };
     });
-    const sourceTasks = sourceRegistry.sources.map((source) => ({ id: `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}`, status: source.status === "ready" ? "ready" as const : "blocked" as const, reason: source.reason ?? "external source is unavailable" }));
+    const sourceTasks = buildExternalSourceTasks(sourceRegistry, rankMonitoringPath);
     const result = await executeAgencyTasks([...propertyTasks, ...sourceTasks]);
     const finishedAt = new Date().toISOString();
     await writeAgencyRunRecord(outputRoot, { schema_version: "1", run_id: runId, started_at: startedAt, finished_at: finishedAt, policy_mode: "read_only", approval_boundary: "no_external_write_operations", retention_mode: "operator_managed", deletion_authority: "operator_only", result });
@@ -271,7 +272,6 @@ async function main(): Promise<void> {
     if (deliveryOutput && !agencyReportOutput) throw new Error("--delivery-output requires --agency-report-output");
     const clientContentPath = optionalArgument("--client-content");
     const clientContentBundlePath = optionalArgument("--client-content-bundle");
-    const rankMonitoringPath = optionalArgument("--rank-monitoring");
     let generatedReport: string | undefined;
     let generatedDelivery: string | undefined;
     if (agencyReportOutput) {

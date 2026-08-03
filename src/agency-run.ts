@@ -5,6 +5,24 @@ export interface AgencyTask {
   run?: () => Promise<void>;
 }
 
+export function buildExternalSourceTasks(sourceRegistry: SourceRegistry, rankMonitoringPath?: string): AgencyTask[] {
+  return sourceRegistry.sources.map((source) => {
+    const id = `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}`;
+    if (source.status !== "ready") return { id, status: "blocked", reason: source.reason ?? "external source is unavailable" };
+    if (source.provider !== "serprobot") return { id, status: "blocked", reason: `no local read-only executor for external provider '${source.provider}'` };
+    if (!rankMonitoringPath) return { id, status: "blocked", reason: "SERPROBOT rank snapshot was not supplied" };
+    return {
+      id,
+      status: "ready",
+      run: async () => {
+        const verified = await readRankMonitoringBundle(rankMonitoringPath, [source.client_id]);
+        const projectId = verified.snapshot.source_config?.project_id;
+        if (source.target !== projectId) throw new Error(`SERPROBOT project mismatch for '${source.client_id}'`);
+      },
+    };
+  });
+}
+
 export interface AgencyRunResult {
   status: "ready" | "partial" | "blocked";
   completed: string[];
@@ -77,3 +95,5 @@ export async function writeAgencyRunRecord(outputDir: string, record: AgencyRunR
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { canonicalJson } from "./serialize.js";
+import { readRankMonitoringBundle } from "./rank-monitoring.js";
+import { SourceRegistry } from "./domain.js";
