@@ -279,7 +279,7 @@ async function main(): Promise<void> {
       const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), rankMonitoringPath);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
-        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath, keywordBundleRoot: optionalArgument("--keyword-bundle-root") });
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath, keywordBundleRoot: optionalArgument("--keyword-bundle-root"), agencyRunRecordPath: join(outputRoot, "agency-run.json") });
         generatedDelivery = resolve(deliveryOutput);
       }
       process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);

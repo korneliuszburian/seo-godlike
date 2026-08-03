@@ -727,3 +727,20 @@ auth or schema is unknown.
   the run stopped at its step cap before a final prose verdict. The preceding
   bounded review found no blocker, and the current run performed no provider
   request, credential read, Ahrefs rerun or generated production report rerun.
+
+## Recurring delivery execution provenance — 2026-08-03
+
+- The monthly `--agency-run` path now passes its generated `agency-run.json`
+  into client delivery. Delivery validates its schema/result shape and the
+  read-only policy (`read_only`, no external writes, operator-managed
+  retention, operator-only deletion), then records its SHA-256 in the delivery
+  manifest as `agency_run_record_sha256`.
+- A focused falsifier covers both successful provenance binding and rejection
+  of a run record declaring a write policy. Standalone delivery remains
+  compatible when no run record is supplied.
+- Local proof: 118 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`.
+- OpenCode/DeepSeek bounded review inspected the changed delivery/CLI seam in
+  read-only mode but stopped at its step cap before a final prose verdict; no
+  concrete blocker was emitted. No provider request, credential read, Ahrefs
+  rerun or generated production report rerun was performed.

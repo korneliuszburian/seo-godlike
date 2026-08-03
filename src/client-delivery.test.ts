@@ -35,9 +35,12 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const agencyText = JSON.stringify(summary);
     await writeFile(agencyPath, agencyText);
     await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": agencyText }));
+    const agencyRunRecord = JSON.stringify({ schema_version: "1", run_id: "agency-run-bodymove-july", started_at: "2026-08-03T00:00:00.000Z", finished_at: "2026-08-03T00:05:00.000Z", policy_mode: "read_only", approval_boundary: "no_external_write_operations", retention_mode: "operator_managed", deletion_authority: "operator_only", result: { status: "partial", completed: ["bodymove:google-search-console:sc-domain:bodymove.pl"], blocked: [], failed: [], trace: [] } });
+    const agencyRunRecordPath = join(root, "agency-run.json");
+    await writeFile(agencyRunRecordPath, agencyRunRecord);
     const contentPath = join(root, "client-content.json");
     await writeFile(contentPath, JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [{ action_id: "a-1", client_id: "bodymove", period: { start: "2026-07-01", end: "2026-07-01" }, type: "sponsored_article", status: "published", title: "Publikacja partnera", target_url: "https://bodymove.pl/", published_at: "2026-07-01", notes: null }], glossary: [{ term: "CTR", explanation: "Współczynnik klikalności" }], contact: { name: "Operator", email: "operator@example.test", phone: null } }));
-    const result = await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery"), clientContentPath: contentPath });
+    const result = await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery"), clientContentPath: contentPath, agencyRunRecordPath });
     assert.deepEqual(result.units.map((unit) => [unit.kind, unit.id]), [["client", "bodymove"], ["domain", "domain-other.pl"]]);
     const clientHtml = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
     assert.match(clientHtml, /Raport gotowy — źródła: Google Search Console/);
@@ -88,9 +91,13 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     await writeFile(agencyPath, ambiguousText);
     await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": ambiguousText }));
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "ambiguous-delivery") }), /maps to multiple clients/);
-    const deliveryManifest = JSON.parse(await readFile(join(root, "delivery", "manifest.json"), "utf8")) as { files: Record<string, unknown>; history_manifest_sha256: string[] };
+    const deliveryManifest = JSON.parse(await readFile(join(root, "delivery", "manifest.json"), "utf8")) as { files: Record<string, unknown>; history_manifest_sha256: string[]; agency_run_record_sha256: string | null };
     assert.ok(deliveryManifest.files["bodymove/bodymove-seo-report.eml"]);
     assert.deepEqual(deliveryManifest.history_manifest_sha256, [hash(bundleManifest)]);
+    assert.equal(deliveryManifest.agency_run_record_sha256, hash(agencyRunRecord));
+    await writeFile(agencyRunRecordPath, agencyRunRecord.replace('"read_only"', '"write"'));
+    await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "invalid-run-record-delivery"), agencyRunRecordPath }), /violates read-only policy/);
+    await writeFile(agencyRunRecordPath, agencyRunRecord);
     const domainHtml = await readFile(join(root, "delivery", "domain-other.pl", "domain-other.pl-seo-report.html"), "utf8");
     assert.match(domainHtml, /Przypisanie do klienta: oczekuje na potwierdzenie operatora/);
     assert.doesNotMatch(domainHtml, /Widoczność organiczna/);
