@@ -32,6 +32,14 @@ interface AnalyticsReportShape {
   };
 }
 
+export interface HistoryComparison {
+  previous_period: { start: string; end: string };
+  clicks_delta: number;
+  impressions_delta: number;
+  ctr_delta: number;
+  position_delta: number;
+}
+
 export interface HistoryEntry {
   bundle_path: string;
   report_path: string;
@@ -42,6 +50,7 @@ export interface HistoryEntry {
   generated_at: string;
   period: { start: string; end: string };
   metrics: AnalyticsMetricSummary;
+  comparison?: HistoryComparison;
 }
 
 export interface HistorySummary {
@@ -206,7 +215,21 @@ function aggregateTotals(entries: HistoryEntry[]): AnalyticsMetricSummary {
 }
 
 export function summarizeHistory(entries: HistoryEntry[], skippedBundles: string[] = []): HistorySummary {
-  return { schema_version: "1", bundle_count: entries.length, skipped_bundles: [...skippedBundles].sort(), periods: entries, totals: aggregateTotals(entries) };
+  const grouped = new Map<string, HistoryEntry[]>();
+  for (const entry of entries) {
+    const key = `${entry.client_id}\u0000${entry.property_id}`;
+    const group = grouped.get(key) ?? [];
+    group.push(entry);
+    grouped.set(key, group);
+  }
+  const periods = entries.map((entry) => {
+    const group = [...(grouped.get(`${entry.client_id}\u0000${entry.property_id}`) ?? [])].sort((a, b) => a.period.start.localeCompare(b.period.start) || a.period.end.localeCompare(b.period.end) || a.generated_at.localeCompare(b.generated_at));
+    const index = group.findIndex((candidate) => candidate.run_id === entry.run_id && candidate.bundle_path === entry.bundle_path);
+    const previous = index > 0 ? group[index - 1] : undefined;
+    if (!previous || previous.period.end >= entry.period.start) return { ...entry, comparison: undefined };
+    return { ...entry, comparison: { previous_period: previous.period, clicks_delta: entry.metrics.clicks - previous.metrics.clicks, impressions_delta: entry.metrics.impressions - previous.metrics.impressions, ctr_delta: entry.metrics.ctr - previous.metrics.ctr, position_delta: entry.metrics.position - previous.metrics.position } };
+  });
+  return { schema_version: "1", bundle_count: entries.length, skipped_bundles: [...skippedBundles].sort(), periods, totals: aggregateTotals(entries) };
 }
 
 function percent(value: number): string {
@@ -215,23 +238,23 @@ function percent(value: number): string {
 
 function markdown(summary: HistorySummary): string {
   return [
-    "# SEO history executive summary",
+    "# Historia wyników SEO — podsumowanie",
     "",
-    `- Analytics bundles: ${summary.bundle_count}`,
-    `- Total clicks: ${summary.totals.clicks}`,
-    `- Total impressions: ${summary.totals.impressions}`,
-    `- Weighted CTR: ${percent(summary.totals.ctr)}`,
-    `- Weighted average position: ${summary.totals.position.toFixed(2)}`,
+    `- Zweryfikowane pakiety analityczne: ${summary.bundle_count}`,
+    `- Łączne kliknięcia: ${summary.totals.clicks}`,
+    `- Łączne wyświetlenia: ${summary.totals.impressions}`,
+    `- CTR ważony wyświetleniami: ${percent(summary.totals.ctr)}`,
+    `- Średnia pozycja ważona wyświetleniami: ${summary.totals.position.toFixed(2)}`,
     ...(summary.skipped_bundles.length > 0 ? [
       "",
-      "## Skipped bundles",
+      "## Pominięte pakiety",
       "",
       ...summary.skipped_bundles.map((bundlePath) => `- ${bundlePath}`),
     ] : []),
     "",
-    "| Period | Client | Property | Clicks | Impressions | CTR | Position | Bundle |",
-    "| --- | --- | --- | ---: | ---: | ---: | ---: | --- |",
-    ...summary.periods.map((entry) => `| ${entry.period.start} to ${entry.period.end} | ${entry.client_display_name} | ${entry.property_id} | ${entry.metrics.clicks} | ${entry.metrics.impressions} | ${percent(entry.metrics.ctr)} | ${entry.metrics.position.toFixed(2)} | ${entry.bundle_path} |`),
+    "| Okres | Klient | Właściwość | Kliknięcia | Wyświetlenia | CTR | Pozycja | Delta kliknięć | Delta pozycji | Bundle |",
+    "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+    ...summary.periods.map((entry) => `| ${entry.period.start} — ${entry.period.end} | ${entry.client_display_name} | ${entry.property_id} | ${entry.metrics.clicks} | ${entry.metrics.impressions} | ${percent(entry.metrics.ctr)} | ${entry.metrics.position.toFixed(2)} | ${entry.comparison?.clicks_delta ?? "—"} | ${entry.comparison?.position_delta.toFixed(2) ?? "—"} | ${entry.bundle_path} |`),
     "",
   ].join("\n");
 }
@@ -249,18 +272,21 @@ function html(summary: HistorySummary): string {
     String(entry.metrics.clicks),
     String(entry.metrics.impressions),
     percent(entry.metrics.ctr),
+    String(entry.comparison?.clicks_delta ?? "—"),
+    String(entry.comparison?.position_delta.toFixed(2) ?? "—"),
     entry.bundle_path,
   ].map(htmlEscape).map((value) => `<td>${value}</td>`).join(""));
   const skipped = summary.skipped_bundles.length === 0 ? "" : `<h2>Skipped bundles</h2><ul>${summary.skipped_bundles.map((path) => `<li><code>${htmlEscape(path)}</code></li>`).join("")}</ul>`;
   return [
     "<!doctype html>",
-    "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>SEO history executive summary</title></head><body>",
-    "<h1>SEO history executive summary</h1>",
-    `<p>Analytics bundles: ${summary.bundle_count}; clicks: ${summary.totals.clicks}; impressions: ${summary.totals.impressions}</p>`,
+    "<html lang=\"pl\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Historia wyników SEO</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#172b36}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:900px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #dbe5e7}th{background:#eef5f4}</style></head><body>",
+    "<h1>Historia wyników SEO</h1>",
+    `<p>Zweryfikowane pakiety analityczne: ${summary.bundle_count}; kliknięcia: ${summary.totals.clicks}; wyświetlenia: ${summary.totals.impressions}</p>`,
+    "<p>Delta jest liczona względem poprzedniego niepokrywającego się okresu tej samej właściwości. Ujemna delta pozycji oznacza poprawę, ponieważ niższa pozycja jest lepsza.</p>",
     skipped,
-    "<table><thead><tr><th>Start</th><th>End</th><th>Client</th><th>Property</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Bundle</th></tr></thead><tbody>",
+    "<div class=\"table-wrap\"><table><thead><tr><th>Okres</th><th>Klient</th><th>Właściwość</th><th>Kliknięcia</th><th>Wyświetlenia</th><th>CTR</th><th>Pozycja</th><th>Delta kliknięć</th><th>Delta pozycji</th><th>Bundle</th></tr></thead><tbody>",
     ...rows.map((row) => `<tr>${row}</tr>`),
-    "</tbody></table>",
+    "</tbody></table></div>",
     "</body></html>",
     "",
   ].join("\n");

@@ -70,6 +70,8 @@ test("history aggregates two bundles chronologically and writes deterministic da
   assert.deepEqual(summary.skipped_bundles, []);
   assert.equal(summary.totals.clicks, 6);
   assert.equal(summary.totals.impressions, 60);
+  assert.equal(summary.periods[1]?.comparison?.clicks_delta, 2);
+  assert.equal(summary.periods[1]?.comparison?.position_delta, 0);
   const output = join(root, "dashboard");
   await writeHistoryDashboard(root, output);
   assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /2026-06-01/);
@@ -97,7 +99,7 @@ test("history keeps the latest generated duplicate run and warns about the skipp
     const output = join(root, "dashboard");
     await writeHistoryDashboard(root, output);
     assert.deepEqual(JSON.parse(await readFile(join(output, "executive-summary.json"), "utf8")).skipped_bundles, ["older"]);
-    assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /## Skipped bundles\n\n- older/);
+    assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /## Pominięte pakiety\n\n- older/);
   } finally {
     process.stderr.write = originalWrite;
     await rm(root, { recursive: true, force: true });
