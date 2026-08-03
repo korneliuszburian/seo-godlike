@@ -74,6 +74,6 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     ...(options.keywordBundleRoot ? ["--keyword-bundle-root", shellQuote(options.keywordBundleRoot)] : []),
   ].join(" ");
   const historyCommand = `node dist/cli.js --report-history ${shellQuote(options.artifactsDir)} --output ${history}`;
-  const rankHistoryCommand = ` && node dist/cli.js --rank-history ${shellQuote(options.artifactsDir)} --output ${rankHistory}`;
-  return `17 3 1 * * cd ${shellQuote(options.workingDirectory)} && ${command} && ${historyCommand}${rankHistoryCommand}`;
+  const rankHistoryCommand = ` && node dist/cli.js --rank-history ${shellQuote(options.artifactsDir)} --registry ${shellQuote(options.registryPath)} --output ${rankHistory}`;
+  return `47 3 1 * * cd ${shellQuote(options.workingDirectory)} && ${command} && ${historyCommand}${rankHistoryCommand}`;
 }

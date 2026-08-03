@@ -21,6 +21,7 @@ export interface RankHistoryComparison {
   previous_period: { start: string; end: string };
   current_period: { start: string; end: string };
   manifest_sha256: string;
+  previous_manifest_sha256: string;
   previous_position: number | null;
   current_position: number | null;
   position_delta: number | null;
@@ -35,6 +36,7 @@ export interface RankHistorySummary {
 
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function escapeHtml(value: string): string { return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;"); }
+function markdownCell(value: unknown): string { return String(value ?? "—").replaceAll("|", "\\|").replaceAll("\n", " "); }
 
 async function manifestPaths(root: string): Promise<string[]> {
   const paths: string[] = [];
@@ -51,14 +53,14 @@ async function manifestPaths(root: string): Promise<string[]> {
   return paths.sort();
 }
 
-async function readRankBundleIfPresent(manifestPath: string, artifactsDir: string): Promise<RankHistoryEntry | null> {
+async function readRankBundleIfPresent(manifestPath: string, artifactsDir: string, expectedClientIds: readonly string[]): Promise<RankHistoryEntry | null> {
   const bundleDir = resolve(manifestPath, "..");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { files?: Record<string, unknown> };
   if (!isRecord(manifest.files) || !("report.json" in manifest.files)) return null;
   const report = JSON.parse(await readFile(join(bundleDir, "report.json"), "utf8")) as unknown;
   if (!isRecord(report) || report.provider !== "serprobot" || typeof report.client_id !== "string") return null;
   const snapshot = parseRankMonitoringSnapshot(report);
-  const verified = await readRankMonitoringBundle(bundleDir, [snapshot.client_id]);
+  const verified = await readRankMonitoringBundle(bundleDir, expectedClientIds);
   return {
     bundle_path: relative(resolve(artifactsDir), bundleDir) || ".",
     client_id: verified.snapshot.client_id,
@@ -70,6 +72,12 @@ async function readRankBundleIfPresent(manifestPath: string, artifactsDir: strin
   };
 }
 
+function immediatelyPrecedes(previous: RankHistoryEntry, current: RankHistoryEntry): boolean {
+  const previousEnd = Date.parse(`${previous.date_range.end}T00:00:00Z`);
+  const currentStart = Date.parse(`${current.date_range.start}T00:00:00Z`);
+  return Number.isFinite(previousEnd) && Number.isFinite(currentStart) && currentStart === previousEnd + 24 * 60 * 60 * 1000;
+}
+
 function comparisons(snapshots: RankHistoryEntry[]): RankHistoryComparison[] {
   const byClient = new Map<string, RankHistoryEntry[]>();
   for (const snapshot of snapshots) byClient.set(snapshot.client_id, [...(byClient.get(snapshot.client_id) ?? []), snapshot]);
@@ -77,25 +85,25 @@ function comparisons(snapshots: RankHistoryEntry[]): RankHistoryComparison[] {
   for (const [clientId, entries] of byClient) {
     const ordered = [...entries].sort((a, b) => a.date_range.start.localeCompare(b.date_range.start) || a.date_range.end.localeCompare(b.date_range.end) || a.bundle_path.localeCompare(b.bundle_path));
     for (const current of ordered) {
-      const previous = [...ordered].filter((candidate) => candidate.date_range.end < current.date_range.start).at(-1);
+      const previous = [...ordered].filter((candidate) => immediatelyPrecedes(candidate, current)).at(-1);
       if (!previous) continue;
       const rowKey = (row: RankHistoryEntry["rows"][number], sourceConfig: RankHistoryEntry["source_config"]): string => [row.keyword, row.search_engine, row.location ?? sourceConfig?.location ?? "", row.device ?? sourceConfig?.device ?? ""].join("\u0000");
       const previousRows = new Map(previous.rows.map((row) => [rowKey(row, previous.source_config), row]));
       for (const row of current.rows) {
         const old = previousRows.get(rowKey(row, current.source_config));
         if (!old) continue;
-        result.push({ client_id: clientId, keyword: row.keyword, search_engine: row.search_engine, location: row.location ?? current.source_config?.location ?? null, device: row.device ?? current.source_config?.device ?? null, previous_period: previous.date_range, current_period: current.date_range, manifest_sha256: current.manifest_sha256, previous_position: old.position, current_position: row.position, position_delta: old.position !== null && row.position !== null ? row.position - old.position : null });
+        result.push({ client_id: clientId, keyword: row.keyword, search_engine: row.search_engine, location: row.location ?? current.source_config?.location ?? null, device: row.device ?? current.source_config?.device ?? null, previous_period: previous.date_range, current_period: current.date_range, manifest_sha256: current.manifest_sha256, previous_manifest_sha256: previous.manifest_sha256, previous_position: old.position, current_position: row.position, position_delta: old.position !== null && row.position !== null ? row.position - old.position : null });
       }
     }
   }
   return result.sort((a, b) => a.client_id.localeCompare(b.client_id) || a.current_period.start.localeCompare(b.current_period.start) || a.keyword.localeCompare(b.keyword) || a.search_engine.localeCompare(b.search_engine) || (a.location ?? "").localeCompare(b.location ?? "") || (a.device ?? "").localeCompare(b.device ?? ""));
 }
 
-export async function readRankHistory(artifactsDir: string): Promise<RankHistoryEntry[]> {
+export async function readRankHistory(artifactsDir: string, expectedClientIds: readonly string[]): Promise<RankHistoryEntry[]> {
   const root = resolve(artifactsDir);
   const entries: RankHistoryEntry[] = [];
   for (const manifestPath of await manifestPaths(root)) {
-    const entry = await readRankBundleIfPresent(manifestPath, root);
+    const entry = await readRankBundleIfPresent(manifestPath, root, expectedClientIds);
     if (entry) entries.push(entry);
   }
   return entries.sort((a, b) => a.date_range.start.localeCompare(b.date_range.start) || a.date_range.end.localeCompare(b.date_range.end) || a.client_id.localeCompare(b.client_id) || a.bundle_path.localeCompare(b.bundle_path));
@@ -114,20 +122,20 @@ function markdown(summary: RankHistorySummary): string {
     "",
     "Pozycja pochodzi z SERPROBOT. Ujemna delta oznacza poprawę, ponieważ niższa pozycja jest lepsza.",
     "",
-    "| Okres | Klient | Fraza | Konfiguracja | Pozycja | Poprzednio | Delta | Manifest |",
-    "| --- | --- | --- | --- | ---: | ---: | ---: | --- |",
-    ...summary.comparisons.map((entry) => `| ${entry.current_period.start} — ${entry.current_period.end} | ${entry.client_id} | ${entry.keyword} | ${entry.search_engine} / ${entry.location ?? "—"} / ${entry.device ?? "—"} | ${entry.current_position ?? "—"} | ${entry.previous_position ?? "—"} | ${entry.position_delta ?? "—"} | ${entry.manifest_sha256} |`),
+    "| Okres | Klient | Fraza | Konfiguracja | Pozycja | Poprzednio | Delta | Manifest bieżący | Manifest poprzedni |",
+    "| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |",
+    ...summary.comparisons.map((entry) => `| ${markdownCell(`${entry.current_period.start} — ${entry.current_period.end}`)} | ${markdownCell(entry.client_id)} | ${markdownCell(entry.keyword)} | ${markdownCell(`${entry.search_engine} / ${entry.location ?? "—"} / ${entry.device ?? "—"}`)} | ${markdownCell(entry.current_position)} | ${markdownCell(entry.previous_position)} | ${markdownCell(entry.position_delta)} | ${markdownCell(entry.manifest_sha256)} | ${markdownCell(entry.previous_manifest_sha256)} |`),
     "",
   ].join("\n");
 }
 
 function html(summary: RankHistorySummary): string {
-  const rows = summary.comparisons.map((entry) => `<tr>${[entry.current_period.start, entry.current_period.end, entry.client_id, entry.keyword, `${entry.search_engine} / ${entry.location ?? "—"} / ${entry.device ?? "—"}`, String(entry.current_position ?? "—"), String(entry.previous_position ?? "—"), String(entry.position_delta ?? "—"), entry.manifest_sha256].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("");
-  return `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Historia monitoringu fraz</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#172b36}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:1100px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #dbe5e7}th{background:#eef5f4}</style></head><body><h1>Historia monitoringu fraz</h1><p>Snapshoty: ${summary.snapshot_count}; porównania: ${summary.comparisons.length}.</p><p>Źródło: SERPROBOT. Ujemna delta pozycji oznacza poprawę.</p><div class="table-wrap"><table><thead><tr><th>Od</th><th>Do</th><th>Klient</th><th>Fraza</th><th>Konfiguracja</th><th>Pozycja</th><th>Poprzednio</th><th>Delta</th><th>Manifest</th></tr></thead><tbody>${rows || `<tr><td colspan="9">Brak wspólnych fraz w niepokrywających się okresach.</td></tr>`}</tbody></table></div></body></html>\n`;
+  const rows = summary.comparisons.map((entry) => `<tr>${[entry.current_period.start, entry.current_period.end, entry.client_id, entry.keyword, `${entry.search_engine} / ${entry.location ?? "—"} / ${entry.device ?? "—"}`, String(entry.current_position ?? "—"), String(entry.previous_position ?? "—"), String(entry.position_delta ?? "—"), entry.manifest_sha256, entry.previous_manifest_sha256].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("");
+  return `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Historia monitoringu fraz</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#172b36}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:1300px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #dbe5e7}th{background:#eef5f4}</style></head><body><h1>Historia monitoringu fraz</h1><p>Snapshoty: ${summary.snapshot_count}; porównania: ${summary.comparisons.length}.</p><p>Źródło: SERPROBOT. Ujemna delta pozycji oznacza poprawę.</p><div class="table-wrap"><table><thead><tr><th>Od</th><th>Do</th><th>Klient</th><th>Fraza</th><th>Konfiguracja</th><th>Pozycja</th><th>Poprzednio</th><th>Delta</th><th>Manifest bieżący</th><th>Manifest poprzedni</th></tr></thead><tbody>${rows || `<tr><td colspan="10">Brak wspólnych fraz w niepokrywających się okresach.</td></tr>`}</tbody></table></div></body></html>\n`;
 }
 
-export async function writeRankHistoryDashboard(artifactsDir: string, outputDir: string): Promise<RankHistorySummary> {
-  const summary = summarizeRankHistory(await readRankHistory(artifactsDir));
+export async function writeRankHistoryDashboard(artifactsDir: string, outputDir: string, expectedClientIds: readonly string[]): Promise<RankHistorySummary> {
+  const summary = summarizeRankHistory(await readRankHistory(artifactsDir, expectedClientIds));
   await mkdir(resolve(outputDir), { recursive: false });
   await writeFile(join(resolve(outputDir), "rank-history.json"), `${JSON.stringify(summary, null, 2)}\n`, { encoding: "utf8", flag: "wx", mode: 0o600 });
   await writeFile(join(resolve(outputDir), "rank-history.md"), markdown(summary), { encoding: "utf8", flag: "wx", mode: 0o600 });

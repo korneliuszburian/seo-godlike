@@ -349,7 +349,8 @@ async function main(): Promise<void> {
     return;
   }
   if (process.argv.includes("--rank-history")) {
-    const summary = await writeRankHistoryDashboard(argument("--rank-history"), argument("--output"));
+    const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const summary = await writeRankHistoryDashboard(argument("--rank-history"), argument("--output"), registry.clients.map((client) => client.client_id));
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
     return;
   }
