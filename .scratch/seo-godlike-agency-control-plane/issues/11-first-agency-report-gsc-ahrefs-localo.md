@@ -1500,3 +1500,16 @@ auth or schema is unknown.
 - Proof: 171 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
+
+## Delivery email status parity — 2026-08-04
+
+- The independent OpenCode/DeepSeek review identified that HTML used the typed
+  stale/missing-evidence labels while draft email headers still collapsed them
+  into a generic three-state status.
+- Draft emails now reuse the same semantic source interpretation as HTML, so
+  stale Ahrefs, missing evidence, and absent ingestion paths remain explicit in
+  both local delivery surfaces. A focused client-delivery falsifier covers the
+  stale Ahrefs wording.
+- Proof: 171 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.

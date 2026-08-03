@@ -123,7 +123,8 @@ function sourceReasonLabel(source: AgencyReportSummary["source_status"][number])
   if (source.reason_code === "stale_snapshot") return "Snapshot Ahrefs jest starszy niż wybrany okres Google Search Console; dane nie są używane w tym raporcie.";
   if (source.reason_code === "missing_evidence_bundle") return "Nie znaleziono zaakceptowanego pakietu evidence dla tego źródła; źródło nie jest traktowane jako gotowe ani jako zero.";
   if (source.reason_code === "no_evidence_path") return "Dla tego zewnętrznego źródła nie ma jeszcze obsługiwanej ścieżki importu evidence; nie pokazujemy danych ani wartości zero.";
-  return source.reason ?? "Dane zweryfikowane";
+  if (source.status === "ready") return "Dane zweryfikowane.";
+  return source.reason ?? "Brak szczegółowego powodu niedostępności.";
 }
 function sourceHeadlineLabel(source: AgencyReportSummary["source_status"][number]): string {
   if (source.reason_code === "stale_snapshot") return `${providerLabel(source.provider)} — dane nieaktualne`;
@@ -449,7 +450,7 @@ function emailDraft(unit: DeliveryUnit, generatedAt: string, htmlPath: string, p
   const subject = `Raport SEO — ${headerValue(unit.title)}`;
   const recipient = unit.content?.contact?.email ? `To: ${headerValue(unit.content.contact.email)}\r\n` : "";
   const currentPeriod = unit.metrics.find((metric) => metric.current_range)?.current_range;
-  const sourceLabels = unit.sources.map((source) => `${providerLabel(source.provider)}: ${source.status === "ready" ? "Dostępne" : source.status === "unavailable" ? "Niedostępne" : "Zablokowane"}`).join(", ") || "Brak podłączonych źródeł";
+  const sourceLabels = unit.sources.map((source) => `${providerLabel(source.provider)}: ${sourceStatusInterpretation(source)}`).join(", ") || "Brak podłączonych źródeł";
   const gscComparisons = unit.metrics.filter((metric) => metric.provider === "google-search-console").map((metric) => `${metric.property_id}: kliknięcia ${comparisonText(metric, "clicks", "count")}; wyświetlenia ${comparisonText(metric, "impressions", "count")}; CTR ${comparisonText(metric, "ctr", "ratio")}; pozycja ${comparisonText(metric, "position", "position")}`);
   const attachmentList = [htmlPath, ...(pdfPath ? [pdfPath] : [])].join(", ");
   const titleText = plainTextValue(unit.title);
