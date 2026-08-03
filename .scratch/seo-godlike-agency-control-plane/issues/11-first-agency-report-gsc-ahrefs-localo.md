@@ -1165,3 +1165,21 @@ auth or schema is unknown.
   cross-source rows, 36 rule-based signals and 41 keyword rows. Delivery
   renders 6 isolated units and 6 checked A4 PDFs; no provider request,
   credential read or Ahrefs rerun occurred.
+
+## OpenCode second opinion and portability follow-up — 2026-08-03
+
+- OpenCode/DeepSeek (`opencode-go/deepseek-v4-flash`, non-interactive,
+  read-only) reviewed fixed point `769bd61` and found no blocker. It confirmed
+  current/history separation, tenant and manifest boundaries, recurring
+  schedule wiring, Polish delivery semantics and local proof gates.
+- The only actionable finding was a portability defect: the history dashboard
+  manifest persisted an absolute artifacts path. Fixed point `9c14233` now
+  stores a stable relative label and adds a two-root reproducibility falsifier.
+  Remaining deferred item: PDF byte-identical reproducibility across pinned
+  Chromium environments is not proven by the local test suite.
+- Final local proof after the follow-up passes with 156 TypeScript tests + 3
+  context tests, build, zero high audit vulnerabilities and `git diff --check`.
+  No provider request, credential read, Ahrefs rerun or production collection
+  occurred. The local delivery proof remains operator-only and partial because
+  GA4, Localo, SERPROBOT/Semstorm evidence and client mapping/actions are not
+  present in the accepted inputs.
