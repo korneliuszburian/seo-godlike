@@ -16,6 +16,7 @@ async function writeBundle(root: string, name: string, start: string, clicks: nu
     run_id: runId,
     client_id: clientId,
     client_display_name: "Bodymove",
+    provider: "google-search-console",
     property_refs: [propertyId],
     generated_at: generatedAt,
     analytics: {
@@ -59,10 +60,37 @@ test("history rejects a tampered manifest before consuming report data", async (
   await rm(root, { recursive: true, force: true });
 });
 
+test("scoped history ignores unrelated malformed bundles", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
+  await writeBundle(root, "bodymove", "2026-07-01", 4);
+  const unrelated = join(root, "unrelated");
+  await mkdir(unrelated);
+  await writeFile(join(unrelated, "report.json"), "{}\n", "utf8");
+  await writeFile(join(unrelated, "manifest.json"), JSON.stringify({ files: { "report.json": { sha256: "bad", bytes: 3 } } }), "utf8");
+  const malformed = join(root, "malformed-manifest");
+  await mkdir(malformed);
+  await writeFile(join(malformed, "report.json"), "{}\n", "utf8");
+  await writeFile(join(malformed, "manifest.json"), "not-json\n", "utf8");
+  const entries = await readAnalyticsHistory(root, [{ client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }]);
+  assert.deepEqual(entries.map((entry) => entry.client_id), ["bodymove"]);
+  await rm(root, { recursive: true, force: true });
+});
+
+test("scoped history fails closed for a malformed in-scope report", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
+  const directory = join(root, "bodymove");
+  await mkdir(directory);
+  const content = `${JSON.stringify({ client_id: "bodymove", provider: "google-search-console", property_refs: ["sc-domain:bodymove.pl"] })}\n`;
+  await writeFile(join(directory, "report.json"), content, "utf8");
+  await writeFile(join(directory, "manifest.json"), JSON.stringify({ files: { "report.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } }), "utf8");
+  await assert.rejects(readAnalyticsHistory(root, [{ client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }]), /invalid in-scope history report/);
+  await rm(root, { recursive: true, force: true });
+});
+
 test("history aggregates two bundles chronologically and writes deterministic dashboard", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
   await writeBundle(root, "later", "2026-07-01", 4);
-  await writeBundle(root, "earlier", "2026-06-01", 2);
+  await writeBundle(root, "earlier", "2026-06-30", 2);
   const entries = await readAnalyticsHistory(root);
   assert.deepEqual(entries.map((entry) => entry.bundle_path), ["earlier", "later"]);
   const summary = summarizeHistory(entries);
@@ -74,7 +102,7 @@ test("history aggregates two bundles chronologically and writes deterministic da
   assert.equal(summary.periods[1]?.comparison?.position_delta, 0);
   const output = join(root, "dashboard");
   await writeHistoryDashboard(root, output);
-  assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /2026-06-01/);
+  assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /2026-06-30/);
   assert.match(await readFile(join(output, "executive-summary.html"), "utf8"), /<table>/);
   assert.equal(JSON.parse(await readFile(join(output, "executive-summary.json"), "utf8")).bundle_count, 2);
   const dashboardManifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { files: Record<string, { sha256: string; bytes: number }> };

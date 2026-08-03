@@ -708,3 +708,22 @@ auth or schema is unknown.
 - OpenCode/DeepSeek bounded read-only review found no blockers. It noted and
   this slice addressed cosmetic email/HTML status-case drift; the remaining
   provider label fallback is intentionally defensive for future schema values.
+
+## Client delivery verified history slice — 2026-08-03
+
+- Client delivery now embeds manifest-verified Google Search Console history
+  for explicit `(client_id, property_id, provider)` identities, including
+  period rows, deltas and Polish comparison wording. Ahrefs, GA4 and Localo
+  are not rerun or mixed into this history layer.
+- History comparisons require directly adjacent verified periods. Unrelated
+  malformed bundles are ignored under scoped reads; recognizable malformed
+  in-scope reports fail closed. The delivery manifest records unique history
+  manifest SHA-256 values and includes them in the verified-manifest count.
+- Focused falsifiers cover history rendering, scope isolation, in-scope
+  corruption, non-adjacent periods and delivery manifest provenance.
+- Local proof: 118 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities and `git diff --check`.
+- OpenCode/DeepSeek was invoked read-only against the bounded four-file diff;
+  the run stopped at its step cap before a final prose verdict. The preceding
+  bounded review found no blocker, and the current run performed no provider
+  request, credential read, Ahrefs rerun or generated production report rerun.

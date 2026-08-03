@@ -24,6 +24,7 @@ interface AnalyticsReportShape {
   run_id: string;
   client_id: string;
   client_display_name?: string;
+  provider: "google-search-console";
   property_refs: string[];
   generated_at: string;
   analytics: {
@@ -48,6 +49,7 @@ export interface HistoryEntry {
   client_id: string;
   client_display_name: string;
   property_id: string;
+  provider: "google-search-console";
   generated_at: string;
   period: { start: string; end: string };
   metrics: AnalyticsMetricSummary;
@@ -90,7 +92,7 @@ function parseManifest(value: unknown): Manifest {
 }
 
 function parseAnalyticsReport(value: unknown): AnalyticsReportShape | null {
-  if (!isRecord(value) || typeof value.run_id !== "string" || typeof value.client_id !== "string" || typeof value.generated_at !== "string" || !Array.isArray(value.property_refs) || typeof value.property_refs[0] !== "string" || !isRecord(value.analytics)) return null;
+  if (!isRecord(value) || value.provider !== "google-search-console" || typeof value.run_id !== "string" || typeof value.client_id !== "string" || typeof value.generated_at !== "string" || !Array.isArray(value.property_refs) || typeof value.property_refs[0] !== "string" || !isRecord(value.analytics)) return null;
   const range = value.analytics.current_date_range;
   const current = metricSummary(value.analytics.current);
   if (!isRecord(range) || typeof range.start !== "string" || typeof range.end !== "string" || current === null) return null;
@@ -98,6 +100,7 @@ function parseAnalyticsReport(value: unknown): AnalyticsReportShape | null {
     run_id: value.run_id,
     client_id: value.client_id,
     client_display_name: typeof value.client_display_name === "string" ? value.client_display_name : undefined,
+    provider: value.provider,
     property_refs: value.property_refs as string[],
     generated_at: value.generated_at,
     analytics: { current_date_range: { start: range.start, end: range.end }, current },
@@ -130,9 +133,28 @@ async function manifestPaths(root: string): Promise<string[]> {
   return paths.sort((left, right) => left.localeCompare(right));
 }
 
-async function readVerifiedBundle(manifestPath: string, artifactsDir: string): Promise<HistoryEntry | null> {
+export interface HistoryIdentity {
+  client_id: string;
+  property_id: string;
+  provider: "google-search-console";
+}
+
+async function readVerifiedBundle(manifestPath: string, artifactsDir: string, scope?: ReadonlySet<string>): Promise<HistoryEntry | null> {
   const bundleDir = dirname(manifestPath);
-  const manifest = parseManifest(JSON.parse(await readFile(manifestPath, "utf8")) as unknown);
+  let inScopeCandidate = false;
+  let candidate: AnalyticsReportShape | null = null;
+  if (scope) {
+    let raw: unknown;
+    try { raw = JSON.parse(await readFile(join(bundleDir, "report.json"), "utf8")) as unknown; } catch { return null; }
+    if (isRecord(raw) && typeof raw.client_id === "string" && Array.isArray(raw.property_refs) && typeof raw.property_refs[0] === "string" && raw.provider === "google-search-console") {
+      inScopeCandidate = scope.has(JSON.stringify([raw.client_id, raw.property_refs[0], raw.provider]));
+    }
+    if (!inScopeCandidate) return null;
+    candidate = parseAnalyticsReport(raw);
+    if (!candidate) throw new Error(`invalid in-scope history report: ${join(bundleDir, "report.json")}`);
+  }
+  let manifest: Manifest;
+  try { manifest = parseManifest(JSON.parse(await readFile(manifestPath, "utf8")) as unknown); } catch (error) { if (scope && !inScopeCandidate) return null; throw error; }
   const verifiedFiles = new Map<string, Buffer>();
   for (const name of Object.keys(manifest.files).sort()) {
     if (name.startsWith("/") || name.split("/").includes("..") || name.includes(`..${sep}`)) throw new Error(`unsafe manifest path '${name}'`);
@@ -153,6 +175,7 @@ async function readVerifiedBundle(manifestPath: string, artifactsDir: string): P
     client_id: report.client_id,
     client_display_name: report.client_display_name ?? report.client_id,
     property_id: report.property_refs[0],
+    provider: report.provider,
     generated_at: normalizeGeneratedAt(report.generated_at),
     period: report.analytics.current_date_range,
     metrics: report.analytics.current,
@@ -168,12 +191,13 @@ function deduplicationKey(entry: HistoryEntry): string {
   return JSON.stringify([entry.run_id, entry.client_id, entry.property_id]);
 }
 
-async function readHistory(artifactsDir: string): Promise<HistoryReadResult> {
+async function readHistory(artifactsDir: string, identities?: readonly HistoryIdentity[]): Promise<HistoryReadResult> {
   const root = resolve(artifactsDir);
+  const scope = identities ? new Set(identities.map((identity) => JSON.stringify([identity.client_id, identity.property_id, identity.provider]))) : undefined;
   const entriesByIdentity = new Map<string, HistoryEntry>();
   const skippedBundles: string[] = [];
   for (const manifestPath of await manifestPaths(root)) {
-    const entry = await readVerifiedBundle(manifestPath, root);
+    const entry = await readVerifiedBundle(manifestPath, root, scope);
     if (!entry) continue;
     const existing = entriesByIdentity.get(deduplicationKey(entry));
     if (!existing) {
@@ -196,8 +220,8 @@ async function readHistory(artifactsDir: string): Promise<HistoryReadResult> {
   };
 }
 
-export async function readAnalyticsHistory(artifactsDir: string): Promise<HistoryEntry[]> {
-  return (await readHistory(artifactsDir)).entries;
+export async function readAnalyticsHistory(artifactsDir: string, identities?: readonly HistoryIdentity[]): Promise<HistoryEntry[]> {
+  return (await readHistory(artifactsDir, identities)).entries;
 }
 
 export async function findPreviousBundleLinks(artifactsDir: string, currentOutputDir: string): Promise<string[]> {
@@ -228,7 +252,10 @@ export function summarizeHistory(entries: HistoryEntry[], skippedBundles: string
     const group = [...(grouped.get(`${entry.client_id}\u0000${entry.property_id}`) ?? [])].sort((a, b) => a.period.start.localeCompare(b.period.start) || a.period.end.localeCompare(b.period.end) || a.generated_at.localeCompare(b.generated_at));
     const index = group.findIndex((candidate) => candidate.run_id === entry.run_id && candidate.bundle_path === entry.bundle_path);
     const previous = index > 0 ? group[index - 1] : undefined;
-    if (!previous || previous.period.end >= entry.period.start) return { ...entry, comparison: undefined };
+    const previousEnd = Date.parse(`${previous?.period.end ?? ""}T00:00:00Z`);
+    const currentStart = Date.parse(`${entry.period.start}T00:00:00Z`);
+    const adjacent = previous !== undefined && Number.isFinite(previousEnd) && Number.isFinite(currentStart) && currentStart - previousEnd === 86_400_000;
+    if (!previous || !adjacent) return { ...entry, comparison: undefined };
     return { ...entry, comparison: { previous_period: previous.period, clicks_delta: entry.metrics.clicks - previous.metrics.clicks, impressions_delta: entry.metrics.impressions - previous.metrics.impressions, ctr_delta: entry.metrics.ctr - previous.metrics.ctr, position_delta: entry.metrics.position - previous.metrics.position } };
   });
   return { schema_version: "1", bundle_count: entries.length, skipped_bundles: [...skippedBundles].sort(), periods, totals: aggregateTotals(entries) };

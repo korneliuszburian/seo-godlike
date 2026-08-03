@@ -20,7 +20,7 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const keywordBundle = join(artifacts, "keyword-bundle");
     await mkdir(bundle, { recursive: true });
     await mkdir(keywordBundle, { recursive: true });
-    const bundleReport = JSON.stringify({ client_id: "bodymove", provider: "google-search-console", property_refs: ["sc-domain:bodymove.pl"], analytics: { current: { clicks: 10, impressions: 100, ctr: 0.1, position: 5 }, previous: { clicks: 5, impressions: 50, ctr: 0.05, position: 6 }, current_date_range: { start: "2026-07-01", end: "2026-07-28" }, previous_date_range: { start: "2026-06-03", end: "2026-06-30" } } });
+    const bundleReport = JSON.stringify({ run_id: "run-bodymove-july", generated_at: "2026-08-03T00:00:00.000Z", client_id: "bodymove", client_display_name: "Bodymove", provider: "google-search-console", property_refs: ["sc-domain:bodymove.pl"], analytics: { current: { clicks: 10, impressions: 100, ctr: 0.1, position: 5 }, previous: { clicks: 5, impressions: 50, ctr: 0.05, position: 6 }, current_date_range: { start: "2026-07-01", end: "2026-07-28" }, previous_date_range: { start: "2026-06-03", end: "2026-06-30" } } });
     await writeFile(join(bundle, "report.json"), bundleReport);
     const bundleManifest = manifest({ "report.json": bundleReport });
     await writeFile(join(bundle, "manifest.json"), bundleManifest);
@@ -47,6 +47,8 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.match(clientHtml, /Opublikowane/);
     assert.match(clientHtml, /Współczynnik klikalności/);
     assert.match(clientHtml, /Zakres danych/);
+    assert.match(clientHtml, /HISTORIA WYNIKÓW/);
+    assert.match(clientHtml, /Brak porównywalnej bazy/);
     assert.match(clientHtml, /Zmiana: 5 → 10 \(\+100,00%\)/);
     assert.match(clientHtml, /poprawa: 6,00 → 5,00 \(\+1,00\)/);
     assert.match(clientHtml, /Porównanie: 2026-06-03 — 2026-06-30/);
@@ -86,8 +88,9 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     await writeFile(agencyPath, ambiguousText);
     await writeFile(join(reportDir, "manifest.json"), manifest({ "agency-report.json": ambiguousText }));
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "ambiguous-delivery") }), /maps to multiple clients/);
-    const deliveryManifest = JSON.parse(await readFile(join(root, "delivery", "manifest.json"), "utf8")) as { files: Record<string, unknown> };
+    const deliveryManifest = JSON.parse(await readFile(join(root, "delivery", "manifest.json"), "utf8")) as { files: Record<string, unknown>; history_manifest_sha256: string[] };
     assert.ok(deliveryManifest.files["bodymove/bodymove-seo-report.eml"]);
+    assert.deepEqual(deliveryManifest.history_manifest_sha256, [hash(bundleManifest)]);
     const domainHtml = await readFile(join(root, "delivery", "domain-other.pl", "domain-other.pl-seo-report.html"), "utf8");
     assert.match(domainHtml, /Przypisanie do klienta: oczekuje na potwierdzenie operatora/);
     assert.doesNotMatch(domainHtml, /Widoczność organiczna/);
@@ -138,7 +141,7 @@ test("client delivery renders the complete bounded Ahrefs profile context", asyn
     const ahrefsDir = join(artifacts, "ahrefs");
     await mkdir(gscDir, { recursive: true });
     await mkdir(ahrefsDir, { recursive: true });
-    const gscReport = JSON.stringify({ client_id: "bodymove", provider: "google-search-console", property_refs: ["sc-domain:bodymove.pl"], analytics: { current: { clicks: 1, impressions: 2, ctr: 0.5, position: 4 } } });
+    const gscReport = JSON.stringify({ run_id: "run-bodymove-july", generated_at: "2026-08-03T00:00:00.000Z", client_id: "bodymove", client_display_name: "Bodymove", provider: "google-search-console", property_refs: ["sc-domain:bodymove.pl"], analytics: { current_date_range: { start: "2026-07-01", end: "2026-07-28" }, current: { clicks: 1, impressions: 2, ctr: 0.5, position: 4 } } });
     const ahrefsReport = JSON.stringify({ client_id: "bodymove", provider: "ahrefs", property_refs: ["bodymove.pl"], generated_at: "2026-07-29T00:00:00.000Z", request: { country: "pl" }, analytics: { current: { organic_traffic: 100, organic_keywords: 20, organic_keywords_top_3: 3, top_pages: [{ url: "https://bodymove.pl/usluga", sum_traffic: 80, traffic_diff: 10, traffic_diff_percent: 0.14, keywords: 7, top_keyword: "rehabilitacja", top_keyword_best_position: 5, top_keyword_best_position_diff: -1, referring_domains: 4, ur: 12 }], organic_keyword_rows: [{ keyword: "rehabilitacja", keyword_country: "pl", best_position: 5, best_position_diff: -1, best_position_url: "https://bodymove.pl/usluga", sum_traffic: 80, sum_traffic_prev: 70, volume: 500, keyword_difficulty: 23, serp_features: ["local_pack"], status: "active" }], competitors: [{ competitor_domain: "konkurent.pl", domain_rating: 31, keywords_common: 4, keywords_target: 7, keywords_competitor: 9, share: 0.12, traffic: 55, traffic_diff: 3, value: 20 }] } } });
     const gscManifest = manifest({ "report.json": gscReport });
     const ahrefsManifest = manifest({ "report.json": ahrefsReport });
