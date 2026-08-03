@@ -116,6 +116,21 @@ test("history aggregates two bundles chronologically and writes deterministic da
   await rm(root, { recursive: true, force: true });
 });
 
+test("history dashboard manifest is independent of the absolute artifacts root", async () => {
+  const first = await mkdtemp(join(tmpdir(), "seo-godlike-history-root-a-"));
+  const second = await mkdtemp(join(tmpdir(), "seo-godlike-history-root-b-"));
+  try {
+    await writeBundle(first, "same", "2026-07-01", 4);
+    await writeBundle(second, "same", "2026-07-01", 4);
+    await writeHistoryDashboard(first, join(first, "dashboard"));
+    await writeHistoryDashboard(second, join(second, "dashboard"));
+    assert.equal(await readFile(join(first, "dashboard", "manifest.json"), "utf8"), await readFile(join(second, "dashboard", "manifest.json"), "utf8"));
+  } finally {
+    await rm(first, { recursive: true, force: true });
+    await rm(second, { recursive: true, force: true });
+  }
+});
+
 test("history keeps the latest generated duplicate run and warns about the skipped bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
   await writeBundle(root, "older", "2026-07-01", 2, "same-run", "2026-07-02T08:00:00.000Z");
