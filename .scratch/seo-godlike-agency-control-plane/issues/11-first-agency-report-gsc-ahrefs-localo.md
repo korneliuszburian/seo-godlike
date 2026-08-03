@@ -486,3 +486,18 @@ auth or schema is unknown.
   tests + 3 context tests pass. No provider request or evidence rerun was made.
 - Commit `40d70fd` adds the opposite-case falsifier: a non-adjacent previous
   range renders `Brak porównywalnej bazy` instead of a fabricated delta.
+
+## Delivery identity hardening — 2026-08-03
+
+- Commit `14ab467` requires every accepted analytics bundle to contain exactly
+  one canonical `property_refs` entry matching the accepted manifest identity.
+  The delivery PDF renderer now invokes pinned system binaries for
+  `systemd-run`, `bwrap`, `chromium`, and `qpdf`, reducing PATH ambiguity.
+- A focused multi-property bundle falsifier rejects an extra property reference
+  before client output is written. No provider request or PDF rerun was made.
+- OpenCode review of fixed point `14ab467` via
+  `opencode-go/deepseek-v4-flash` is retained at
+  `/tmp/seo-godlike-second-opinion-14ab467.json`; it is **partial**, not PASS,
+  because the bounded step limit prevented the full path ledger and suite
+  execution. It found no certified blocker in the inspected rank-history seam;
+  remaining claims are explicitly unverified in that packet.
