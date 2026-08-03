@@ -204,6 +204,31 @@ auth or schema is unknown.
 
 ## Operator handoff
 
+## Recurring delivery follow-up — 2026-08-03
+
+- OpenCode second-opinion tooling is now repository-local and bounded through
+  `.opencode/agents/second-opinion.md` (`steps: 6`, read-only permissions) and
+  `.codex/skills/opencode-second-opinion/scripts/run-review.sh`; the selected
+  model was `opencode-go/deepseek-v4-flash`. The raw advisory output is retained
+  outside the repository at `/tmp/seo-godlike-second-opinion-ca065b7-final.json`.
+- The review found no security blocker in the inspected fixed point. Its
+  actionable findings were: a hardcoded client status pill, keyword rows for
+  registered hosts omitted from client units, an emitted placeholder OAuth path,
+  dead content-renderer locals, and an undercounted delivery manifest counter.
+- Those findings are addressed in the working slice: client status is derived
+  from scoped source status, registered-host keyword groups are rendered in the
+  owning client unit, agency scheduling requires explicit `--oauth-client`, dead
+  locals are removed, and the manifest counter includes an optional verified
+  rank-monitoring manifest. Local gates remain green: 92 TypeScript tests + 3
+  context tests, strict build, zero high npm audit findings, and clean diff
+  whitespace.
+- A follow-up review identified two provenance gaps and they are now closed:
+  accepted source entries carry the manifest SHA-256 captured by the report
+  package and delivery compares it before reading a bundle; the Keywords
+  Explorer bundle is confined to `artifactsDir`, every declared file is
+  rechecked, and its manifest hash is recorded/countable in delivery. Focused
+  falsifiers cover source-manifest tampering and keyword bundle traversal.
+
 1. In Localo, add/activate the managed Business Profile representing
    `bodymove.pl` (the read-only API cannot import it in this slice).
 2. Confirm that the profile is the intended Body Move location; do not assume
