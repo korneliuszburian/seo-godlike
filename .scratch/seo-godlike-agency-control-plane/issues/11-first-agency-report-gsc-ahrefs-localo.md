@@ -1431,6 +1431,19 @@ auth or schema is unknown.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
 
+## External-source evidence-path wording — 2026-08-04
+
+- OpenCode/DeepSeek found that ready Localo, GA4, or Semstorm registry entries
+  have no standalone evidence ingestion path and were therefore permanently
+  partial under the missing-bundle rule.
+- The report now uses `reason_code: no_evidence_path` for those sources, while
+  SERPROBOT without a supplied rank snapshot keeps
+  `missing_evidence_bundle`. Client delivery renders distinct Polish reasons;
+  a focused Localo falsifier covers the distinction.
+- Proof: 169 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`; no provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication.
+
 ## Fail-closed missing evidence — 2026-08-04
 
 - OpenCode/DeepSeek review of `628b5f4` found a medium truthfulness gap: a

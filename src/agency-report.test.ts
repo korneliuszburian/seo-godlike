@@ -114,6 +114,25 @@ test("agency report fails closed when a ready external source has no rank eviden
   }
 });
 
+test("agency report distinguishes an external source without an evidence path", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-no-evidence-path-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    await writeAgencySelectionBundle(artifacts, "gsc", "2026-07-29T08:00:00.000Z", 2);
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "ready", entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] };
+    const sourceRegistry: SourceRegistry = { sources: [{ source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: "bodymove.pl", status: "ready", reason: null }] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", sourceRegistry);
+    const localoStatus = summary.source_status.find((source) => source.provider === "localo");
+    assert.equal(localoStatus?.status, "unavailable");
+    assert.equal(localoStatus?.reason_code, "no_evidence_path");
+    assert.match(localoStatus?.reason ?? "", /No evidence ingestion path/);
+    assert.equal(summary.report_status, "partial");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("agency report excludes an Ahrefs snapshot older than the selected GSC period", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-period-test-"));
   try {
