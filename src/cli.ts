@@ -276,6 +276,7 @@ async function main(): Promise<void> {
       renderPdf: process.argv.includes("--pdf"),
       clientContentPath: optionalArgument("--client-content"),
       clientContentBundlePath: optionalArgument("--client-content-bundle"),
+      agencyRunRecordPath: optionalArgument("--agency-run-record"),
       rankMonitoringPath,
       rankMonitoringRoot,
       keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
