@@ -569,6 +569,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const packageSummary = await writeReportPackage(resolvedArtifacts, join(resolvedOutput, "package"));
   const propertyStatus = scope.entries.map((entry) => {
     const source: AgencyReportSourceStatus = { client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null };
+    if (source.status !== "ready") return source;
     const accepted = acceptedBundleFor(source, packageSummary);
     if (accepted && !ahrefsSnapshotFreshForGsc(accepted, packageSummary)) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", reason_code: "stale_snapshot" as const, bundle_path: null };
     if (accepted) return { ...source, status: "ready" as const, reason: null, bundle_path: accepted.bundle_path };

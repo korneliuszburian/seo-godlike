@@ -1468,3 +1468,14 @@ auth or schema is unknown.
   tests + 3 context tests, build, zero high audit vulnerabilities, and
   `git diff --check`. No provider request, credential read, Ahrefs rerun,
   report regeneration, or publication occurred.
+
+## Current-scope downgrade precedence — 2026-08-04
+
+- Final OpenCode/DeepSeek review found a low-risk fail-open edge where an old
+  accepted bundle could revive a source currently downgraded by the scope
+  plan. The report now checks the current scope status before accepting any
+  historical bundle.
+- A focused falsifier proves an unavailable current GSC scope does not consume
+  an older ready bundle. Proof: 170 TypeScript tests + 3 context tests, build,
+  zero high audit vulnerabilities, and `git diff --check`; no provider request,
+  credential read, Ahrefs rerun, report regeneration, or publication.

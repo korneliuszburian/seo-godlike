@@ -74,6 +74,24 @@ test("agency report selects the newest accepted bundle per current source identi
   }
 });
 
+test("agency report does not revive a source downgraded by the current scope", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-downgraded-scope-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    await writeAgencySelectionBundle(artifacts, "gsc", "2026-07-29T08:00:00.000Z", 2);
+    const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "partial", entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "unavailable", reason: "capability downgraded", metrics: [] }] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", { sources: [] });
+    assert.equal(summary.source_status[0]?.status, "unavailable");
+    assert.equal(summary.source_status[0]?.bundle_path, null);
+    assert.equal(summary.source_status[0]?.reason, "capability downgraded");
+    assert.equal(summary.accepted_bundles.length, 0);
+    assert.equal(summary.report_status, "blocked");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("agency report fails closed when a ready source has no accepted evidence bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-missing-evidence-test-"));
   try {
