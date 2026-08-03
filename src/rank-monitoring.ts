@@ -1,5 +1,5 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { join, resolve, sep } from "node:path";
 import { canonicalJson, sha256 } from "./serialize.js";
 
 export interface RankRow { keyword: string; position: number | null; previous_position: number | null; search_engine: string; location: string | null; device: string | null; url: string | null; }
@@ -11,6 +11,12 @@ export const RANK_MONITORING_SOURCE_LABEL = "Observed — SERPROBOT rank snapsho
 
 export function rankMonitoringClientIds(sources: readonly { provider: string; client_id: string }[]): string[] {
   return [...new Set(sources.filter((source) => source.provider === RANK_MONITORING_PROVIDER).map((source) => source.client_id))].sort();
+}
+
+export async function resolveRankMonitoringRoot(rootDir: string, artifactsDir: string): Promise<string> {
+  const [realArtifacts, realRoot] = await Promise.all([realpath(resolve(artifactsDir)), realpath(resolve(rootDir))]);
+  if (realRoot !== realArtifacts && !realRoot.startsWith(`${realArtifacts}${sep}`)) throw new Error("rank monitoring root escapes artifacts directory");
+  return realRoot;
 }
 
 function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
@@ -70,7 +76,7 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
     if (manifestEntry) {
       let manifestValue: unknown;
       try { manifestValue = JSON.parse(await readFile(join(directory, manifestEntry.name), "utf8")) as unknown; }
-      catch { manifestValue = null; }
+      catch (error) { throw new Error(`invalid rank monitoring manifest: ${join(directory, manifestEntry.name)}`, { cause: error }); }
       if (record(manifestValue) && manifestValue.provider === RANK_MONITORING_PROVIDER) {
         try {
           const bundle = await readRankMonitoringBundle(directory, expectedClientIds);

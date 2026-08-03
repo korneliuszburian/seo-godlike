@@ -26,7 +26,7 @@ import { writeClientDelivery } from "./client-delivery.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 import { writeClientContentBundle } from "./client-content.js";
-import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, writeRankMonitoringBundle } from "./rank-monitoring.js";
+import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { writeRankHistoryDashboard } from "./rank-history.js";
 
 function argument(name: string): string {
@@ -243,7 +243,7 @@ async function main(): Promise<void> {
     const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
     if (rankMonitoringPath && rankMonitoringRoot) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
     const resolvedRankMonitoringPath = rankMonitoringRoot
-      ? await resolveLatestRankMonitoringBundle(rankMonitoringRoot, rankMonitoringClientIds(sourceRegistry.sources))
+      ? await resolveLatestRankMonitoringBundle(await resolveRankMonitoringRoot(rankMonitoringRoot, argument("--artifacts-dir")), rankMonitoringClientIds(sourceRegistry.sources))
       : rankMonitoringPath;
     const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), resolvedRankMonitoringPath);
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
@@ -288,8 +288,9 @@ async function main(): Promise<void> {
     const rankMonitoringPath = optionalArgument("--rank-monitoring");
     const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
     if (rankMonitoringPath && rankMonitoringRoot) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
+    if (rankMonitoringRoot && !artifactsDir) throw new Error("--rank-monitoring-root requires --artifacts-dir");
     const resolvedRankMonitoringPath = rankMonitoringRoot
-      ? await resolveLatestRankMonitoringBundle(rankMonitoringRoot, rankMonitoringClientIds(sourceRegistry.sources))
+      ? await resolveLatestRankMonitoringBundle(await resolveRankMonitoringRoot(rankMonitoringRoot, artifactsDir!), rankMonitoringClientIds(sourceRegistry.sources))
       : rankMonitoringPath;
     const keywordInputPath = optionalArgument("--keyword-input");
     const existingKeywordBundlePath = optionalArgument("--keyword-bundle");

@@ -8,7 +8,7 @@ import { AgencyReportSummary, CrossSourceContextEntry } from "./agency-report.js
 import { PhraseGroup } from "./ahrefs-keywords.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { ClientContent, readClientContent, readClientContentBundle } from "./client-content.js";
-import { RANK_MONITORING_SOURCE_LABEL, RankMonitoringSnapshot, rankMonitoringClientIds, readRankMonitoringBundle, resolveLatestRankMonitoringBundle } from "./rank-monitoring.js";
+import { RANK_MONITORING_SOURCE_LABEL, RankMonitoringSnapshot, rankMonitoringClientIds, readRankMonitoringBundle, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot } from "./rank-monitoring.js";
 import { ProviderHistoryEntry, readProviderHistory } from "./provider-history.js";
 import { AgencyRunRecord, assertAgencyReadOnlyPolicy } from "./agency-run.js";
 
@@ -429,7 +429,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const summary = await readAgencyReport(options.agencyReportPath, options.artifactsDir);
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   const resolvedRankMonitoringPath = options.rankMonitoringRoot
-    ? await resolveLatestRankMonitoringBundle(options.rankMonitoringRoot, rankMonitoringClientIds(summary.source_status))
+    ? await resolveLatestRankMonitoringBundle(await resolveRankMonitoringRoot(options.rankMonitoringRoot, options.artifactsDir), rankMonitoringClientIds(summary.source_status))
     : options.rankMonitoringPath;
   const metrics = await collectMetrics(summary, options.artifactsDir);
   const agencyReportBytes = await readFile(options.agencyReportPath);

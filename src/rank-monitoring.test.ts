@@ -4,7 +4,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { readRankMonitoringBundle, resolveLatestRankMonitoringBundle, writeRankMonitoringBundle } from "./rank-monitoring.js";
+import { readRankMonitoringBundle, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { sha256 } from "./serialize.js";
 
 test("rank monitoring bundle verifies identity and deterministic row order", async () => {
@@ -121,5 +121,31 @@ test("rank monitoring root fails instead of silently falling back after a matchi
     await writeRankMonitoringBundle(input, join(root, "exports", "latest"));
     await writeFile(join(root, "exports", "latest", "report.json"), "tampered", "utf8");
     await assert.rejects(resolveLatestRankMonitoringBundle(join(root, "exports"), ["bodymove"]), /rank monitoring manifest hash mismatch/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank monitoring root fails on an unparseable manifest instead of falling back", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-manifest-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [] }));
+    await mkdir(join(root, "exports"));
+    await writeRankMonitoringBundle(input, join(root, "exports", "valid"));
+    await mkdir(join(root, "exports", "corrupt"));
+    await writeFile(join(root, "exports", "corrupt", "manifest.json"), "{broken", "utf8");
+    await assert.rejects(resolveLatestRankMonitoringBundle(join(root, "exports"), ["bodymove"]), /invalid rank monitoring manifest/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank monitoring root is confined to the artifacts directory", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-confinement-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    const nested = join(artifacts, "rank");
+    const outside = join(root, "outside");
+    await mkdir(nested, { recursive: true });
+    await mkdir(outside);
+    assert.equal(await resolveRankMonitoringRoot(nested, artifacts), nested);
+    await assert.rejects(resolveRankMonitoringRoot(outside, artifacts), /escapes artifacts directory/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
