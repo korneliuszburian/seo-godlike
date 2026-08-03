@@ -352,7 +352,8 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const agencyReportBytes = await readFile(options.agencyReportPath);
   const clientIds = [...new Set(summary.scope.entries.map((entry) => entry.client_id).concat(summary.source_status.map((source) => source.client_id)))].sort();
   const clientContentBundle = options.clientContentBundlePath ? await readClientContentBundle(options.clientContentBundlePath, clientIds) : null;
-  const clientContent = clientContentBundle?.content ?? (options.clientContentPath ? await readClientContent(options.clientContentPath) : null);
+  const clientContentById = new Map((clientContentBundle?.contents ?? []).map((content) => [content.client_id, content] as const));
+  const directClientContent = options.clientContentPath ? await readClientContent(options.clientContentPath) : null;
   const sourceManifestHashes = await collectSourceManifestHashes(summary, options.artifactsDir);
   const keywordManifestSha256 = summary.keyword_research ? await verifyKeywordBundle(summary.keyword_research, options.keywordBundleRoot ?? options.artifactsDir) : null;
   const outputDir = resolve(options.outputDir);
@@ -376,7 +377,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
       clientKeywordGroups.set(owner.client_id, groups);
     }
   }
-  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContent?.client_id === clientId ? clientContent : null; const rankMonitoring = rankBundle?.snapshot.client_id === clientId ? rankBundle.snapshot : null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${action.status}: ${action.title}`) : [], content, rankMonitoring }; });
+  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContentById.get(clientId) ?? (directClientContent?.client_id === clientId ? directClientContent : null); const rankMonitoring = rankBundle?.snapshot.client_id === clientId ? rankBundle.snapshot : null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${action.status}: ${action.title}`) : [], content, rankMonitoring }; });
   if (keyword) {
     for (const inputGroup of keyword.input_groups) {
       if (summary.scope.entries.some((entry) => hostFromProperty(entry.property_id) === inputGroup.host.toLowerCase())) continue;

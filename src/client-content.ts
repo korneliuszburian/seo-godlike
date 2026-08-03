@@ -19,7 +19,8 @@ export interface ClientAction {
 export interface GlossaryEntry { term: string; explanation: string; }
 export interface ClientContact { name: string; email: string | null; phone: string | null; }
 export interface ClientContent { schema_version: "1"; client_id: string; actions: ClientAction[]; glossary: GlossaryEntry[]; contact: ClientContact | null; }
-export interface ClientContentBundle { content: ClientContent; manifest_sha256: string; }
+export interface ClientContentCollection { schema_version: "1"; clients: ClientContent[]; }
+export interface ClientContentBundle { content: ClientContent; contents: ClientContent[]; manifest_sha256: string; }
 
 function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function string(value: unknown, label: string): string { if (typeof value !== "string" || value.trim() === "") throw new Error(`client content ${label} must be a non-empty string`); return value; }
@@ -45,6 +46,23 @@ export function parseClientContent(value: unknown): ClientContent {
 }
 export async function readClientContent(path: string): Promise<ClientContent> { return parseClientContent(JSON.parse(await readFile(path, "utf8")) as unknown); }
 
+export function parseClientContentCollection(value: unknown): ClientContent[] {
+  if (record(value) && Array.isArray(value.clients)) {
+    const contents = value.clients.map((item, index) => {
+      try { return parseClientContent(item); }
+      catch (error) { throw new Error(`client content clients[${index}] invalid: ${error instanceof Error ? error.message : String(error)}`); }
+    });
+    if (contents.length === 0) throw new Error("client content collection must contain at least one client");
+    const ids = new Set<string>();
+    for (const content of contents) {
+      if (ids.has(content.client_id)) throw new Error(`duplicate client content identity: ${content.client_id}`);
+      ids.add(content.client_id);
+    }
+    return contents.sort((a, b) => a.client_id.localeCompare(b.client_id));
+  }
+  return [parseClientContent(value)];
+}
+
 /**
  * Read operator-managed content only after the adjacent manifest has verified
  * every declared byte. The direct JSON reader remains for local compatibility;
@@ -55,28 +73,28 @@ export async function readClientContentBundle(bundleDir: string, expectedClientI
   const manifestBytes = await readFile(join(root, "manifest.json"));
   const manifest = JSON.parse(manifestBytes.toString("utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
   if (!manifest.files || Object.keys(manifest.files).length === 0) throw new Error("invalid client content manifest");
-  const contents = new Map<string, Buffer>();
+  const files = new Map<string, Buffer>();
   for (const [name, entry] of Object.entries(manifest.files)) {
     if (!name || name.startsWith("/") || name.includes("..") || name.includes("\\") || !entry || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number") throw new Error(`unsafe client content manifest entry '${name}'`);
     const file = resolve(root, name);
     if (file !== root && !file.startsWith(`${root}${sep}`)) throw new Error(`client content manifest entry escapes bundle: ${name}`);
     const bytes = await readFile(file);
     if (bytes.byteLength !== entry.bytes || sha256(bytes.toString("utf8")) !== entry.sha256) throw new Error(`client content manifest hash mismatch: ${name}`);
-    contents.set(name, bytes);
+    files.set(name, bytes);
   }
-  const report = contents.get("client-content.json") ?? contents.get("report.json");
+  const report = files.get("client-content.json") ?? files.get("report.json");
   if (!report) throw new Error("client content bundle must declare client-content.json or report.json");
-  const content = parseClientContent(JSON.parse(report.toString("utf8")) as unknown);
-  if (!expectedClientIds.includes(content.client_id)) throw new Error(`client content identity mismatch: ${content.client_id}`);
-  return { content, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
+  const contents = parseClientContentCollection(JSON.parse(report.toString("utf8")) as unknown);
+  for (const content of contents) if (!expectedClientIds.includes(content.client_id)) throw new Error(`client content identity mismatch: ${content.client_id}`);
+  return { content: contents[0]!, contents, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
 }
 
 export async function writeClientContentBundle(inputPath: string, outputDir: string): Promise<ClientContentBundle> {
-  const content = parseClientContent(JSON.parse(await readFile(resolve(inputPath), "utf8")) as unknown);
-  const report = canonicalJson(content);
+  const contents = parseClientContentCollection(JSON.parse(await readFile(resolve(inputPath), "utf8")) as unknown);
+  const report = canonicalJson(contents.length === 1 ? contents[0] : { schema_version: "1", clients: contents } satisfies ClientContentCollection);
   await mkdir(resolve(outputDir), { recursive: false, mode: 0o700 });
-  const manifest = canonicalJson({ schema_version: "1", provider: "operator-managed-content", client_id: content.client_id, files: { "client-content.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
+  const manifest = canonicalJson({ schema_version: "1", provider: "operator-managed-content", client_id: contents.length === 1 ? contents[0]?.client_id : "multi-client", client_ids: contents.map((content) => content.client_id), files: { "client-content.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
   await writeFile(join(resolve(outputDir), "client-content.json"), report, { encoding: "utf8", flag: "wx", mode: 0o600 });
   await writeFile(join(resolve(outputDir), "manifest.json"), manifest, { encoding: "utf8", flag: "wx", mode: 0o600 });
-  return { content, manifest_sha256: sha256(manifest) };
+  return { content: contents[0]!, contents, manifest_sha256: sha256(manifest) };
 }

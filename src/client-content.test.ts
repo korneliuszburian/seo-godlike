@@ -52,3 +52,23 @@ test("client content packer writes a deterministic operator bundle", async () =>
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("client content bundle preserves multiple client action registers", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-multi-client-content-"));
+  try {
+    const input = join(root, "input.json");
+    const output = join(root, "bundle");
+    await writeFile(input, JSON.stringify({ schema_version: "1", clients: [
+      { schema_version: "1", client_id: "zeta", actions: [{ action_id: "z", client_id: "zeta", period: { start: "2026-07-01", end: "2026-07-31" }, type: "nap_listing", status: "published", title: "Zeta NAP", target_url: null, published_at: null, notes: null }], glossary: [], contact: null },
+      { schema_version: "1", client_id: "alpha", actions: [{ action_id: "a", client_id: "alpha", period: { start: "2026-07-01", end: "2026-07-31" }, type: "sponsored_article", status: "planned", title: "Alpha article", target_url: null, published_at: null, notes: null }], glossary: [], contact: null },
+    ] }));
+    const packed = await writeClientContentBundle(input, output);
+    assert.deepEqual(packed.contents.map((content) => content.client_id), ["alpha", "zeta"]);
+    const read = await readClientContentBundle(output, ["alpha", "zeta"]);
+    assert.deepEqual(read.contents.map((content) => content.client_id), ["alpha", "zeta"]);
+    assert.equal(read.contents.find((content) => content.client_id === "zeta")?.actions[0]?.title, "Zeta NAP");
+    await assert.rejects(readClientContentBundle(output, ["alpha"]), /identity mismatch: zeta/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

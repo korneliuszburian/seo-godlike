@@ -593,3 +593,14 @@ auth or schema is unknown.
 - Added a scheduler falsifier for the quoting boundary; focused scheduler and
   history tests pass. This changes only local command generation and performs
   no provider request or report rerun.
+
+## Multi-client operator content follow-up — 2026-08-03
+
+- Operator-managed client content bundles now accept a manifest-bound
+  collection of uniquely identified client records while preserving the
+  single-client input format.
+- Delivery selects actions, glossary and contact data by explicit `client_id`
+  for every client unit; unknown identities are rejected before rendering.
+- Focused proof covers deterministic sorting, duplicate/unknown identity
+  rejection and preservation of two client action registers. No provider
+  request, credential read or report rerun was performed.
