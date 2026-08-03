@@ -441,3 +441,20 @@ auth or schema is unknown.
 - The monthly cron now emits both analytics history and rank history outputs.
 - Focused history/scheduler proof passes; live SERPROBOT collection remains
   explicitly outside this slice.
+
+## Recurring and rank-history hardening — 2026-08-03
+
+- Commit `8d28ef1` removes the shared-delivery Bodymove hardcode, rejects
+  ambiguous keyword-host ownership across clients, and keeps rank comparisons
+  separate by search engine, location and device.
+- Commit `18d03b5` makes daily and monthly cron output paths timestamped to
+  seconds, so a retry after a partial local failure does not target the same
+  exclusive-write directory. The monthly run is offset from the daily run.
+- Commit `ce28ce8` requires the rank-history command to receive registry-owned
+  client IDs, rejects out-of-scope snapshots, compares only immediately
+  adjacent periods, and records both current and previous snapshot manifest
+  hashes in JSON/Markdown/HTML.
+- Local proof: 109 TypeScript tests + 3 context tests, build, audit and
+  `git diff --check` pass. No provider request or evidence rerun was made.
+- Remaining boundary: SERPROBOT is still an operator-imported snapshot seam;
+  no direct response schema or live connector is claimed.
