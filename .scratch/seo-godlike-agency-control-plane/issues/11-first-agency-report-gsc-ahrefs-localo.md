@@ -1020,3 +1020,16 @@ auth or schema is unknown.
   context tests, build, zero high audit vulnerabilities and `git diff --check`.
   No provider request, credential read, Ahrefs rerun or production report rerun
   occurred.
+
+## Operator action-register isolation — 2026-08-03
+
+- Client-managed action content now fails closed when an action declares a
+  different `client_id` instead of silently dropping that entry. Duplicate
+  `action_id` values are also rejected before rendering.
+- This keeps sponsored articles, forum marketing, NAP listings and other
+  operator-supplied actions tenant-scoped and deterministic in recurring
+  delivery. No action is inferred from provider metrics.
+- Fixed point `146977c`; local proof passes with 143 TypeScript tests + 3
+  context tests, build, zero high audit vulnerabilities and `git diff --check`.
+  No provider request, credential read, Ahrefs rerun or production report rerun
+  occurred.
