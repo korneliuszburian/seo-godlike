@@ -584,3 +584,12 @@ auth or schema is unknown.
 - Full local proof after the test-helper correction: 112 TypeScript tests + 3
   context tests, build, `npm audit --omit=dev --audit-level=high` with zero
   vulnerabilities, and `git diff --check` all pass.
+
+## Monthly scheduler timestamp fix — 2026-08-03
+
+- Fixed the default history and rank-history output paths in the monthly cron
+  builder so the timestamp command remains outside the quoted base path and is
+  actually expanded by the shell.
+- Added a scheduler falsifier for the quoting boundary; focused scheduler and
+  history tests pass. This changes only local command generation and performs
+  no provider request or report rerun.

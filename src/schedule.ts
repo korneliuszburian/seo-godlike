@@ -58,8 +58,8 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   const output = `${shellQuote(options.artifactsDir)}/agency-run-${stamp}`;
   const report = `${shellQuote(options.reportDir)}/agency-report-${stamp}`;
   const delivery = `${shellQuote(options.deliveryDir)}/client-delivery-${stamp}`;
-  const history = shellQuote(options.historyDir ?? `${options.reportDir}/history-${stamp}`);
-  const rankHistory = shellQuote(options.rankHistoryDir ?? `${options.reportDir}/rank-history-${stamp}`);
+  const history = options.historyDir ? shellQuote(options.historyDir) : `${shellQuote(options.reportDir)}/history-${stamp}`;
+  const rankHistory = options.rankHistoryDir ? shellQuote(options.rankHistoryDir) : `${shellQuote(options.reportDir)}/rank-history-${stamp}`;
   const command = [
     "flock", "-n", shellQuote(lockPath), "node", "dist/cli.js", "--agency-run",
     "--registry", shellQuote(options.registryPath), "--capabilities", shellQuote(options.capabilitiesPath),
