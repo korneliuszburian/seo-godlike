@@ -15,6 +15,13 @@ Current local behavior: one read-only `site-explorer/metrics` request per
 registered Ahrefs property, producing organic traffic, keyword count, and
 Top-3 keyword count.
 
+The phrase-research path is separate: one read-only
+`keywords-explorer/overview` request per non-empty domain group from an
+operator-supplied phrase file. It uses lowercase two-letter country codes,
+the documented comma-separated `keywords` parameter, selected fields, and a
+50-unit minimum estimate per request. It does not join keyword volume or
+estimated clicks into GSC observations.
+
 ## Source mechanisms and dispositions
 
 ### Ahrefs API v3 introduction
@@ -100,6 +107,25 @@ Ahrefs competitive estimates.
 Falsifier: competitors are presented as verified business competitors or the
 report omits target/date/mode provenance.
 
+### Keywords Explorer overview
+
+Source: [Keywords Explorer overview endpoint](https://docs.ahrefs.com/en/api/reference/keywords-explorer/get-overview),
+current documentation retrieved 2026-08-03.
+
+Mechanism: `GET /v3/keywords-explorer/overview` accepts a bounded
+comma-separated phrase list, lowercase country, and explicit field selection.
+The local adapter allows at most 100 phrases per request and records each
+provider response as its own raw manifest-bound artifact.
+
+Disposition: **adopt** as estimated phrase-level research context. The local
+budget is checked before network IO using the 50-unit minimum per non-empty
+domain group; response rows remain provider estimates and do not become
+observed GSC metrics.
+
+Falsifier: an uppercase country reaches the network, a request exceeds the
+declared phrase or unit bound, or a report cannot reproduce a response from
+its raw artifact and manifest.
+
 ### Cross-source composition
 
 Sources: [Google Search Analytics query](https://developers.google.com/webmaster-tools/v1/searchanalytics/query)
@@ -140,6 +166,10 @@ organic competitors (20), with only selected fields. The API reference notes a
 50-unit minimum for paid requests and the introduction documents a default
 60-requests-per-minute limit. Before widening limits, the operator must verify
 the workspace allowance and key limit.
+
+Phrase research is budgeted separately: one overview request per non-empty
+domain group, with a local default ceiling of 500 estimated units (10 groups ×
+50 units) and no live run before parser, capability, and manifest tests pass.
 
 ## Does not prove
 

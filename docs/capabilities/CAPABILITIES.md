@@ -48,6 +48,7 @@ metrics or replace the evidence adapters.
 | Google Analytics Data API | local fixture-tested read-only v1beta adapter; strict version gate; no live scope/property proof yet | `schema_verified` (live unknown) |
 | CrUX / PageSpeed Insights | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
 | Ahrefs Site Explorer API v3 | local read-only adapter, keyring API key, live metrics bundle | `validated_real_domain` for `bodymove.pl` |
+| Ahrefs Keywords Explorer API v3 | local read-only adapter, explicit phrase/country/unit bounds, offline manifest tests; no persisted phrase bundle yet | `schema_verified` |
 | Semrush / DataForSEO | no local adapter, credential reference, or MCP operation discovered | `not_discovered` |
 
 The candidate names above are documented possibilities from the onboarding prompt, not discovered capabilities.

@@ -20,6 +20,7 @@ import { buildScopePlan } from "./scope-plan.js";
 import { buildAgentRunPlan } from "./agent-plan.js";
 import { executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
 import { writeAgencyReport } from "./agency-report.js";
+import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 
@@ -318,6 +319,20 @@ async function main(): Promise<void> {
     };
     await runAhrefsAnalytics(request, registry, capabilities, rawText, resolve(argument("--output")));
     process.stdout.write(JSON.stringify({ provider: "ahrefs", property_id: canonicalPropertyId, output: resolve(argument("--output")) }, null, 2) + "\n");
+    return;
+  }
+  if (process.argv.includes("--ahrefs-keyword-research")) {
+    const maxRequestsValue = optionalArgument("--max-requests");
+    const maxApiUnitsValue = optionalArgument("--max-api-units");
+    const report = await writeAhrefsKeywordResearch({
+      inputPath: argument("--input"),
+      outputDir: argument("--output"),
+      capabilities: JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry,
+      country: optionalArgument("--country"),
+      maxRequests: maxRequestsValue ? Number(maxRequestsValue) : undefined,
+      maxApiUnits: maxApiUnitsValue ? Number(maxApiUnitsValue) : undefined,
+    });
+    process.stdout.write(`${JSON.stringify({ provider: report.provider, operation: report.operation, groups: report.groups.length, output: resolve(argument("--output")) }, null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--localo-discover")) {

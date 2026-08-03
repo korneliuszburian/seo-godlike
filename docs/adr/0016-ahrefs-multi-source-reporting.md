@@ -22,6 +22,13 @@ is machine-detectable without treating it as a complete inventory. Cross-source
 joins retain one of `matched`, `gsc_only`, or `ahrefs_only` rather than dropping
 one-sided rows.
 
+Keyword phrase research is a separate `keywords-explorer.overview` read-only
+operation. It accepts only operator-supplied phrase groups, uses lowercase
+country codes, applies a 100-phrase and preflight unit budget, and writes one
+raw response artifact per group. Its estimated keyword metrics are not added
+to Site Explorer or GSC totals and are not part of the page/query join unless
+an explicit later decision defines that provenance.
+
 ## Alternatives rejected
 
 - Pull every available row: rejected because Ahrefs API units are consumed by

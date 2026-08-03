@@ -20,6 +20,17 @@
       "discovery": "fixture_declared",
       "read_write": "read",
       "state": "schema_verified"
+    },
+    {
+      "capability_id": "ahrefs.keywords-explorer.overview",
+      "provider": "ahrefs",
+      "operation_id": "keywords-explorer.overview",
+      "api_version": "v3",
+      "metric_ids": ["ahrefs.keyword_metrics"],
+      "dimensions": ["keyword", "country"],
+      "discovery": "fixture_declared",
+      "read_write": "read",
+      "state": "schema_verified"
     }
   ]
 }

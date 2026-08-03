@@ -43,6 +43,13 @@ auth or schema is unknown.
   as bounded deliveries rather than silently treated as complete inventories.
   GSC/Ahrefs joins are kept separate and preserve `matched`, `gsc_only`, and
   `ahrefs_only` rows instead of dropping one-sided context.
+- Ahrefs Keywords Explorer wiring is locally proven for the supplied operator
+  phrase file: five domain groups were parsed, 39 unique phrases were
+  identified, one group had no phrases and three lines were retained as notes.
+  The adapter has a read-only capability gate, lowercase-country validation
+  before network IO, a preflight unit budget, and one raw response artifact per
+  group. A prior manual smoke observed four HTTP 200 responses but did not
+  persist raw output; it is not accepted as the final phrase research bundle.
 - Localo: MCP discovery now succeeds with protocol `2025-03-26` and server
   `localo 1.0.0`. The current schema exposes read-only `query` and `docs`
   tools; `mutation` exists but remains outside this slice. A read-only search
