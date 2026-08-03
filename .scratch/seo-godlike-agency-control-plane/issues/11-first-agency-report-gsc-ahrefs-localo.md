@@ -1229,3 +1229,20 @@ auth or schema is unknown.
   scheduler falsifiers, and replacing fragile supplement string surgery.
 - Unassigned phrase domains remain operator-only; live SERPROBOT/Semstorm/GA4/
   Localo access and client publication remain unproven and unauthorized.
+
+## MIME delivery drafts — 2026-08-03
+
+- Fixed point `37cb113` upgrades local `.eml` outputs from path-only text
+  into deterministic `multipart/mixed` drafts with embedded HTML and optional
+  PDF attachments. The drafts remain draft-only and are never sent.
+- The PDF test seam records `renderer_custom`; production CLI rendering
+  continues to record the isolated renderer policy. Plain-text fields collapse
+  CR/LF to prevent body-line injection.
+- Local proof remains green: 157 TypeScript tests + 3 context tests, build,
+  zero high audit vulnerabilities and `git diff --check`. No provider request,
+  credential read, Ahrefs rerun or report collection occurred.
+- OpenCode/DeepSeek v2 review found no blocker; v3 did not return a final
+  verdict within its bounded run and is not treated as approval. Remaining
+  deferred items are pinned Chromium reproducibility, recurring installation,
+  and operator authorization for live SERPROBOT/Semstorm, GA4, Localo and
+  client publication.
