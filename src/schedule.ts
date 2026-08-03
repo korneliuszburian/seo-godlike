@@ -69,7 +69,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   const rankHistory = options.rankHistoryDir ? shellQuote(options.rankHistoryDir) : `${shellQuote(options.reportDir)}/rank-history-${stamp}`;
   const prepareRoots = `install -d -m 700 ${shellQuote(options.artifactsDir)} ${shellQuote(options.reportDir)} ${shellQuote(options.deliveryDir)}`;
   const command = [
-    "flock", "-n", shellQuote(lockPath), "node", "dist/cli.js", "--agency-run",
+    "node", "dist/cli.js", "--agency-run",
     "--registry", shellQuote(options.registryPath), "--capabilities", shellQuote(options.capabilitiesPath),
     "--oauth-client", shellQuote(options.oauthClientPath), "--artifacts-dir", shellQuote(options.artifactsDir), "--output", output,
     "--agency-report-output", report, "--delivery-output", delivery, "--pdf",
@@ -87,5 +87,6 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   ].join(" ");
   const historyCommand = `node dist/cli.js --report-history ${shellQuote(options.artifactsDir)} --output ${history}`;
   const rankHistoryCommand = `node dist/cli.js --rank-history ${shellQuote(options.artifactsDir)} --registry ${shellQuote(options.registryPath)} --output ${rankHistory}`;
-  return `47 3 1 * * cd ${shellQuote(options.workingDirectory)} && ${prepareRoots} && agency_run_stamp=$(date +\\%Y\\%m\\%dT\\%H\\%M\\%S) && { ${command}; agency_run_exit=$?; ${historyCommand}; history_exit=$?; ${rankHistoryCommand}; rank_history_exit=$?; if [ "$agency_run_exit" -ne 0 ]; then exit "$agency_run_exit"; fi; if [ "$history_exit" -ne 0 ]; then exit "$history_exit"; fi; exit "$rank_history_exit"; }`;
+  const pipeline = `agency_run_stamp=$(date +\\%Y\\%m\\%dT\\%H\\%M\\%S) && { ${command}; agency_run_exit=$?; ${historyCommand}; history_exit=$?; ${rankHistoryCommand}; rank_history_exit=$?; if [ "$agency_run_exit" -ne 0 ]; then exit "$agency_run_exit"; fi; if [ "$history_exit" -ne 0 ]; then exit "$history_exit"; fi; exit "$rank_history_exit"; }`;
+  return `47 3 1 * * cd ${shellQuote(options.workingDirectory)} && ${prepareRoots} && flock -n ${shellQuote(lockPath)} sh -c ${shellQuote(pipeline)}`;
 }

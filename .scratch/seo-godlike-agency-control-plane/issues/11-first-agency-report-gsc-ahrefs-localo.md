@@ -873,3 +873,12 @@ auth or schema is unknown.
   keyword rerun was performed.
 - Focused schedule tests cover rejection without the explicit acceptance and
   emission with it.
+
+## Monthly pipeline lock scope — 2026-08-03
+
+- The monthly scheduler now holds its `flock` around the complete local
+  pipeline, including report history and rank history, rather than only the
+  provider/task command. Concurrent monthly invocations therefore cannot race
+  the local history writers.
+- The fixed-point map was refreshed to `f6076bc`; no provider request or
+  generated report rerun was performed.

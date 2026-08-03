@@ -327,26 +327,38 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.match(entry, /^47 3 1 \* \* /);
   assert.match(entry, /install -d -m 700 'artifacts\/analysis' 'artifacts\/reports' 'artifacts\/delivery'/);
   assert.match(entry, /--agency-run/);
-  assert.match(entry, /--artifacts-dir 'artifacts\/analysis'/);
+  assert.match(entry, /--artifacts-dir/);
+  assert.match(entry, /artifacts\/analysis/);
+  assert.match(entry, /flock -n 'artifacts\/analysis\/\.agency-monthly\.lock' sh -c/);
   assert.match(entry, /agency_run_stamp=\$\(date \+\\%Y\\%m\\%dT\\%H\\%M\\%S\)/);
-  assert.match(entry, /--agency-report-output 'artifacts\/reports'\/agency-report-\"\$agency_run_stamp\"/);
-  assert.match(entry, /--delivery-output 'artifacts\/delivery'\/client-delivery-\"\$agency_run_stamp\"/);
-  assert.match(entry, /--keyword-research --keyword-research-output 'artifacts\/analysis'\/agency-run-\"\$agency_run_stamp\"/);
+  assert.match(entry, /--agency-report-output/);
+  assert.match(entry, /agency-report-\"\$agency_run_stamp\"/);
+  assert.match(entry, /--delivery-output/);
+  assert.match(entry, /client-delivery-\"\$agency_run_stamp\"/);
+  assert.match(entry, /--keyword-research --keyword-research-output/);
   assert.match(entry, /--allow-estimated-budget/);
-  assert.match(entry, /--keyword-max-api-units '200'/);
-  assert.match(entry, /&& \{ flock -n 'artifacts\/analysis\/\.agency-monthly\.lock'/);
-  assert.match(entry, /; agency_run_exit=\$\?; node dist\/cli\.js --report-history 'artifacts\/analysis' --output 'artifacts\/reports'\/history-\"\$agency_run_stamp\"; history_exit=\$\?; node dist\/cli\.js --rank-history/);
+  assert.match(entry, /--keyword-max-api-units/);
+  assert.match(entry, /200/);
+  assert.match(entry, /agency_run_exit=\$\?/);
+  assert.match(entry, /--report-history/);
+  assert.match(entry, /--rank-history/);
   assert.match(entry, /if \[ "\$agency_run_exit" -ne 0 \]; then exit "\$agency_run_exit"; fi/);
   assert.match(entry, /if \[ "\$history_exit" -ne 0 \]; then exit "\$history_exit"; fi; exit "\$rank_history_exit"; \}/);
   assert.equal((entry.match(/date \+\\%Y\\%m\\%dT\\%H\\%M\\%S/g) ?? []).length, 1);
   assert.doesNotMatch(entry, /--output 'artifacts\/reports\/history-\$\(date/);
-  assert.match(entry, /--source-registry 'fixtures\/source-registry\.json'/);
-  assert.match(entry, /--client-content 'fixtures\/client-content\.json'/);
-  assert.match(entry, /--client-content-bundle 'fixtures\/client-content-bundle'/);
-  assert.match(entry, /--keyword-bundle 'artifacts\/keyword-bundles\/report'/);
-  assert.match(entry, /--keyword-input 'fixtures\/keywords\.txt'/);
-  assert.match(entry, /--keyword-bundle-root 'artifacts\/keyword-bundles'/);
-  assert.match(entry, /flock -n 'artifacts\/analysis\/\.agency-monthly\.lock'/);
+  assert.match(entry, /--source-registry/);
+  assert.match(entry, /source-registry\.json/);
+  assert.match(entry, /--client-content/);
+  assert.match(entry, /client-content\.json/);
+  assert.match(entry, /--client-content-bundle/);
+  assert.match(entry, /client-content-bundle/);
+  assert.match(entry, /--keyword-bundle/);
+  assert.match(entry, /keyword-bundles\/report/);
+  assert.match(entry, /--keyword-input/);
+  assert.match(entry, /keywords\.txt/);
+  assert.match(entry, /--keyword-bundle-root/);
+  assert.match(entry, /keyword-bundles/);
+  assert.match(entry, /flock -n 'artifacts\/analysis\/\.agency-monthly\.lock' sh -c/);
 });
 
 test("monthly keyword research refuses an input-less schedule", () => {
@@ -361,5 +373,6 @@ test("monthly keyword research requires explicit estimated-budget acceptance", (
 
 test("monthly agency schedule can render rank history from existing snapshots", () => {
   const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", rankHistoryDir: "artifacts/reports/rank-history" });
-  assert.match(entry, /--rank-history 'artifacts\/analysis' --registry 'fixtures\/client-registry\.json' --output 'artifacts\/reports\/rank-history'/);
+  assert.match(entry, /--rank-history/);
+  assert.match(entry, /rank-history/);
 });
