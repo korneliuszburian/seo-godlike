@@ -255,6 +255,21 @@ auth or schema is unknown.
   joined context rows, 36 rule-based signals, 41 keyword rows, and explicit
   blocked status for GA4, Localo, SERPROBOT, and Semstorm. No provider rerun
   occurred.
+
+## Final delivery review follow-up — 2026-08-03
+
+- Fixed point `ce73e7c` incorporates the final OpenCode/DeepSeek findings from
+  `6266e1a`: keyword bundle paths are relative to the explicitly supplied
+  keyword bundle root, direct client content outside the delivery scope is
+  rejected, and delivery history is filtered to the report's accepted bundle
+  set.
+- Added a non-default keyword-root proof and retained symlink-escape and
+  out-of-scope-content falsifiers. Local proof passes with 157 tests, build,
+  zero high audit vulnerabilities and `git diff --check`.
+- No provider request, credential read, Ahrefs rerun or production report
+  rerun occurred. The remaining OpenCode notes are low/deferred: standalone
+  delivery agency-run record policy, environment-dependent PDF determinism,
+  and host-gated renderer/network proof.
 - Source registry extension is proven by a focused test for unavailable rank
   and visibility entries; full local gates remain green.
 - A `ready` SERPROBOT registry entry now requires a numeric project ID. This
