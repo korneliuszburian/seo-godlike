@@ -239,3 +239,21 @@ auth or schema is unknown.
    GSC property/alias, Ahrefs target, and Ahrefs country before enabling
    collection. Do not confuse raw property-entry count with normalized-host
    count; URL-prefix and `sc-domain` variants are separate GSC identifiers.
+
+## Looker-aligned source inventory — 2026-08-03
+
+- The public Studio danych report was inspected read-only. Its visible sections
+  correspond to analytics, Ahrefs visibility, SERPROBOT rank history,
+  operator-managed off-site actions, and glossary content. The report is a
+  presentation layer, not itself an evidence source.
+- The source registry now accepts explicit `serprobot` and `semstorm` entries.
+  Both are currently `unavailable` because no verified snapshot/API export has
+  been imported. No data was inferred from screenshots or Looker internals.
+- Current Bodymove output was regenerated as
+  `artifacts/analysis/client-delivery-20260803-final-v6/`: one client unit plus
+  five separately scoped phrase-domain units, three accepted bundles, 207
+  joined context rows, 36 rule-based signals, 41 keyword rows, and explicit
+  blocked status for GA4, Localo, SERPROBOT, and Semstorm. No provider rerun
+  occurred.
+- Source registry extension is proven by a focused test for unavailable rank
+  and visibility entries; full local gates remain green.
