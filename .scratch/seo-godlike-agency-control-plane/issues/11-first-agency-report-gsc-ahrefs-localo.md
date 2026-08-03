@@ -484,3 +484,5 @@ auth or schema is unknown.
   `Brak porównywalnej bazy`, avoiding a misleading month-over-month claim.
 - Focused delivery proof is included in the full local suite: 110 TypeScript
   tests + 3 context tests pass. No provider request or evidence rerun was made.
+- Commit `40d70fd` adds the opposite-case falsifier: a non-adjacent previous
+  range renders `Brak porównywalnej bazy` instead of a fabricated delta.
