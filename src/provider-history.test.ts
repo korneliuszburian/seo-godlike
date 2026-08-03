@@ -110,6 +110,20 @@ test("provider history fails closed when an accepted bundle report is missing", 
   await rm(root, { recursive: true, force: true });
 });
 
+test("provider history fails closed when an accepted bundle report is malformed", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-provider-history-"));
+  const bundle = join(root, "malformed-report");
+  await mkdir(bundle);
+  const content = canonicalJson({ run_id: "malformed", client_id: "bodymove", provider: "google-search-console", property_refs: ["sc-domain:bodymove.pl"], generated_at: "2026-07-26T08:00:00.000Z", analytics: { current_date_range: { start: "2026-06-29", end: "2026-07-26" }, current: { clicks: 10 } } });
+  await writeFile(join(bundle, "report.json"), content, "utf8");
+  await writeFile(join(bundle, "manifest.json"), canonicalJson({ files: { "report.json": { sha256: hash(content), bytes: Buffer.byteLength(content) } } }), "utf8");
+  await assert.rejects(
+    readProviderHistory(root, [{ client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }], ["malformed-report"]),
+    /required report is invalid/,
+  );
+  await rm(root, { recursive: true, force: true });
+});
+
 test("provider history follows an in-root bundle symlink without dropping the bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-provider-history-"));
   await writeBundle(root, "real-bundle", report("ahrefs", "2026-06-29", "2026-07-26", 40, "symlinked-manifest"));

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
@@ -13,6 +13,21 @@ import { ProviderHistoryEntry, readProviderHistory } from "./provider-history.js
 import { AgencyRunRecord, assertAgencyReadOnlyPolicy } from "./agency-run.js";
 
 const execFileAsync = promisify(execFile);
+
+const PDF_RENDERER_BINARIES = ["/usr/bin/systemd-run", "/usr/bin/bwrap", "/usr/bin/chromium", "/usr/bin/qpdf"] as const;
+
+export async function assertPdfRendererAvailable(
+  environment: NodeJS.ProcessEnv = process.env,
+  fileExists: (path: string) => Promise<boolean> = async (path) => {
+    try { await access(path); return true; } catch { return false; }
+  },
+): Promise<void> {
+  const missing = (await Promise.all(PDF_RENDERER_BINARIES.map(async (path) => [path, await fileExists(path)] as const)))
+    .filter(([, exists]) => !exists)
+    .map(([path]) => path);
+  if (missing.length) throw new Error(`PDF renderer unavailable: missing required binaries ${missing.join(", ")}`);
+  if (!environment.XDG_RUNTIME_DIR) throw new Error("PDF renderer unavailable: XDG_RUNTIME_DIR is not set; systemd-run --user needs a user session");
+}
 
 interface BundleMetric {
   client_id: string;
@@ -398,6 +413,7 @@ function emailDraft(unit: DeliveryUnit, generatedAt: string, htmlPath: string, p
 }
 
 async function renderPdf(htmlPath: string, pdfPath: string): Promise<void> {
+  await assertPdfRendererAvailable();
   const profile = await mkdtemp(join(tmpdir(), "seo-godlike-chromium-"));
   const normalized = `${pdfPath}.normalized`;
   const outputRoot = dirname(resolve(pdfPath));

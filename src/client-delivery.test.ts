@@ -6,11 +6,18 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import { AgencyReportSummary } from "./agency-report.js";
-import { writeClientDelivery } from "./client-delivery.js";
+import { assertPdfRendererAvailable, writeClientDelivery } from "./client-delivery.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 
 function hash(value: string): string { return createHash("sha256").update(value).digest("hex"); }
 function manifest(files: Record<string, string>): string { return JSON.stringify({ files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hash(content), bytes: Buffer.byteLength(content) }])) }); }
+
+test("PDF renderer preflight fails clearly when host binaries are unavailable", async () => {
+  await assert.rejects(
+    assertPdfRendererAvailable({ XDG_RUNTIME_DIR: "/run/user/test" }, async () => false),
+    /PDF renderer unavailable: missing required binaries/,
+  );
+});
 
 test("client delivery splits unmapped phrase domains and keeps the client report separate", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-client-delivery-"));

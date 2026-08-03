@@ -163,6 +163,7 @@ async function readVerifiedManifest(manifestPath: string, artifactsRoot: string,
   const inScope = (candidate !== null && scope?.has(JSON.stringify([candidate.client_id, candidate.property_id, candidate.provider]))) || (rawIdentity !== null && scope?.has(rawIdentity));
   if (scope && !inScope && !required) return null;
   if (!candidate) {
+    if (required && rawIdentity !== null) throw new Error(`provider history required report is invalid: ${join(bundleDir, "report.json")}`);
     if (scope && !required) throw new Error(`invalid in-scope provider history report: ${join(bundleDir, "report.json")}`);
     return null;
   }

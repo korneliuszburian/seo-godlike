@@ -68,6 +68,21 @@ Następnie miesięczny pipeline dostaje katalog bundle przez
 konfigurację projektu przed wyrenderowaniem HTML/PDF/email. Powtórne użycie
 tego samego outputu jest odrzucane przez kontrakt exclusive-write.
 
+## Prerequisites for scheduled PDF delivery
+
+The monthly cron invokes `dist/cli.js`, so a fresh checkout must build the
+project before the first scheduled run:
+
+```bash
+npm run build
+```
+
+PDF delivery additionally requires `/usr/bin/systemd-run`, `/usr/bin/bwrap`,
+`/usr/bin/chromium` and `/usr/bin/qpdf`. The cron process must run inside an
+active user systemd session with `XDG_RUNTIME_DIR` set; otherwise delivery
+fails closed with an explicit renderer-preflight error. A missing binary is
+also reported before any PDF output is written.
+
 ## Granice
 
 - Nie pobieramy danych z PDF-a raportu Looker Studio.
