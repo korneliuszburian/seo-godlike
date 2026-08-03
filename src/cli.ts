@@ -245,7 +245,7 @@ async function main(): Promise<void> {
     const resolvedRankMonitoringPath = rankMonitoringRoot
       ? await resolveLatestRankMonitoringBundle(await resolveRankMonitoringRoot(rankMonitoringRoot, argument("--artifacts-dir")), rankMonitoringClientIds(sourceRegistry.sources))
       : rankMonitoringPath;
-    const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), resolvedRankMonitoringPath);
+    const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), resolvedRankMonitoringPath, optionalArgument("--keyword-bundle-root"));
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
     return;
   }
@@ -337,7 +337,7 @@ async function main(): Promise<void> {
     if (agencyReportOutput) {
       const keywordBundlePath = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? keywordResearchOutputPath : existingKeywordBundlePath;
       const keywordBundleRoot = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? outputRoot : optionalArgument("--keyword-bundle-root");
-      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath);
+      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath, keywordBundleRoot);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
         await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath: resolvedRankMonitoringPath, keywordBundleRoot, agencyRunRecordPath: join(outputRoot, "agency-run.json") });

@@ -129,8 +129,9 @@ async function readRankMonitoringEvidence(bundlePath: string, clientIds: readonl
   }));
 }
 
-async function readKeywordResearchBundle(bundlePath: string, artifactsDir: string, inputPath?: string): Promise<AgencyKeywordResearch> {
-  const root = await resolveExistingInside(resolve(artifactsDir), relative(resolve(artifactsDir), resolve(bundlePath)) || ".", "keyword bundle");
+async function readKeywordResearchBundle(bundlePath: string, keywordBundleRoot: string, inputPath?: string): Promise<AgencyKeywordResearch> {
+  const resolvedKeywordRoot = resolve(keywordBundleRoot);
+  const root = await resolveExistingInside(resolvedKeywordRoot, relative(resolvedKeywordRoot, resolve(bundlePath)) || ".", "keyword bundle");
   const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
   if (!manifest.files || typeof manifest.files !== "object") throw new Error("invalid keyword research manifest");
   const verified = new Map<string, string>();
@@ -154,7 +155,7 @@ async function readKeywordResearchBundle(bundlePath: string, artifactsDir: strin
     notes = parsed.notes;
   }
   if (typeof report.country !== "string" || !Array.isArray(report.groups) || !report.groups.every((group) => typeof group.host === "string" && Array.isArray(group.phrases) && Array.isArray(group.rows))) throw new Error("invalid keyword research groups");
-  return { source_label: "Estimated — Ahrefs Keywords Explorer", country: report.country, input_sha256: report.input_sha256, input_groups: inputGroups, notes, groups: report.groups as AgencyKeywordResearch["groups"], bundle_path: relative(resolve(artifactsDir), root) || ".", manifest_files: manifestFiles };
+  return { source_label: "Estimated — Ahrefs Keywords Explorer", country: report.country, input_sha256: report.input_sha256, input_groups: inputGroups, notes, groups: report.groups as AgencyKeywordResearch["groups"], bundle_path: relative(resolvedKeywordRoot, root) || ".", manifest_files: manifestFiles };
 }
 
 export function composeCrossSourceContext(reports: Array<{ client_id: string; provider: string; analytics: Record<string, unknown> }>): CrossSourceContextEntry[] {
@@ -516,7 +517,7 @@ async function writeExclusive(path: string, content: string): Promise<void> {
   await writeFile(path, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 
-export async function writeAgencyReport(artifactsDir: string, outputDir: string, scope: ScopePlan, generatedAt = new Date().toISOString(), sourceRegistry: SourceRegistry = { sources: [] }, keywordBundlePath?: string, keywordInputPath?: string, rankMonitoringPath?: string): Promise<AgencyReportSummary> {
+export async function writeAgencyReport(artifactsDir: string, outputDir: string, scope: ScopePlan, generatedAt = new Date().toISOString(), sourceRegistry: SourceRegistry = { sources: [] }, keywordBundlePath?: string, keywordInputPath?: string, rankMonitoringPath?: string, keywordBundleRoot?: string): Promise<AgencyReportSummary> {
   const clients: ClientRegistry = { clients: [...new Set([...scope.entries.map((entry) => entry.client_id), ...sourceRegistry.sources.map((source) => source.client_id)])].map((client_id) => ({ client_id, properties: [] })) };
   validateSourceRegistry(sourceRegistry, clients);
   const resolvedArtifacts = resolve(artifactsDir);
@@ -537,7 +538,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   }));
   const crossSourceContext = composeCrossSourceContext(reports);
   const insights = composeReportInsights(reports);
-  const keywordResearch = keywordBundlePath ? await readKeywordResearchBundle(keywordBundlePath, resolvedArtifacts, keywordInputPath) : undefined;
+  const keywordResearch = keywordBundlePath ? await readKeywordResearchBundle(keywordBundlePath, keywordBundleRoot ?? resolvedArtifacts, keywordInputPath) : undefined;
   const rankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
   const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
   const rankMonitoring = rankMonitoringEvidence[0];

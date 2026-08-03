@@ -151,7 +151,7 @@ test("agency report preserves every supplied keyword group and full returned row
     await mkdir(artifacts);
     const inputPath = join(root, "phrases.txt");
     await writeFile(inputPath, "https://wilmed.pl/\n# note: TUTAJ nie mamy fraz\n\nhttps://cmr-ostroleka.pl/\nfraza jedna\n");
-    const keywordBundle = join(artifacts, "keywords");
+    const keywordBundle = join(root, "keywords");
     await writeAhrefsKeywordResearch({
       inputPath,
       outputDir: keywordBundle,
@@ -162,7 +162,7 @@ test("agency report preserves every supplied keyword group and full returned row
     });
     const scope: ScopePlan = { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] };
     const output = join(root, "report");
-    const summary = await writeAgencyReport(artifacts, output, scope, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath);
+    const summary = await writeAgencyReport(artifacts, output, scope, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath, undefined, root);
     assert.deepEqual(summary.keyword_research?.input_groups.map((group) => [group.host, group.phrases.length]), [["wilmed.pl", 0], ["cmr-ostroleka.pl", 1]]);
     assert.equal(summary.keyword_research?.groups[0]?.rows[0]?.difficulty, 7);
     const appendix = await readFile(join(output, "agency-report-appendix.md"), "utf8");
@@ -181,7 +181,7 @@ test("agency report rejects a keyword manifest entry symlink escaping the bundle
     await mkdir(artifacts);
     const inputPath = join(root, "phrases.txt");
     await writeFile(inputPath, "https://wilmed.pl/\nfraza jedna\n");
-    const keywordBundle = join(artifacts, "keywords");
+    const keywordBundle = join(root, "keywords");
     await writeAhrefsKeywordResearch({
       inputPath,
       outputDir: keywordBundle,
@@ -195,7 +195,7 @@ test("agency report rejects a keyword manifest entry symlink escaping the bundle
     await writeFile(outside, report);
     await rm(join(keywordBundle, "report.json"));
     await symlink(outside, join(keywordBundle, "report.json"));
-    await assert.rejects(() => writeAgencyReport(artifacts, join(root, "report"), { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] }, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath), /escapes its root through a symlink/);
+    await assert.rejects(() => writeAgencyReport(artifacts, join(root, "report"), { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] }, "2026-08-03T00:00:00.000Z", { sources: [] }, keywordBundle, inputPath, undefined, root), /escapes its root through a symlink/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
