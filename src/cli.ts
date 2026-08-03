@@ -550,7 +550,7 @@ async function main(): Promise<void> {
     const outputRoot = resolve(argument("--output"));
     const artifactsDir = optionalArgument("--artifacts-dir");
     const ranges = calculateDateRanges();
-    await mkdir(outputRoot, { recursive: false });
+    await mkdir(outputRoot, { recursive: false, mode: 0o700 });
     const result = await runSequentialBatch(propertyIds.map((propertyId) => ({
       id: propertyId,
       run: async () => {
