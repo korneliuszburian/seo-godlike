@@ -831,3 +831,18 @@ auth or schema is unknown.
   invariant. Local proof: 121 TypeScript tests + 3 context tests, build, zero
   high audit vulnerabilities and `git diff --check`; no provider request or
   rerun was performed.
+
+## Local agency readiness snapshot — 2026-08-03
+
+- Added `--agency-readiness`, a local read-only preflight that combines the
+  registered property scope, external-source registry and operator-supplied
+  input presence into one deterministic JSON snapshot. It does not inspect
+  credential contents and does not call any provider.
+- The snapshot distinguishes ready scope entries from unavailable capability
+  entries, preserves each external source's explicit blocker, reports whether
+  OAuth/keyword/rank/content inputs were supplied, and keeps
+  `credential_posture: not_inspected` explicit.
+- Focused falsifiers cover partial Bodymove readiness, missing OAuth input and
+  empty scope. Local proof: 124 TypeScript tests + 3 context tests, build,
+  zero high audit vulnerabilities and `git diff --check`; no provider request,
+  credential read or Ahrefs rerun was performed.

@@ -18,6 +18,7 @@ import { buildDailyAnalyticsCron, buildMonthlyAgencyCron } from "./schedule.js";
 import { runSequentialBatch } from "./batch.js";
 import { buildScopePlan } from "./scope-plan.js";
 import { buildAgentRunPlan } from "./agent-plan.js";
+import { buildAgencyReadiness } from "./agency-readiness.js";
 import { buildExternalSourceTasks, executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
 import { writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
@@ -240,6 +241,21 @@ async function main(): Promise<void> {
     const scope = buildScopePlan(registry, capabilities);
     const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), optionalArgument("--rank-monitoring"));
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--agency-readiness")) {
+    const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
+    const sourceRegistryPath = optionalArgument("--source-registry");
+    const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
+    validateSourceRegistry(sourceRegistry, registry);
+    const readiness = buildAgencyReadiness(buildScopePlan(registry, capabilities), sourceRegistry, {
+      oauth_client_supplied: hasArgument("--oauth-client"),
+      keyword_input_supplied: hasArgument("--keyword-input"),
+      rank_monitoring_supplied: hasArgument("--rank-monitoring"),
+      client_content_supplied: hasArgument("--client-content") || hasArgument("--client-content-bundle"),
+    });
+    process.stdout.write(`${JSON.stringify(readiness, null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--client-delivery")) {
