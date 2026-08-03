@@ -75,7 +75,7 @@ function normalizeGeneratedAt(value: unknown): string {
   return date.toISOString();
 }
 
-function reportEntry(value: unknown, bundlePath: string): PackageEntry {
+function reportEntry(value: unknown, bundlePath: string, manifestSha256: string): PackageEntry {
   if (!isRecord(value) || typeof value.run_id !== "string" || typeof value.client_id !== "string" || typeof value.client_display_name !== "string" || typeof value.generated_at !== "string" || !Array.isArray(value.property_refs) || typeof value.property_refs[0] !== "string" || typeof value.provider !== "string" || typeof value.operation !== "string" || value.evidence_manifest_ref !== "manifest.json" || typeof value.canonical_json_hash !== "string" || !isRecord(value.analytics)) throw new Error("reportability metadata is incomplete");
   const pair = value.provider === "google-search-console" && value.operation === "search_analytics.query"
     ? { provider: "google-search-console" as const, operation: "search_analytics.query" as const, metric_id: "gsc.clicks" as const, value: (value.analytics.current as Record<string, unknown> | undefined)?.clicks }
@@ -89,7 +89,7 @@ function reportEntry(value: unknown, bundlePath: string): PackageEntry {
   if (!isRecord(range) || typeof range.start !== "string" || typeof range.end !== "string") throw new Error("invalid current date range");
   return {
     bundle_path: bundlePath,
-    manifest_sha256: "",
+    manifest_sha256: manifestSha256,
     run_id: value.run_id,
     client_id: value.client_id,
     client_display_name: value.client_display_name,
@@ -121,8 +121,7 @@ async function readVerifiedEntry(manifestPath: string, artifactsDir: string): Pr
   if (typeof declaredHash !== "string") throw new Error("reportability metadata is incomplete: canonical_json_hash missing");
   const { canonical_json_hash: _, ...reportWithoutHash } = report;
   if (hashText(canonicalJson(reportWithoutHash)) !== declaredHash) throw new Error("canonical_json_hash mismatch");
-  const entry = reportEntry(report, relative(artifactsDir, bundleDir) || ".");
-  entry.manifest_sha256 = sha256(await readFile(manifestPath));
+  const entry = reportEntry(report, relative(artifactsDir, bundleDir) || ".", sha256(await readFile(manifestPath)));
   const requestBytes = files.get("request.json");
   if (!requestBytes) throw new Error("reportability metadata is incomplete: request.json missing");
   const request = JSON.parse(requestBytes.toString("utf8")) as Record<string, unknown>;

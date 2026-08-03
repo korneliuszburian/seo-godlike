@@ -157,6 +157,7 @@ test("report package verifies manifests, preserves rejected bundles, and writes 
   assert.equal(summary.bundle_count, 2);
   assert.deepEqual(summary.skipped_bundles, []);
   assert.equal(summary.accepted_bundles[0]?.metric_id, "gsc.clicks");
+  assert.match(summary.accepted_bundles[0]?.manifest_sha256 ?? "", /^[a-f0-9]{64}$/);
   assert.equal(summary.accepted_bundles[1]?.metric_id, "ga4.sessions");
   assert.deepEqual(summary.rejected_bundles.map((entry) => entry.bundle_path), ["tampered"]);
   assert.match(summary.rejected_bundles[0]?.reason ?? "", /manifest hash mismatch/);
