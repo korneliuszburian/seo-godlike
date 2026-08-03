@@ -194,6 +194,14 @@ the configured history root (or the deterministic `history-YYYYMM` directory
 under the agency report root) and is built only from already verified local
 bundles; it performs no provider request.
 
+For recurring Ahrefs Keywords Explorer research, add `--keyword-input` and
+explicitly opt in with `--keyword-research`. The scheduled command then creates
+the keyword bundle inside the same run directory and passes bounded
+`--keyword-max-requests`/`--keyword-max-api-units` values to the existing
+manifest-bound report. This path also requires the explicit estimated-budget
+acceptance flag and remains read-only; without `--keyword-research`, the
+monthly schedule does not spend keyword units.
+
 ## GA4 adapter readiness
 
 The repository includes a fixture-testable, read-only GA4 `sessions` adapter.
@@ -231,13 +239,13 @@ node dist/cli.js \
 Do not add a real property to the permanent fixture or run the OAuth path until
 the operator confirms the client/property ownership and authorizes the scope.
 
-### Current fixed point
+### Current status
 
-The GA4 quality cleanup is recorded at commit `73418e5`. The adapter now fails
-closed when the capability omits `api_version`, escapes report-derived values
-in Markdown, and requires `provider` plus `operation` in every persisted
-`Report`. Local proof is green (`npm test`: 44 TypeScript tests plus 3 context
-tests), but this does not prove a live GA4 property.
+The adapter fails closed when the capability omits `api_version`, escapes
+report-derived values in Markdown, and requires `provider` plus `operation` in
+every persisted `Report`. Current repository proof is maintained by the test
+and build gates rather than by a hard-coded count in this runbook. Green local
+proof still does not prove a live GA4 property.
 
 The remaining operator handoff is:
 
