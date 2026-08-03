@@ -43,6 +43,7 @@ export interface AgencyScheduleOptions {
   deliveryDir: string;
   clientContentPath?: string;
   rankMonitoringPath?: string;
+  keywordBundleRoot?: string;
   lockPath?: string;
 }
 
@@ -60,6 +61,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     ...(options.sourceRegistryPath ? ["--source-registry", shellQuote(options.sourceRegistryPath)] : []),
     ...(options.clientContentPath ? ["--client-content", shellQuote(options.clientContentPath)] : []),
     ...(options.rankMonitoringPath ? ["--rank-monitoring", shellQuote(options.rankMonitoringPath)] : []),
+    ...(options.keywordBundleRoot ? ["--keyword-bundle-root", shellQuote(options.keywordBundleRoot)] : []),
   ].join(" ");
   return `17 3 1 * * cd ${shellQuote(options.workingDirectory)} && ${command}`;
 }

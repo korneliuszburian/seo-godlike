@@ -302,6 +302,7 @@ async function main(): Promise<void> {
         deliveryDir: optionalArgument("--delivery-root") ?? "artifacts/delivery",
         clientContentPath: optionalArgument("--client-content"),
         rankMonitoringPath: optionalArgument("--rank-monitoring"),
+        keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
         lockPath: optionalArgument("--lock-file"),
       })}\n`);
       return;
