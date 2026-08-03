@@ -59,7 +59,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   const command = [
     "flock", "-n", shellQuote(lockPath), "node", "dist/cli.js", "--agency-run",
     "--registry", shellQuote(options.registryPath), "--capabilities", shellQuote(options.capabilitiesPath),
-    "--oauth-client", shellQuote(options.oauthClientPath), "--output", output,
+    "--oauth-client", shellQuote(options.oauthClientPath), "--artifacts-dir", shellQuote(options.artifactsDir), "--output", output,
     "--agency-report-output", report, "--delivery-output", delivery, "--pdf",
     ...(options.sourceRegistryPath ? ["--source-registry", shellQuote(options.sourceRegistryPath)] : []),
     ...(options.clientContentPath ? ["--client-content", shellQuote(options.clientContentPath)] : []),

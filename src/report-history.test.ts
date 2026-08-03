@@ -287,6 +287,7 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles" });
   assert.match(entry, /^17 3 1 \* \* /);
   assert.match(entry, /--agency-run/);
+  assert.match(entry, /--artifacts-dir 'artifacts\/analysis'/);
   assert.match(entry, /--agency-report-output 'artifacts\/reports'\/agency-report-\$\(date/);
   assert.match(entry, /--delivery-output 'artifacts\/delivery'\/client-delivery-\$\(date/);
   assert.match(entry, /--source-registry 'fixtures\/source-registry\.json'/);
