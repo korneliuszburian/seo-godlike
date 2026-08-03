@@ -472,3 +472,15 @@ auth or schema is unknown.
 - This is a safety boundary, not a claim that the provider cost can be
   predicted exactly from the current input. The operator must deliberately
   accept that uncertainty before any future keyword collection.
+
+## Client period comparison follow-up — 2026-08-03
+
+- Commit `eccafce` exposes the adjacent previous GSC period in client HTML,
+  PDF and draft email output. Clicks, impressions and CTR show explicit
+  absolute/percentage or percentage-point changes; average position uses the
+  correct lower-is-better wording.
+- Comparisons are rendered only when both ranges exist and the previous range
+  ends immediately before the current range. Otherwise the client receives
+  `Brak porównywalnej bazy`, avoiding a misleading month-over-month claim.
+- Focused delivery proof is included in the full local suite: 110 TypeScript
+  tests + 3 context tests pass. No provider request or evidence rerun was made.
