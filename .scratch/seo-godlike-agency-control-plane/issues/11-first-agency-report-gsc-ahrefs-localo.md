@@ -1151,3 +1151,17 @@ auth or schema is unknown.
   remains host-gated and SERPROBOT collection remains operator-gated; no
   provider request, credential read, Ahrefs rerun or production report rerun
   occurred.
+
+## Current-versus-history bundle selection — 2026-08-03
+
+- Fixed point `8c73819` selects the newest accepted bundle per registered
+  source identity for current metrics, while retaining all accepted bundle
+  paths for bounded historical comparisons. This prevents duplicate historical
+  Ahrefs snapshots from inflating the current report without losing period
+  history.
+- Focused falsifier covers two accepted bundles for one identity and proves
+  that the newer bundle is the only current bundle. Local Bodymove proof from
+  existing evidence reports 3 current bundles, 4 history bundles, 207
+  cross-source rows, 36 rule-based signals and 41 keyword rows. Delivery
+  renders 6 isolated units and 6 checked A4 PDFs; no provider request,
+  credential read or Ahrefs rerun occurred.
