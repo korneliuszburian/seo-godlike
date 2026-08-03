@@ -1106,3 +1106,17 @@ auth or schema is unknown.
   mapping/authorization, GA4 numeric property and consent, managed Localo
   profile, verified SERPROBOT source input/API schema, retention/export policy,
   and any hosted/public delivery decision.
+
+## SERPROBOT API contract audit — 2026-08-03
+
+- Official SERPROBOT documentation confirms the read-only Data Studio connector
+  requires connector authorization, an API key, numeric project ID, and
+  `start`/`end` dates. It does not publish a stable HTTP endpoint or response
+  schema for a standalone application adapter: [official connector guide](https://www.serprobot.com/data-studio-connector).
+- Decision: keep `--pack-rank-monitoring` and `--rank-monitoring-root` as the
+  current manifest-bound ingestion boundary. Do not infer an endpoint, scrape
+  Looker Studio, or spend ranking/provider units during report generation.
+- To activate recurring rank collection, the operator must provide either a
+  normalized SERPROBOT export per the runbook or a provider-confirmed API
+  request/response fixture. The existing recurring schedule and report delivery
+  can consume that immutable snapshot without rerunning Ahrefs.
