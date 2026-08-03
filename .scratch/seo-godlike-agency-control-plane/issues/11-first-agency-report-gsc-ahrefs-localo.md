@@ -862,3 +862,14 @@ auth or schema is unknown.
   root preparation step, so a failed `install -d` cannot run history commands
   with an empty run timestamp. Schedule assertions cover agency, history and
   rank-history exit propagation.
+
+## Explicit scheduled Ahrefs budget acceptance — 2026-08-03
+
+- Monthly keyword research scheduling now requires a separate
+  `--allow-estimated-budget` flag in addition to `--keyword-research` and the
+  keyword input. The generated cron no longer grants estimated-budget
+  acceptance implicitly.
+- This changes only schedule generation and validation; no provider request or
+  keyword rerun was performed.
+- Focused schedule tests cover rejection without the explicit acceptance and
+  emission with it.

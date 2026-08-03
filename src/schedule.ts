@@ -50,6 +50,7 @@ export interface AgencyScheduleOptions {
   keywordInputPath?: string;
   keywordBundleRoot?: string;
   keywordResearch?: boolean;
+  allowEstimatedBudget?: boolean;
   keywordCountry?: string;
   keywordMaxRequests?: string;
   keywordMaxApiUnits?: string;
@@ -58,6 +59,7 @@ export interface AgencyScheduleOptions {
 
 export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   if (options.keywordResearch && !options.keywordInputPath) throw new Error("keyword research scheduling requires keywordInputPath");
+  if (options.keywordResearch && !options.allowEstimatedBudget) throw new Error("keyword research scheduling requires allowEstimatedBudget");
   const lockPath = options.lockPath ?? `${options.artifactsDir}/.agency-monthly.lock`;
   const stamp = '"$agency_run_stamp"';
   const output = `${shellQuote(options.artifactsDir)}/agency-run-${stamp}`;
@@ -78,7 +80,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     ...(options.keywordBundlePath ? ["--keyword-bundle", shellQuote(options.keywordBundlePath)] : []),
     ...(options.keywordInputPath ? ["--keyword-input", shellQuote(options.keywordInputPath)] : []),
     ...(options.keywordBundleRoot ? ["--keyword-bundle-root", shellQuote(options.keywordBundleRoot)] : []),
-    ...(options.keywordResearch ? ["--keyword-research", "--keyword-research-output", `${output}/keyword-research`, "--allow-estimated-budget"] : []),
+    ...(options.keywordResearch ? ["--keyword-research", "--keyword-research-output", `${output}/keyword-research`, ...(options.allowEstimatedBudget ? ["--allow-estimated-budget"] : [])] : []),
     ...(options.keywordCountry ? ["--keyword-country", shellQuote(options.keywordCountry)] : []),
     ...(options.keywordMaxRequests ? ["--keyword-max-requests", shellQuote(options.keywordMaxRequests)] : []),
     ...(options.keywordMaxApiUnits ? ["--keyword-max-api-units", shellQuote(options.keywordMaxApiUnits)] : []),

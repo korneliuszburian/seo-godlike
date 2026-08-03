@@ -323,7 +323,7 @@ test("schedule rejects unsafe client id path segments", () => {
 });
 
 test("monthly agency schedule runs the complete report and delivery pipeline", () => {
-  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles", keywordResearch: true, keywordCountry: "pl", keywordMaxRequests: "4", keywordMaxApiUnits: "200" });
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles", keywordResearch: true, allowEstimatedBudget: true, keywordCountry: "pl", keywordMaxRequests: "4", keywordMaxApiUnits: "200" });
   assert.match(entry, /^47 3 1 \* \* /);
   assert.match(entry, /install -d -m 700 'artifacts\/analysis' 'artifacts\/reports' 'artifacts\/delivery'/);
   assert.match(entry, /--agency-run/);
@@ -351,6 +351,12 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
 
 test("monthly keyword research refuses an input-less schedule", () => {
   assert.throws(() => buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts", reportDir: "reports", deliveryDir: "delivery", keywordResearch: true }), /requires keywordInputPath/);
+});
+
+test("monthly keyword research requires explicit estimated-budget acceptance", () => {
+  assert.throws(() => buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts", reportDir: "reports", deliveryDir: "delivery", keywordResearch: true, keywordInputPath: "fixtures/keywords.txt" }), /requires allowEstimatedBudget/);
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts", reportDir: "reports", deliveryDir: "delivery", keywordResearch: true, keywordInputPath: "fixtures/keywords.txt", allowEstimatedBudget: true });
+  assert.match(entry, /--allow-estimated-budget/);
 });
 
 test("monthly agency schedule can render rank history from existing snapshots", () => {

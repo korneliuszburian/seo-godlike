@@ -372,6 +372,7 @@ async function main(): Promise<void> {
         keywordInputPath: optionalArgument("--keyword-input"),
         keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
         keywordResearch: process.argv.includes("--keyword-research"),
+        allowEstimatedBudget: process.argv.includes("--allow-estimated-budget"),
         keywordCountry: optionalArgument("--keyword-country"),
         keywordMaxRequests: optionalArgument("--keyword-max-requests"),
         keywordMaxApiUnits: optionalArgument("--keyword-max-api-units"),
