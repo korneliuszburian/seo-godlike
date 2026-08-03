@@ -907,8 +907,19 @@ auth or schema is unknown.
   a missing or unreadable `report.json` in an accepted history bundle is an
   explicit error rather than an omitted history entry. Non-history accepted
   provider reports remain ignored when their shape is not the history contract.
-- Focused proof covers missing required reports and symlinked bundles. Full
-  local proof: 133 TypeScript tests + 3 context tests, build, zero high audit
-  vulnerabilities and `git diff --check`.
+- Focused proof covers missing required reports, missing required bundles,
+  dangling symlinks and symlinked bundles. Full local proof: 135 TypeScript
+  tests + 3 context tests, build, zero high audit vulnerabilities and
+  `git diff --check`.
 - No provider request, credential read, Ahrefs rerun or generated production
   report rerun was performed.
+
+## Provider history follow-up review — 2026-08-03
+
+- The bounded OpenCode second opinion found no blocker. Its residual cases were
+  addressed: dangling unrelated symlinks are ignored, missing required bundle
+  paths fail closed, and absolute required paths are rejected when outside the
+  configured artifacts root.
+- The second opinion was read-only and did not run providers, read credentials
+  or rerun production reports. The fixed point is ready for the next operator
+  gate, not for publication or client delivery by itself.

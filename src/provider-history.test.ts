@@ -119,3 +119,16 @@ test("provider history follows an in-root bundle symlink without dropping the bu
   assert.equal(entries[0]?.run_id, "symlinked-manifest");
   await rm(root, { recursive: true, force: true });
 });
+
+test("provider history ignores dangling unrelated symlinks", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-provider-history-"));
+  await symlink(join(root, "does-not-exist"), join(root, "dangling"));
+  assert.deepEqual(await readProviderHistory(root), []);
+  await rm(root, { recursive: true, force: true });
+});
+
+test("provider history fails closed when a required bundle is missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-provider-history-"));
+  await assert.rejects(readProviderHistory(root, [], ["deleted-bundle"]), /required provider history bundle was not discovered/);
+  await rm(root, { recursive: true, force: true });
+});

@@ -108,7 +108,9 @@ function parseReport(value: unknown): ProviderHistoryEntry | null {
 
 async function manifestPaths(root: string): Promise<string[]> {
   const paths: string[] = [];
-  const rootReal = await realpath(root);
+  let rootReal: string;
+  try { rootReal = await realpath(root); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
   const seenDirectories = new Set<string>();
   const seenManifests = new Set<string>();
   function insideRoot(path: string): boolean { return path === rootReal || path.startsWith(`${rootReal}${sep}`); }
@@ -125,7 +127,9 @@ async function manifestPaths(root: string): Promise<string[]> {
       if (entry.isDirectory()) await walk(path);
       else if (entry.isFile() && entry.name === "manifest.json") paths.push(path);
       else if (entry.isSymbolicLink()) {
-        const realPath = await realpath(path);
+        let realPath: string;
+        try { realPath = await realpath(path); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") continue; throw error; }
         if (!insideRoot(realPath)) {
           if (entry.name === "manifest.json") throw new Error(`provider history symlink escapes artifacts root: ${path}`);
           continue;
@@ -212,15 +216,24 @@ export async function readProviderHistory(artifactsDir: string, identities?: rea
   const root = resolve(artifactsDir);
   const scope = identities ? new Set(identities.map((identity) => JSON.stringify([identity.client_id, identity.property_id, identity.provider]))) : undefined;
   const required = requiredBundlePaths ? new Set(requiredBundlePaths.map((path) => isAbsolute(path) ? resolve(path) : resolve(root, path))) : undefined;
+  if (required) {
+    for (const path of required) {
+      if (path !== root && !path.startsWith(`${root}${sep}`)) throw new Error(`required provider history bundle escapes artifacts root: ${path}`);
+    }
+  }
+  const foundRequired = new Set<string>();
   const entriesByIdentity = new Map<string, ProviderHistoryEntry>();
   for (const manifestPath of await manifestPaths(root)) {
     const bundlePath = resolve(dirname(manifestPath));
+    if (required?.has(bundlePath)) foundRequired.add(bundlePath);
     const entry = await readVerifiedManifest(manifestPath, root, scope, required?.has(bundlePath) ? new Set([relative(root, bundlePath)]) : undefined);
     if (!entry) continue;
     const key = deduplicationKey(entry);
     const existing = entriesByIdentity.get(key);
     if (!existing || entry.generated_at > existing.generated_at || (entry.generated_at === existing.generated_at && entry.bundle_path > existing.bundle_path)) entriesByIdentity.set(key, entry);
   }
+  for (const path of foundRequired) required?.delete(path);
+  if (required?.size) throw new Error(`required provider history bundle was not discovered: ${[...required].sort().join(", ")}`);
   const entries = [...entriesByIdentity.values()].sort((a, b) => a.period.start.localeCompare(b.period.start) || a.period.end.localeCompare(b.period.end) || a.client_id.localeCompare(b.client_id) || a.property_id.localeCompare(b.property_id) || a.provider.localeCompare(b.provider) || a.bundle_path.localeCompare(b.bundle_path));
   return withComparisons(entries);
 }
