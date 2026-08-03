@@ -124,7 +124,7 @@ async function readVerifiedJsonBundle(bundleDir: string, expected: { client_id: 
   const reportText = files.get("report.json");
   const report = JSON.parse(reportText ?? "null") as Record<string, unknown>;
   if (!isRecord(report)) throw new Error(`missing report.json: ${bundleDir}`);
-  if (report.client_id !== expected.client_id || report.provider !== expected.provider || !Array.isArray(report.property_refs) || report.property_refs[0] !== expected.property_id) throw new Error(`bundle identity does not match accepted manifest: ${bundleDir}`);
+  if (report.client_id !== expected.client_id || report.provider !== expected.provider || !Array.isArray(report.property_refs) || report.property_refs.length !== 1 || report.property_refs[0] !== expected.property_id) throw new Error(`bundle identity does not match accepted manifest: ${bundleDir}`);
   return report;
 }
 
@@ -284,15 +284,15 @@ async function renderPdf(htmlPath: string, pdfPath: string): Promise<void> {
       "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--bind", profile, profile,
       "--bind", outputRoot, outputRoot, "--setenv", "HOME", profile,
       "--setenv", "XDG_CONFIG_HOME", profile, "--setenv", "XDG_CACHE_HOME", profile,
-      "chromium", "--headless", "--no-sandbox", "--disable-gpu", "--disable-background-networking",
+      "/usr/bin/chromium", "--headless", "--no-sandbox", "--disable-gpu", "--disable-background-networking",
       "--disable-component-update", "--disable-default-apps", "--disable-domain-reliability", "--disable-network-service", "--disable-breakpad", "--disable-client-side-phishing-detection", "--safebrowsing-disable-download-protection",
       "--disable-features=AutofillServerCommunication,CertificateTransparencyComponentUpdater,ConnectivityDiagnostics,MediaRouter,NetworkTimeQuery,OptimizationHints,Translate",
       "--disable-sync", "--disable-quic", "--host-resolver-rules=MAP * 127.0.0.1,EXCLUDE localhost",
       "--no-first-run", "--no-default-browser-check", "--no-pdf-header-footer",
       `--user-data-dir=${profile}`, `--print-to-pdf=${pdfPath}`, `file://${resolve(htmlPath)}`,
     ];
-    await execFileAsync("systemd-run", ["--user", "--wait", "--pipe", "--quiet", "--collect", "-p", "RestrictAddressFamilies=AF_UNIX", "-p", "PrivateNetwork=yes", "--", "bwrap", ...chromiumArgs], { timeout: 120_000 });
-    await execFileAsync("qpdf", ["--static-id", "--remove-info", "--remove-metadata", pdfPath, normalized], { timeout: 120_000 });
+    await execFileAsync("/usr/bin/systemd-run", ["--user", "--wait", "--pipe", "--quiet", "--collect", "-p", "RestrictAddressFamilies=AF_UNIX", "-p", "PrivateNetwork=yes", "--", "/usr/bin/bwrap", ...chromiumArgs], { timeout: 120_000 });
+    await execFileAsync("/usr/bin/qpdf", ["--static-id", "--remove-info", "--remove-metadata", pdfPath, normalized], { timeout: 120_000 });
     await writeFile(normalized, normalizePdfMetadata(await readFile(normalized)), { flag: "w", mode: 0o600 });
     await rename(normalized, pdfPath);
     await chmod(pdfPath, 0o600);

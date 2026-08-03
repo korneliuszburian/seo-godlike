@@ -66,6 +66,17 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.match(await readFile(join(root, "non-adjacent-delivery", "bodymove", "bodymove-seo-report.html"), "utf8"), /Brak porównywalnej bazy/);
     await writeFile(join(bundle, "report.json"), bundleReport);
     await writeFile(join(bundle, "manifest.json"), bundleManifest);
+    const multiPropertyReport = bundleReport.replace('"property_refs":["sc-domain:bodymove.pl"]', '"property_refs":["sc-domain:bodymove.pl","https://krakow.bodymove.pl/"]');
+    const multiPropertyManifest = manifest({ "report.json": multiPropertyReport });
+    await writeFile(join(bundle, "report.json"), multiPropertyReport);
+    await writeFile(join(bundle, "manifest.json"), multiPropertyManifest);
+    const multiPropertySummary = { ...summary, accepted_bundles: summary.accepted_bundles.map((item) => ({ ...item, manifest_sha256: hash(multiPropertyManifest) })) };
+    const multiPropertyText = JSON.stringify(multiPropertySummary);
+    await writeFile(agencyPath, multiPropertyText);
+    await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": multiPropertyText }));
+    await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "multi-property-delivery") }), /bundle identity does not match accepted manifest/);
+    await writeFile(join(bundle, "report.json"), bundleReport);
+    await writeFile(join(bundle, "manifest.json"), bundleManifest);
     const ambiguousSummary = { ...summary, scope: { ...summary.scope, entries: [...summary.scope.entries, { client_id: "other-client", client_display_name: "Other", property_id: "https://bodymove.pl/", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] } };
     const ambiguousText = JSON.stringify(ambiguousSummary);
     await writeFile(agencyPath, ambiguousText);
