@@ -43,6 +43,14 @@ function optionalArgument(name: string): string | undefined {
   return value;
 }
 
+function optionalPositiveIntegerArgument(name: string): number | undefined {
+  const raw = optionalArgument(name);
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${name} must be a positive integer`);
+  return value;
+}
+
 function hasArgument(name: string): boolean {
   return process.argv.includes(name);
 }
@@ -255,12 +263,14 @@ async function main(): Promise<void> {
     const scope = buildScopePlan(registry, capabilities);
     const ranges = calculateDateRanges();
     const rankMonitoringPath = optionalArgument("--rank-monitoring");
-    await mkdir(outputRoot, { recursive: false, mode: 0o700 });
     const keywordInputPath = optionalArgument("--keyword-input");
     const existingKeywordBundlePath = optionalArgument("--keyword-bundle");
     const keywordResearchOutputPath = optionalArgument("--keyword-research-output") ?? (process.argv.includes("--keyword-research") ? join(outputRoot, "keyword-research") : undefined);
     if (keywordResearchOutputPath && !keywordInputPath) throw new Error("--keyword-research-output requires --keyword-input");
+    const keywordMaxRequests = optionalPositiveIntegerArgument("--keyword-max-requests");
+    const keywordMaxApiUnits = optionalPositiveIntegerArgument("--keyword-max-api-units");
     const keywordResearchTaskId = keywordResearchOutputPath ? `ahrefs:keywords-explorer:${keywordResearchOutputPath}` : null;
+    await mkdir(outputRoot, { recursive: false, mode: 0o700 });
     const propertyTasks = scope.entries.map((entry) => {
       const id = `${entry.client_id}:${entry.provider}:${entry.property_id}`;
       if (entry.status !== "ready") return { id, status: "blocked" as const, reason: entry.reason };
@@ -279,8 +289,8 @@ async function main(): Promise<void> {
           outputDir: keywordResearchOutputPath,
           capabilities,
           country: optionalArgument("--keyword-country"),
-          maxRequests: optionalArgument("--keyword-max-requests") ? Number(optionalArgument("--keyword-max-requests")) : undefined,
-          maxApiUnits: optionalArgument("--keyword-max-api-units") ? Number(optionalArgument("--keyword-max-api-units")) : undefined,
+          maxRequests: keywordMaxRequests,
+          maxApiUnits: keywordMaxApiUnits,
           allowEstimatedBudget: process.argv.includes("--allow-estimated-budget"),
         });
       },

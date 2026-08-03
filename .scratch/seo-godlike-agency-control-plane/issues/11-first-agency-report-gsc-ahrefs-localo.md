@@ -792,3 +792,17 @@ auth or schema is unknown.
   shell variable across all derived paths. Local proof remains 119 TypeScript
   tests + 3 context tests, build, zero high audit vulnerabilities and
   `git diff --check`; no provider request or rerun was performed.
+
+## Keyword budget argument hardening — 2026-08-03
+
+- `--keyword-max-requests` and `--keyword-max-api-units` are now parsed as
+  positive safe integers before the agency output directory is created or any
+  agency task can run. Malformed values therefore cannot defer failure until
+  after provider tasks have started.
+- A CLI falsifier proves malformed keyword limits reject before output creation
+  and before task execution. Local proof: 120 TypeScript tests + 3 context
+  tests, build, zero high audit vulnerabilities and `git diff --check`; no
+  provider request, credential read or Ahrefs rerun was performed.
+- The final bounded OpenCode review found no confirmed blocker in the changed
+  scheduler/keyword surface. It was step-budget limited for older delivery
+  modules, which remain covered by prior focused tests and reviews.
