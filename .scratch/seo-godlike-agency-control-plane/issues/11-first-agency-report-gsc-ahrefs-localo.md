@@ -1312,3 +1312,16 @@ auth or schema is unknown.
   evidence. Passing it to the report writer correctly fails closed; no report
   is allowed to imply coverage for the two additional Babka phrases or the
   Wilmed phrase until a matching accepted bundle exists.
+
+## Agency-run keyword preflight — 2026-08-03
+
+- Fixed point `1d543e8` moves existing keyword bundle verification ahead of
+  `--agency-run` output creation and provider task execution. A supplied input
+  must match the manifest-bound bundle before GSC, Ahrefs, or external source
+  tasks can start.
+- The CLI falsifier uses a locally generated test bundle with a changed input,
+  proves the exact hash failure, and proves the run directory is not created.
+  Full proof passes with 160 TypeScript tests + 3 context tests, build, zero
+  high audit vulnerabilities, and `git diff --check`.
+- This is a local policy guard only: no provider request, credential read,
+  Ahrefs rerun, or production report rerun was performed.
