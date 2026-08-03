@@ -19,7 +19,7 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const keywordBundle = join(artifacts, "keyword-bundle");
     await mkdir(bundle, { recursive: true });
     await mkdir(keywordBundle, { recursive: true });
-    const bundleReport = JSON.stringify({ client_id: "bodymove", provider: "google-search-console", property_refs: ["sc-domain:bodymove.pl"], analytics: { current: { clicks: 10, impressions: 100, ctr: 0.1, position: 5 }, previous: { clicks: 5, impressions: 50, ctr: 0.1, position: 6 }, current_date_range: { start: "2026-07-01", end: "2026-07-28" }, previous_date_range: { start: "2026-06-01", end: "2026-06-28" } } });
+    const bundleReport = JSON.stringify({ client_id: "bodymove", provider: "google-search-console", property_refs: ["sc-domain:bodymove.pl"], analytics: { current: { clicks: 10, impressions: 100, ctr: 0.1, position: 5 }, previous: { clicks: 5, impressions: 50, ctr: 0.05, position: 6 }, current_date_range: { start: "2026-07-01", end: "2026-07-28" }, previous_date_range: { start: "2026-06-03", end: "2026-06-30" } } });
     await writeFile(join(bundle, "report.json"), bundleReport);
     const bundleManifest = manifest({ "report.json": bundleReport });
     await writeFile(join(bundle, "manifest.json"), bundleManifest);
@@ -43,13 +43,16 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.match(clientHtml, /Artykuł sponsorowany/);
     assert.match(clientHtml, /Współczynnik klikalności/);
     assert.match(clientHtml, /Zakres danych/);
-    assert.doesNotMatch(clientHtml, /Poprzedni okres/);
+    assert.match(clientHtml, /Zmiana: 5 → 10 \(\+100,00%\)/);
+    assert.match(clientHtml, /poprawa: 6,00 → 5,00 \(\+1,00\)/);
+    assert.match(clientHtml, /Porównanie: 2026-06-03 — 2026-06-30/);
     assert.match(clientHtml, /bodymove-keyword/);
     assert.doesNotMatch(clientHtml, /other\.pl/);
     const email = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.eml"), "utf8");
     assert.match(email, /^To: operator@example\.test/m);
     assert.match(email, /X-SEO-Godlike-Delivery: draft-only/);
     assert.match(email, /bodymove-seo-report\.html/);
+    assert.match(email, /Porównanie GSC: .*kliknięcia 5 → 10/);
     assert.match(await readFile(join(root, "delivery", "index.html"), "utf8"), /Draft email/);
     const ambiguousSummary = { ...summary, scope: { ...summary.scope, entries: [...summary.scope.entries, { client_id: "other-client", client_display_name: "Other", property_id: "https://bodymove.pl/", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] } };
     const ambiguousText = JSON.stringify(ambiguousSummary);
