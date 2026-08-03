@@ -820,3 +820,14 @@ auth or schema is unknown.
   and schedule surface. It noted only non-blocking follow-ups: broader legacy
   delivery modules were outside this focused pass, and the test harness relies
   on the existing build-before-test command.
+
+## Fresh-install monthly scheduler roots — 2026-08-03
+
+- The generated monthly cron now prepares the configured analysis, report and
+  delivery roots with `install -d -m 700` before creating the run timestamp.
+  A first run therefore does not depend on manually pre-created directories,
+  while cron installation itself remains operator-owned.
+- Schedule tests assert the preparation command and the existing one-timestamp
+  invariant. Local proof: 121 TypeScript tests + 3 context tests, build, zero
+  high audit vulnerabilities and `git diff --check`; no provider request or
+  rerun was performed.

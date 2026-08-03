@@ -194,6 +194,11 @@ the configured history root (or the deterministic `history-YYYYMM` directory
 under the agency report root) and is built only from already verified local
 bundles; it performs no provider request.
 
+The generated monthly line prepares the configured analysis, report and
+delivery roots with mode `0700` before starting the run, so a fresh local
+installation does not require manual directory creation. It still only prints
+the cron entry; installing it remains an operator action.
+
 For recurring Ahrefs Keywords Explorer research, add `--keyword-input` and
 explicitly opt in with `--keyword-research`. The scheduled command then creates
 the keyword bundle inside the same run directory and passes bounded
