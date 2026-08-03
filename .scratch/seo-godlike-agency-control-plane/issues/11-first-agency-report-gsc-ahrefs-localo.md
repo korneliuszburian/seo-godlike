@@ -634,6 +634,17 @@ auth or schema is unknown.
   request, credential read, Ahrefs rerun or generated production report rerun
   was performed.
 
+## SERPROBOT connector boundary confirmation — 2026-08-03
+
+- Official [SERPROBOT connector documentation](https://www.serprobot.com/data-studio-connector) confirms the Looker/Data Studio connector
+  requires connector authorization, an API key, numeric project ID and
+  `start`/`end` dates. It does not publish a stable direct-API response schema
+  suitable for an unverified application adapter.
+- The repository therefore keeps the normalized, manifest-bound snapshot as
+  the read-only boundary. Implementing a guessed endpoint would weaken the
+  evidence contract; a direct adapter can be added only after the operator
+  supplies the official API schema or a real response fixture.
+
 ## Fixed-point review — b304050 — 2026-08-03
 
 - OpenCode/DeepSeek packet:
