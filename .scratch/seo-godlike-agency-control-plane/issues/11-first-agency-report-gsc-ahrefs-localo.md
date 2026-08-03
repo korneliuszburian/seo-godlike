@@ -1356,3 +1356,17 @@ auth or schema is unknown.
   high audit vulnerabilities, and `git diff --check`. No provider request,
   credential read, or Ahrefs rerun occurred. Legacy percentage ambiguity and
   recurring-job installation remain deferred as previously recorded.
+
+## Standalone keyword preflight follow-up — 2026-08-03
+
+- OpenCode/DeepSeek final follow-up on `2ab2eb7` found no security blocker but
+  identified two fail-closed operator-path issues: standalone `--agency-report`
+  could leave a partial output directory before keyword verification, and a
+  missing bundle root produced a raw filesystem error.
+- Fixed point `a47edce` verifies an existing keyword bundle before standalone
+  report output creation and requires `--keyword-bundle-root` or
+  `--artifacts-dir` for `--agency-run` reuse. Focused falsifiers cover both
+  paths and prove no output directory is created on rejection.
+- Local proof passes with 162 TypeScript tests + 3 context tests, build, zero
+  high audit vulnerabilities, and `git diff --check`. No provider request,
+  credential read, or Ahrefs rerun occurred.
