@@ -530,3 +530,17 @@ auth or schema is unknown.
   for validation and consumption, and adds a sibling-layout falsifier.
 - No provider request, credential read, artifact regeneration, or external
   mutation was performed.
+
+## Fixed-point review after confinement repair — 2026-08-03
+
+- Review target: `9d55a74`; raw packet:
+  `/tmp/seo-godlike-second-opinion-9d55a74.json`.
+- OpenCode/DeepSeek review remained **partial**: the bounded session exhausted
+  before source reads and test execution. It therefore reports no accepted
+  blocker and leaves full-repository claims unverifiable.
+- Local evidence closes the one actionable finding from the prior packet:
+  client delivery tests pass with the agency report in a separate report
+  directory and accepted bundles in the independent `--artifacts-dir`.
+- Current local proof remains: 111 TypeScript tests + 3 context tests, build,
+  audit with zero high vulnerabilities, and `git diff --check`. No provider
+  request, rerun, credential read, or artifact regeneration was performed.
