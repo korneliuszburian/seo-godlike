@@ -307,3 +307,17 @@ auth or schema is unknown.
   bounded step cap expired during source inspection. It reported no verified
   blocker; the remaining review items are explicitly unverified and require a
   future full-capacity review.
+
+## Delivery automation follow-up — 2026-08-03
+
+- Monthly cron now forwards `--artifacts-dir`, keeping scheduled agency runs
+  connected to the manifest-bound history root used for comparisons.
+- Client delivery now emits one deterministic, local draft `.eml` per unit.
+  The draft is `draft-only`: it does not send mail, uses contact data only from
+  the operator-managed client-content input, links the generated HTML/PDF
+  package paths, and is included in the delivery manifest with SHA-256 and byte
+  count.
+- Local proof: focused delivery/history tests and the full suite pass (97
+  TypeScript tests + 3 context tests); `npm audit --omit=dev
+  --audit-level=high` reports zero vulnerabilities. No provider rerun or new
+  network request was made.

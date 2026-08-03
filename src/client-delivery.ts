@@ -37,7 +37,7 @@ export interface ClientDeliveryOptions {
 
 export interface ClientDeliveryResult {
   output_dir: string;
-  units: Array<{ id: string; kind: "client" | "domain"; html: string; pdf: string | null }>;
+  units: Array<{ id: string; kind: "client" | "domain"; html: string; pdf: string | null; email: string }>;
   manifests_verified: number;
 }
 
@@ -77,6 +77,7 @@ function resolveInside(root: string, child: string, label: string): string {
 function metricValue(metric: BundleMetric, field: string): number | null { return finite(metric.current[field]); }
 function formatNumber(value: number | null): string { return value === null ? "—" : new Intl.NumberFormat("pl-PL").format(value); }
 function formatPercent(value: number | null): string { return value === null ? "—" : `${(value * 100).toFixed(2)}%`; }
+function headerValue(value: string): string { return value.replace(/[\r\n]+/g, " ").trim(); }
 function hostFromProperty(value: string): string | null {
   if (value.startsWith("sc-domain:")) return value.slice("sc-domain:".length).toLowerCase();
   try { return new URL(value).hostname.toLowerCase(); } catch { return value.toLowerCase(); }
@@ -209,6 +210,36 @@ function appendClientContent(html: string, content: ClientContent | null, rankMo
   return html.replace("</section></div></main></body></html>", `${section}</section></div></main></body></html>`);
 }
 
+function emailDraft(unit: DeliveryUnit, generatedAt: string, htmlPath: string, pdfPath: string | null): string {
+  const subject = `Raport SEO — ${headerValue(unit.title)}`;
+  const recipient = unit.content?.contact?.email ? `To: ${headerValue(unit.content.contact.email)}\r\n` : "";
+  const currentPeriod = unit.metrics.find((metric) => metric.current_range)?.current_range;
+  const sourceLabels = unit.sources.map((source) => `${source.provider}: ${source.status}`).join(", ") || "brak podłączonych źródeł";
+  const attachments = [htmlPath, ...(pdfPath ? [pdfPath] : [])].join(", ");
+  return [
+    `Subject: ${subject}`,
+    recipient.trimEnd(),
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+    "X-SEO-Godlike-Delivery: draft-only",
+    "",
+    `Dzień dobry,`,
+    "",
+    `przesyłamy przygotowany raport SEO dla: ${unit.title}.`,
+    currentPeriod ? `Okres danych: ${currentPeriod.start} — ${currentPeriod.end}.` : "Okres danych: brak porównywalnego zakresu.",
+    `Status źródeł: ${sourceLabels}.`,
+    "",
+    "Raport jest oparty na zweryfikowanych, lokalnych danych źródłowych. Wartości Ahrefs są estymacjami dostawcy, a brak podłączonego źródła nie oznacza wartości zero.",
+    "",
+    `Pliki w pakiecie: ${attachments}.`,
+    "",
+    "Pozdrawiamy,",
+    "Rekurencja.com",
+    `Wygenerowano: ${generatedAt}`,
+    "",
+  ].join("\r\n");
+}
+
 async function renderPdf(htmlPath: string, pdfPath: string): Promise<void> {
   const profile = await mkdtemp(join(tmpdir(), "seo-godlike-chromium-"));
   const normalized = `${pdfPath}.normalized`;
@@ -288,12 +319,16 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
       pdf = join(unitDir, `${safeSegment(unit.id)}-seo-report.pdf`);
       await renderPdf(htmlPath, pdf);
     }
-    resultUnits.push({ id: unit.id, kind: unit.kind, html: relative(outputDir, htmlPath), pdf: pdf ? relative(outputDir, pdf) : null });
+    const htmlRelative = relative(outputDir, htmlPath);
+    const pdfRelative = pdf ? relative(outputDir, pdf) : null;
+    const emailRelative = `${safeSegment(unit.id)}/${safeSegment(unit.id)}-seo-report.eml`;
+    await writeFile(join(outputDir, emailRelative), emailDraft(unit, generatedAt, htmlRelative, pdfRelative), { encoding: "utf8", flag: "wx", mode: 0o600 });
+    resultUnits.push({ id: unit.id, kind: unit.kind, html: htmlRelative, pdf: pdfRelative, email: emailRelative });
   }
-  const index = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Raporty SEO — Bodymove</title><style>body{font:16px/1.5 system-ui;max-width:900px;margin:4rem auto;padding:0 1.5rem;color:#172b36}a{color:#176b70}li{margin:1rem 0}small{color:#667}</style></head><body><h1>Raporty SEO</h1><p>Wyniki przygotowane wyłącznie z istniejących, zweryfikowanych danych. Nie wykonano ponownych zapytań do dostawców.</p><ul>${resultUnits.map((unit) => `<li><strong>${escapeHtml(unit.id)}</strong> — <a href="${escapeHtml(unit.html)}">Raport HTML</a>${unit.pdf ? ` · <a href="${escapeHtml(unit.pdf)}">Raport PDF</a>` : ""}</li>`).join("")}</ul><small>Źródła, zakres i ograniczenia są opisane w każdym raporcie.</small></body></html>`;
+  const index = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Raporty SEO — Bodymove</title><style>body{font:16px/1.5 system-ui;max-width:900px;margin:4rem auto;padding:0 1.5rem;color:#172b36}a{color:#176b70}li{margin:1rem 0}small{color:#667}</style></head><body><h1>Raporty SEO</h1><p>Wyniki przygotowane wyłącznie z istniejących, zweryfikowanych danych. Nie wykonano ponownych zapytań do dostawców.</p><ul>${resultUnits.map((unit) => `<li><strong>${escapeHtml(unit.id)}</strong> — <a href="${escapeHtml(unit.html)}">Raport HTML</a>${unit.pdf ? ` · <a href="${escapeHtml(unit.pdf)}">Raport PDF</a>` : ""} · <a href="${escapeHtml(unit.email)}">Draft email</a></li>`).join("")}</ul><small>Źródła, zakres i ograniczenia są opisane w każdym raporcie.</small></body></html>`;
   await writeFile(join(outputDir, "index.html"), index, { encoding: "utf8", flag: "wx", mode: 0o600 });
   const files: Record<string, string | Buffer> = { "index.html": index };
-  for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); }
+  for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); files[unit.email] = await readFile(join(outputDir, unit.email), "utf8"); }
   const manifest = { schema_version: "1", source: resolve(options.agencyReportPath), agency_report_sha256: hashBytes(agencyReportBytes), source_manifest_sha256: sourceManifestHashes, keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
   await writeFile(join(outputDir, "manifest.json"), canonicalJson(manifest), { encoding: "utf8", flag: "wx", mode: 0o600 });
   return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + summary.accepted_bundles.length + (keywordManifestSha256 ? 1 : 0) + (rankBundle ? 1 : 0) + (clientContentBundle ? 1 : 0) };

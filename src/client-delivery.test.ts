@@ -46,6 +46,13 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.doesNotMatch(clientHtml, /Poprzedni okres/);
     assert.match(clientHtml, /bodymove-keyword/);
     assert.doesNotMatch(clientHtml, /other\.pl/);
+    const email = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.eml"), "utf8");
+    assert.match(email, /^To: operator@example\.test/m);
+    assert.match(email, /X-SEO-Godlike-Delivery: draft-only/);
+    assert.match(email, /bodymove-seo-report\.html/);
+    assert.match(await readFile(join(root, "delivery", "index.html"), "utf8"), /Draft email/);
+    const deliveryManifest = JSON.parse(await readFile(join(root, "delivery", "manifest.json"), "utf8")) as { files: Record<string, unknown> };
+    assert.ok(deliveryManifest.files["bodymove/bodymove-seo-report.eml"]);
     assert.match(await readFile(join(root, "delivery", "domain-other.pl", "domain-other.pl-seo-report.html"), "utf8"), /Przypisanie do klienta: oczekuje na potwierdzenie operatora/);
     await writeFile(join(bundle, "manifest.json"), `${bundleManifest} `);
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "source-provenance-delivery") }), /source manifest provenance mismatch/);
