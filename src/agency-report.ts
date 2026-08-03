@@ -593,13 +593,17 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const rankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
   const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
   const externalStatus = sourceRegistry.sources.map((source) => {
-    const hasEvidence = source.provider === "serprobot" && rankMonitoringEvidence.some((snapshot) => snapshot.client_id === source.client_id && snapshot.source_config?.project_id === source.target);
+    const accepted = source.provider === "google-analytics"
+      ? acceptedBundleFor({ client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: null }, packageSummary)
+      : undefined;
+    const hasEvidence = (source.provider === "serprobot" && rankMonitoringEvidence.some((snapshot) => snapshot.client_id === source.client_id && snapshot.source_config?.project_id === source.target)) || Boolean(accepted);
     if (source.status === "ready" && !hasEvidence) {
-      const reasonCode = source.provider === "serprobot" ? "missing_evidence_bundle" as const : "no_evidence_path" as const;
-      const reason = source.provider === "serprobot" ? "No accepted evidence bundle was found for this source" : "No evidence ingestion path is available for this external source";
+      const hasIngestionPath = source.provider === "serprobot" || source.provider === "google-analytics";
+      const reasonCode = hasIngestionPath ? "missing_evidence_bundle" as const : "no_evidence_path" as const;
+      const reason = hasIngestionPath ? "No accepted evidence bundle was found for this source" : "No evidence ingestion path is available for this external source";
       return { source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: "unavailable" as const, reason, reason_code: reasonCode, bundle_path: null } satisfies AgencyReportSourceStatus;
     }
-    return { source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: null } satisfies AgencyReportSourceStatus;
+    return { source_id: source.source_id, client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: accepted?.bundle_path ?? null } satisfies AgencyReportSourceStatus;
   });
   const sourceStatus = [...propertyStatus, ...externalStatus];
   const currentAcceptedBundles = [...new Map(sourceStatus.map((source) => [source.bundle_path, source.bundle_path ? packageSummary.accepted_bundles.find((accepted) => accepted.bundle_path === source.bundle_path) : undefined]).filter((entry): entry is [string, ReportPackageSummary["accepted_bundles"][number]] => Boolean(entry[0] && entry[1]))).values()];

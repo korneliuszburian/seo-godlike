@@ -189,12 +189,19 @@ test("agency report distinguishes an external source without an evidence path", 
     await mkdir(artifacts);
     await writeAgencySelectionBundle(artifacts, "gsc", "2026-07-29T08:00:00.000Z", 2);
     const scope: ScopePlan = { schema_version: "1", generated_at: "2026-07-30T00:00:00.000Z", status: "ready", entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] };
-    const sourceRegistry: SourceRegistry = { sources: [{ source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: "bodymove.pl", status: "ready", reason: null }] };
+    const sourceRegistry: SourceRegistry = { sources: [
+      { source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: "bodymove.pl", status: "ready", reason: null },
+      { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/123", status: "ready", reason: null },
+    ] };
     const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-07-30T00:00:00.000Z", sourceRegistry);
     const localoStatus = summary.source_status.find((source) => source.provider === "localo");
     assert.equal(localoStatus?.status, "unavailable");
     assert.equal(localoStatus?.reason_code, "no_evidence_path");
     assert.match(localoStatus?.reason ?? "", /No evidence ingestion path/);
+    const ga4Status = summary.source_status.find((source) => source.provider === "google-analytics");
+    assert.equal(ga4Status?.status, "unavailable");
+    assert.equal(ga4Status?.reason_code, "missing_evidence_bundle");
+    assert.match(ga4Status?.reason ?? "", /No accepted evidence bundle/);
     assert.equal(summary.report_status, "partial");
   } finally {
     await rm(root, { recursive: true, force: true });

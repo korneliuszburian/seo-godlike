@@ -1588,3 +1588,16 @@ auth or schema is unknown.
 - A focused delivery falsifier covers a mixed GSC/Ahrefs/Semstorm source set;
   no provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
+
+## Provider-specific evidence paths — 2026-08-04
+
+- External source gating now distinguishes providers with an implemented
+  evidence path: SERPROBOT requires a verified rank snapshot, and Google
+  Analytics may consume an accepted GA4 bundle. Localo and Semstorm remain
+  `no_evidence_path` until their own persisted evidence contracts exist.
+- A focused falsifier proves ready GA4 without an accepted bundle is
+  `missing_evidence_bundle`, while ready Localo remains `no_evidence_path`;
+  this prevents future GA4 readiness from being mislabeled or duplicated.
+- Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.
