@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
+import { canonicalJson, sha256 } from "./serialize.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -39,7 +40,6 @@ test("agency-run rejects a mismatched existing keyword bundle before creating ou
   const mismatchedInput = join(root, "current-phrases.txt");
   const keywordBundle = join(root, "keyword-bundle");
   try {
-    const { writeFile } = await import("node:fs/promises");
     await writeFile(originalInput, "https://example.test/\noriginal phrase\n");
     await writeFile(mismatchedInput, "https://example.test/\ncurrent phrase\n");
     await writeAhrefsKeywordResearch({
@@ -75,7 +75,6 @@ test("agency-report rejects a mismatched keyword bundle before creating output",
   const mismatchedInput = join(root, "current-phrases.txt");
   const keywordBundle = join(root, "keyword-bundle");
   try {
-    const { writeFile } = await import("node:fs/promises");
     await writeFile(originalInput, "https://example.test/\noriginal phrase\n");
     await writeFile(mismatchedInput, "https://example.test/\ncurrent phrase\n");
     await writeAhrefsKeywordResearch({
@@ -97,6 +96,46 @@ test("agency-report rejects a mismatched keyword bundle before creating output",
         "--keyword-input", mismatchedInput,
       ], { cwd: process.cwd() }),
       /keyword input hash does not match bundle/,
+    );
+    await assert.rejects(access(output));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agency-run rejects a tampered bundle before creating output when no input file is supplied", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-keyword-tamper-"));
+  const output = join(root, "run");
+  const input = join(root, "phrases.txt");
+  const keywordBundle = join(root, "keyword-bundle");
+  try {
+    await writeFile(input, "https://example.test/\noriginal phrase\n");
+    await writeAhrefsKeywordResearch({
+      inputPath: input,
+      outputDir: keywordBundle,
+      capabilities: { capabilities: [{ capability_id: "ahrefs.keywords-explorer.overview", provider: "ahrefs", operation_id: "keywords-explorer.overview", api_version: "v3", metric_ids: ["ahrefs.keyword_metrics"], read_write: "read", state: "schema_verified" }] },
+      apiKey: "test-key",
+      allowEstimatedBudget: true,
+      fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "original phrase" }] }), { status: 200 }),
+    });
+    const requestPath = join(keywordBundle, "request.json");
+    const request = JSON.parse(await readFile(requestPath, "utf8")) as { groups: unknown[] };
+    const tamperedRequest = canonicalJson({ ...request, groups: [] });
+    await writeFile(requestPath, tamperedRequest);
+    const manifestPath = join(keywordBundle, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { files: Record<string, { sha256: string; bytes: number }> };
+    manifest.files["request.json"] = { sha256: sha256(tamperedRequest), bytes: Buffer.byteLength(tamperedRequest) };
+    await writeFile(manifestPath, canonicalJson(manifest));
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        "dist/cli.js", "--agency-run",
+        "--registry", "fixtures/client-registry.json",
+        "--capabilities", "fixtures/capability-registry.json",
+        "--artifacts-dir", root,
+        "--output", output,
+        "--keyword-bundle", keywordBundle,
+      ], { cwd: process.cwd() }),
+      /keyword request groups do not match supplied input/,
     );
     await assert.rejects(access(output));
   } finally {

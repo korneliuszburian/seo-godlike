@@ -243,7 +243,7 @@ async function main(): Promise<void> {
     const keywordBundlePath = optionalArgument("--keyword-bundle");
     const keywordInputPath = optionalArgument("--keyword-input");
     const keywordBundleRoot = optionalArgument("--keyword-bundle-root") ?? artifactsDir;
-    if (keywordBundlePath && keywordInputPath) await verifyKeywordResearchBundle(keywordBundlePath, keywordBundleRoot, keywordInputPath);
+    if (keywordBundlePath) await verifyKeywordResearchBundle(keywordBundlePath, keywordBundleRoot, keywordInputPath);
     const rankMonitoringPath = optionalArgument("--rank-monitoring");
     const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
     if (rankMonitoringPath && rankMonitoringRoot) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
@@ -323,7 +323,7 @@ async function main(): Promise<void> {
       throw new Error("--keyword-bundle-root or --artifacts-dir is required when reusing an existing keyword bundle");
     }
     const existingKeywordBundleRoot = keywordBundleRoot ?? artifactsDir ?? outputRoot;
-    if (existingKeywordBundlePath && keywordInputPath) {
+    if (existingKeywordBundlePath) {
       await verifyKeywordResearchBundle(existingKeywordBundlePath, existingKeywordBundleRoot, keywordInputPath);
     }
     await mkdir(outputRoot, { recursive: false, mode: 0o700 });
