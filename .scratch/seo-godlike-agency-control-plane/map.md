@@ -1,7 +1,7 @@
 # Agency control plane expansion wayfinder:map
 
 Map status: active route, explicitly confirmed for the current goal at fixed
-point `c4cab8c`. Ticket status and the capability inventory are the current
+point `6a4a139`. Ticket status and the capability inventory are the current
 authority; this map is only the decision navigation for the route.
 
 Freshness rule: when the route, blocker, or next decision changes, update the
