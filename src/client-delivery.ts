@@ -129,6 +129,10 @@ async function readAgencyReport(path: string): Promise<AgencyReportSummary> {
     if (!isRecord(bundle) || typeof bundle.bundle_path !== "string" || typeof bundle.manifest_sha256 !== "string" || typeof bundle.client_id !== "string" || typeof bundle.property_id !== "string" || typeof bundle.provider !== "string") throw new Error("agency report accepted bundle validation failed");
     resolveInside(root, bundle.bundle_path, "agency bundle_path");
   }
+  if (value.rank_monitoring !== undefined) {
+    const rank = value.rank_monitoring;
+    if (!isRecord(rank) || rank.source_label !== "Observed — SERPROBOT rank snapshot" || typeof rank.client_id !== "string" || typeof rank.manifest_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(rank.manifest_sha256) || typeof rank.captured_at !== "string" || !isRecord(rank.date_range) || typeof rank.date_range.start !== "string" || typeof rank.date_range.end !== "string" || typeof rank.row_count !== "number" || !Number.isInteger(rank.row_count) || rank.row_count < 0) throw new Error("agency report rank monitoring evidence validation failed");
+  }
   return value as AgencyReportSummary;
 }
 
@@ -280,6 +284,10 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const outputDir = resolve(options.outputDir);
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
   const rankBundle = options.rankMonitoringPath ? await readRankMonitoringBundle(options.rankMonitoringPath, clientIds) : null;
+  if (summary.rank_monitoring) {
+    if (!rankBundle) throw new Error("agency report declares rank monitoring evidence but no rank bundle was supplied");
+    if (rankBundle.manifest_sha256 !== summary.rank_monitoring.manifest_sha256 || rankBundle.snapshot.client_id !== summary.rank_monitoring.client_id || rankBundle.snapshot.rows.length !== summary.rank_monitoring.row_count) throw new Error("rank monitoring evidence does not match agency report provenance");
+  }
   const keyword = summary.keyword_research;
   const clientKeywordGroups = new Map<string, Array<{ group: PhraseGroup; rows: Array<Record<string, unknown>> }>>();
   if (keyword) {

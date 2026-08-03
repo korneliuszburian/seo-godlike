@@ -7,6 +7,7 @@ import test from "node:test";
 import { ScopePlan, SourceRegistry } from "./domain.js";
 import { composeCrossSourceContext, composeExecutiveSummary, writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
+import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 
 test("agency report preserves unavailable sources instead of inventing metrics", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-report-test-"));
@@ -111,6 +112,40 @@ test("agency report preserves every supplied keyword group and full returned row
     assert.match(appendix, /wilmed\.pl/);
     assert.match(appendix, /local_pack/);
     assert.match(appendix, /a\\\|b c/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agency report binds an imported rank snapshot to its manifest provenance", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-rank-report-test-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    await mkdir(artifacts);
+    const rankInput = join(root, "rank.json");
+    await writeFile(rankInput, JSON.stringify({
+      schema_version: "1",
+      provider: "serprobot",
+      client_id: "bodymove",
+      captured_at: "2026-08-03T00:00:00.000Z",
+      date_range: { start: "2026-07-01", end: "2026-07-31" },
+      source_config: { project_id: "123", search_engine: "google.pl", location: "Warszawa", device: "desktop" },
+      rows: [{ keyword: "rehabilitacja", position: 7, previous_position: 9, search_engine: "google.pl", location: "Warszawa", url: "https://bodymove.pl/" }],
+    }));
+    const rankBundle = join(root, "rank-bundle");
+    await writeRankMonitoringBundle(rankInput, rankBundle);
+    const scope: ScopePlan = {
+      schema_version: "1",
+      generated_at: "2026-08-03T00:00:00.000Z",
+      status: "partial",
+      entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "unavailable", reason: "no accepted GSC bundle", metrics: [] }],
+    };
+    const sourceRegistry: SourceRegistry = { sources: [{ source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "123", status: "ready", reason: null }] };
+    const summary = await writeAgencyReport(artifacts, join(root, "report"), scope, "2026-08-03T00:00:00.000Z", sourceRegistry, undefined, undefined, rankBundle);
+    assert.equal(summary.rank_monitoring?.client_id, "bodymove");
+    assert.equal(summary.rank_monitoring?.row_count, 1);
+    assert.match(await readFile(join(root, "report", "agency-report.md"), "utf8"), /Observed — SERPROBOT rank snapshot/);
+    assert.equal(summary.rank_monitoring?.manifest_sha256.length, 64);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -229,7 +229,7 @@ async function main(): Promise<void> {
     const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
     validateSourceRegistry(sourceRegistry, registry);
     const scope = buildScopePlan(registry, capabilities);
-    const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"));
+    const summary = await writeAgencyReport(argument("--artifacts-dir"), argument("--output"), scope, new Date().toISOString(), sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), optionalArgument("--rank-monitoring"));
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
     return;
   }
@@ -275,7 +275,7 @@ async function main(): Promise<void> {
     let generatedReport: string | undefined;
     let generatedDelivery: string | undefined;
     if (agencyReportOutput) {
-      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"));
+      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, optionalArgument("--keyword-bundle"), optionalArgument("--keyword-input"), rankMonitoringPath);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
         await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath, keywordBundleRoot: optionalArgument("--keyword-bundle-root") });

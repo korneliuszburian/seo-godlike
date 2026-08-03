@@ -6,6 +6,7 @@ import { canonicalJson, sha256 } from "./serialize.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { composeReportInsights, ReportInsight } from "./report-insights.js";
 import { parsePhraseInput, PhraseGroup } from "./ahrefs-keywords.js";
+import { readRankMonitoringBundle, RankMonitoringSnapshot } from "./rank-monitoring.js";
 
 interface AgencyReportSourceStatus {
   source_id?: string;
@@ -53,6 +54,17 @@ export interface AgencyReportSummary {
   insights: ReportInsight[];
   executive: AgencyExecutiveSummary;
   keyword_research?: AgencyKeywordResearch;
+  rank_monitoring?: AgencyRankMonitoringEvidence;
+}
+
+export interface AgencyRankMonitoringEvidence {
+  source_label: "Observed — SERPROBOT rank snapshot";
+  client_id: string;
+  manifest_sha256: string;
+  captured_at: string;
+  date_range: { start: string; end: string };
+  source_config: RankMonitoringSnapshot["source_config"];
+  row_count: number;
 }
 
 export interface AgencyKeywordResearch {
@@ -89,6 +101,19 @@ function finiteOrNull(value: unknown): number | null {
 
 function safeManifestName(name: string): boolean {
   return !name.startsWith("/") && !name.split("/").includes("..") && !name.includes("..\\") && !name.includes("../");
+}
+
+async function readRankMonitoringEvidence(bundlePath: string, clientIds: readonly string[]): Promise<AgencyRankMonitoringEvidence> {
+  const verified = await readRankMonitoringBundle(resolve(bundlePath), clientIds);
+  return {
+    source_label: "Observed — SERPROBOT rank snapshot",
+    client_id: verified.snapshot.client_id,
+    manifest_sha256: verified.manifest_sha256,
+    captured_at: verified.snapshot.captured_at,
+    date_range: verified.snapshot.date_range,
+    source_config: verified.snapshot.source_config,
+    row_count: verified.snapshot.rows.length,
+  };
 }
 
 async function readKeywordResearchBundle(bundlePath: string, inputPath?: string): Promise<AgencyKeywordResearch> {
@@ -241,6 +266,15 @@ function markdown(summary: AgencyReportSummary): string {
     "- Full phrase rows and empty input groups are preserved in the evidence appendix.",
     "",
   ] : [];
+  const rankSection = summary.rank_monitoring ? [
+    "### Observed — SERPROBOT rank snapshot",
+    "",
+    `- Client: ${summary.rank_monitoring.client_id}`,
+    `- Period: ${summary.rank_monitoring.date_range.start} to ${summary.rank_monitoring.date_range.end}`,
+    `- Returned rows: ${summary.rank_monitoring.row_count}`,
+    `- Manifest SHA-256: ${summary.rank_monitoring.manifest_sha256}`,
+    "",
+  ] : [];
   return [
     "# Agency SEO report",
     "",
@@ -258,6 +292,7 @@ function markdown(summary: AgencyReportSummary): string {
     "",
     ...summary.source_status.map((source) => `- **${source.provider}** — ${source.status}${source.reason ? `: ${source.reason}` : ""}`),
     "",
+    ...rankSection,
     "### Observed — Google Search Console",
     "",
     "| Client | Property | Period | Clicks | Impressions | CTR | Position |",
@@ -309,7 +344,8 @@ function html(summary: AgencyReportSummary): string {
   const ahrefsCards = summary.executive.estimated_ahrefs.map((entry) => `<div class="card"><span class="badge estimated">Estimated — Ahrefs</span><h3>${escapeHtml(entry.client_id)} · ${escapeHtml(entry.property_id)}</h3><p>${entry.organic_traffic} organic traffic · ${entry.organic_keywords} keywords · ${entry.organic_keywords_top_3} Top 3</p></div>`).join("");
   const signals = summary.executive.top_signals.map((insight) => `<li><span class="badge signal">Rule-based signal — not a recommendation</span> ${escapeHtml(insight.kind)} — ${escapeHtml(insight.key)}: ${escapeHtml(insight.evidence)}</li>`).join("");
   const keywordCard = summary.keyword_research ? `<div class="card"><span class="badge estimated">Estimated — Ahrefs Keywords Explorer</span><h3>Phrase research</h3><p>${summary.keyword_research.input_groups.length} input groups · ${summary.keyword_research.groups.reduce((total, group) => total + group.rows.length, 0)} returned rows · ${escapeHtml(summary.keyword_research.country)} market</p></div>` : "";
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agency SEO report</title><style>:root{font-family:system-ui,sans-serif;color:#172033;background:#f6f8fb}body{margin:0;padding:2rem;max-width:1200px;margin-inline:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}.card,section{background:#fff;border:1px solid #dbe2ec;border-radius:12px;padding:1rem;margin-block:1rem}.badge{display:inline-block;border-radius:999px;padding:.2rem .55rem;font-size:.8rem;font-weight:700}.observed{background:#dceeff;color:#075985}.estimated{background:#eee5ff;color:#5b21b6}.signal{background:#fff1c2;color:#854d0e}.blocked{background:#e5e7eb;color:#374151}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #e5e7eb}th{background:#f1f5f9}a{color:#075985}@media print{body{background:#fff;padding:.5rem}.card,section{break-inside:avoid}}</style></head><body><header id="summary"><h1>Agency SEO report</h1><p>Status: <strong>${escapeHtml(summary.report_status)}</strong> · accepted evidence: ${summary.accepted_bundles.length} · blocked sources: ${summary.blocked_sources.length}</p></header><section id="kpis"><h2>Observed and estimated KPIs</h2><div class="grid">${gscCards}${ahrefsCards}${keywordCard}</div></section><section><h2>Source availability</h2><ul>${summary.source_status.map((source) => `<li><strong>${escapeHtml(source.provider)}</strong>: ${escapeHtml(source.status)}${source.reason ? ` — ${escapeHtml(source.reason)}` : ""}</li>`).join("")}</ul></section><section id="queries"><h2>Executive opportunities preview</h2><p>Showing ${summary.executive.preview.context_shown} of ${summary.executive.preview.context_total}; full appendix available locally.</p><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Join</th><th>Key</th><th>GSC clicks</th><th>GSC impressions</th><th>Ahrefs traffic</th></tr></thead><tbody>${preview}</tbody></table></div></section><section><h2>Rule-based signals</h2><ul>${signals}</ul></section><section id="limitations"><h2>Limitations</h2><ul><li>Ahrefs values are estimated context and are not added to GSC metrics.</li><li>Unavailable sources are not converted to zero.</li><li>Bounded responses are not full inventories.</li><li>Signals are not recommendations or causal conclusions.</li></ul><p><a href="agency-report-appendix.html">Open full evidence appendix</a></p></section></body></html>\n`;
+  const rankCard = summary.rank_monitoring ? `<div class="card"><span class="badge observed">Observed — SERPROBOT rank snapshot</span><h3>${escapeHtml(summary.rank_monitoring.client_id)}</h3><p>${escapeHtml(summary.rank_monitoring.date_range.start)} — ${escapeHtml(summary.rank_monitoring.date_range.end)} · ${summary.rank_monitoring.row_count} returned rows</p></div>` : "";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agency SEO report</title><style>:root{font-family:system-ui,sans-serif;color:#172033;background:#f6f8fb}body{margin:0;padding:2rem;max-width:1200px;margin-inline:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}.card,section{background:#fff;border:1px solid #dbe2ec;border-radius:12px;padding:1rem;margin-block:1rem}.badge{display:inline-block;border-radius:999px;padding:.2rem .55rem;font-size:.8rem;font-weight:700}.observed{background:#dceeff;color:#075985}.estimated{background:#eee5ff;color:#5b21b6}.signal{background:#fff1c2;color:#854d0e}.blocked{background:#e5e7eb;color:#374151}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #e5e7eb}th{background:#f1f5f9}a{color:#075985}@media print{body{background:#fff;padding:.5rem}.card,section{break-inside:avoid}}</style></head><body><header id="summary"><h1>Agency SEO report</h1><p>Status: <strong>${escapeHtml(summary.report_status)}</strong> · accepted evidence: ${summary.accepted_bundles.length} · blocked sources: ${summary.blocked_sources.length}</p></header><section id="kpis"><h2>Observed and estimated KPIs</h2><div class="grid">${gscCards}${ahrefsCards}${keywordCard}${rankCard}</div></section><section><h2>Source availability</h2><ul>${summary.source_status.map((source) => `<li><strong>${escapeHtml(source.provider)}</strong>: ${escapeHtml(source.status)}${source.reason ? ` — ${escapeHtml(source.reason)}` : ""}</li>`).join("")}</ul></section><section id="queries"><h2>Executive opportunities preview</h2><p>Showing ${summary.executive.preview.context_shown} of ${summary.executive.preview.context_total}; full appendix available locally.</p><div class="table-wrap"><table><thead><tr><th>Client</th><th>Type</th><th>Join</th><th>Key</th><th>GSC clicks</th><th>GSC impressions</th><th>Ahrefs traffic</th></tr></thead><tbody>${preview}</tbody></table></div></section><section><h2>Rule-based signals</h2><ul>${signals}</ul></section><section id="limitations"><h2>Limitations</h2><ul><li>Ahrefs values are estimated context and are not added to GSC metrics.</li><li>Unavailable sources are not converted to zero.</li><li>Bounded responses are not full inventories.</li><li>Signals are not recommendations or causal conclusions.</li></ul><p><a href="agency-report-appendix.html">Open full evidence appendix</a></p></section></body></html>\n`;
 }
 
 function appendixMarkdown(summary: AgencyReportSummary, details: string[]): string {
@@ -380,7 +416,7 @@ async function writeExclusive(path: string, content: string): Promise<void> {
   await writeFile(path, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 
-export async function writeAgencyReport(artifactsDir: string, outputDir: string, scope: ScopePlan, generatedAt = new Date().toISOString(), sourceRegistry: SourceRegistry = { sources: [] }, keywordBundlePath?: string, keywordInputPath?: string): Promise<AgencyReportSummary> {
+export async function writeAgencyReport(artifactsDir: string, outputDir: string, scope: ScopePlan, generatedAt = new Date().toISOString(), sourceRegistry: SourceRegistry = { sources: [] }, keywordBundlePath?: string, keywordInputPath?: string, rankMonitoringPath?: string): Promise<AgencyReportSummary> {
   const clients: ClientRegistry = { clients: [...new Set(scope.entries.map((entry) => entry.client_id))].map((client_id) => ({ client_id, properties: [] })) };
   validateSourceRegistry(sourceRegistry, clients);
   const resolvedArtifacts = resolve(artifactsDir);
@@ -402,7 +438,8 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const crossSourceContext = composeCrossSourceContext(reports);
   const insights = composeReportInsights(reports);
   const keywordResearch = keywordBundlePath ? await readKeywordResearchBundle(keywordBundlePath, keywordInputPath) : undefined;
-  const summary: AgencyReportSummary = { schema_version: "1", report_status: packageSummary.accepted_bundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: packageSummary.accepted_bundles, blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: crossSourceContext, insights, executive: composeExecutiveSummary(reports, crossSourceContext, insights), ...(keywordResearch ? { keyword_research: keywordResearch } : {}) };
+  const rankMonitoring = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, [...new Set(scope.entries.map((entry) => entry.client_id))]) : undefined;
+  const summary: AgencyReportSummary = { schema_version: "1", report_status: packageSummary.accepted_bundles.length === 0 ? "blocked" : sourceStatus.some((source) => source.status !== "ready") ? "partial" : "reportable", generated_at: generatedAt, scope, source_status: sourceStatus, accepted_bundles: packageSummary.accepted_bundles, blocked_sources: sourceStatus.filter((source) => source.status !== "ready"), cross_source_context: crossSourceContext, insights, executive: composeExecutiveSummary(reports, crossSourceContext, insights), ...(keywordResearch ? { keyword_research: keywordResearch } : {}), ...(rankMonitoring ? { rank_monitoring: rankMonitoring } : {}) };
   const details: string[] = [];
   for (const accepted of packageSummary.accepted_bundles) {
     const path = join(resolvedArtifacts, accepted.bundle_path, "report.md");
