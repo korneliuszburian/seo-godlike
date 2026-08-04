@@ -1793,3 +1793,14 @@ auth or schema is unknown.
   tests, build, zero high audit vulnerabilities, and `git diff --check`.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
+
+## Imported rank snapshot confinement — 2026-08-04
+
+- SERPROBOT/Looker snapshot bundle reads now confine both `manifest.json` and
+  `report.json` through the shared symlink-aware resolver.
+- Rank-monitoring root discovery follows only in-root directory aliases,
+  ignores escaping directory aliases, and rejects escaping manifest aliases.
+- Focused falsifiers plus the full local proof pass: 189 TypeScript tests + 3
+  context tests, build, zero high audit vulnerabilities, and `git diff --check`.
+- Fixed point: `e6e83dd`. No provider request, credential read, Ahrefs rerun,
+  report regeneration, or publication occurred.
