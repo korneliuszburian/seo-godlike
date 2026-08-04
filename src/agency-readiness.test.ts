@@ -27,12 +27,17 @@ test("readiness is deterministic and reports unavailable scope and sources", () 
     "bodymove:ahrefs:bodymove.pl: no read-only capability registered for provider 'ahrefs'",
     "bodymove:serprobot: snapshot not imported",
   ]);
+  assert.deepEqual(readiness.operator_requirements.map((item) => item.requirement_id), [
+    "scope:bodymove:ahrefs:bodymove.pl",
+    "source:serprobot.bodymove",
+  ]);
 });
 
 test("readiness flags a missing OAuth input without reading the credential", () => {
   const scope = buildScopePlan(registry, capabilities, "2026-08-03T00:00:00.000Z");
   const readiness = buildAgencyReadiness(scope, { sources: [] }, { oauth_client_supplied: false, keyword_input_supplied: false, rank_monitoring_supplied: false, client_content_supplied: false }, "2026-08-03T00:00:00.000Z");
   assert.match(readiness.blockers.at(-1) ?? "", /--oauth-client/);
+  assert.equal(readiness.operator_requirements.find((item) => item.requirement_id === "input:google:oauth-client")?.status, "needs_operator_input");
 });
 
 test("readiness does not inspect credentials or call providers", () => {

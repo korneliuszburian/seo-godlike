@@ -35,7 +35,17 @@ export interface AgencyReadiness {
     reason: string | null;
   }>;
   inputs: AgencyReadinessInputs;
+  operator_requirements: AgencyOperatorRequirement[];
   blockers: string[];
+}
+
+export interface AgencyOperatorRequirement {
+  requirement_id: string;
+  client_id: string | null;
+  provider: string | null;
+  target: string | null;
+  status: "needs_operator_input";
+  next_action: string;
 }
 
 export function buildAgencyReadiness(
@@ -70,6 +80,37 @@ export function buildAgencyReadiness(
     blockers.push("Google sources are in scope but --oauth-client was not supplied; credential contents were not inspected");
   }
   if (scopeEntries.length === 0) blockers.push("no registered scope entries are available");
+  const operatorRequirements: AgencyOperatorRequirement[] = [];
+  const requirementKeys = new Set<string>();
+  const addRequirement = (requirement: AgencyOperatorRequirement): void => {
+    if (requirementKeys.has(requirement.requirement_id)) return;
+    requirementKeys.add(requirement.requirement_id);
+    operatorRequirements.push(requirement);
+  };
+  for (const entry of unavailableScope) {
+    addRequirement({ requirement_id: `scope:${entry.client_id}:${entry.provider}:${entry.property_id}`, client_id: entry.client_id, provider: entry.provider, target: entry.property_id, status: "needs_operator_input", next_action: entry.reason ?? "Potwierdź właściwość i capability read-only dla tego klienta." });
+  }
+  for (const source of unavailableSources) {
+    addRequirement({ requirement_id: `source:${source.source_id}`, client_id: source.client_id, provider: source.provider, target: source.target, status: "needs_operator_input", next_action: source.reason ?? "Dostarcz jawne, zweryfikowane źródło evidence." });
+  }
+  for (const source of sourceRegistry.sources.filter((item) => item.status === "ready")) {
+    if (source.provider === "serprobot" && !inputs.rank_monitoring_supplied) {
+      addRequirement({ requirement_id: `input:${source.source_id}:rank-monitoring`, client_id: source.client_id, provider: source.provider, target: source.target, status: "needs_operator_input", next_action: "Dostarcz --rank-monitoring, --rank-monitoring-root albo jawnie potwierdzony endpoint API." });
+    }
+    if (source.provider !== "serprobot" && source.provider !== "google-analytics") {
+      addRequirement({ requirement_id: `executor:${source.source_id}`, client_id: source.client_id, provider: source.provider, target: source.target, status: "needs_operator_input", next_action: "Dostarcz manifest-bound export tego źródła albo zatwierdź osobny executor read-only." });
+    }
+    if (source.provider === "google-analytics" && !scopeEntries.some((entry) => entry.status === "ready" && entry.client_id === source.client_id && entry.provider === "google-analytics" && entry.property_id === source.target)) {
+      addRequirement({ requirement_id: `scope-match:${source.source_id}`, client_id: source.client_id, provider: source.provider, target: source.target, status: "needs_operator_input", next_action: "Zarejestruj tę samą numeryczną właściwość GA4 w scope klienta." });
+    }
+  }
+  if (!inputs.oauth_client_supplied && scopeEntries.some((entry) => entry.status === "ready" && (entry.provider === "google-search-console" || entry.provider === "google-analytics"))) {
+    addRequirement({ requirement_id: "input:google:oauth-client", client_id: null, provider: "google", target: null, status: "needs_operator_input", next_action: "Dostarcz referencję do bezpiecznego OAuth client/token posture; readiness nie odczytuje sekretu." });
+  }
+  if (scopeEntries.length === 0) {
+    addRequirement({ requirement_id: "scope:registry", client_id: null, provider: null, target: null, status: "needs_operator_input", next_action: "Dodaj co najmniej jedną jawnie autoryzowaną właściwość klienta." });
+  }
+  operatorRequirements.sort((left, right) => left.requirement_id.localeCompare(right.requirement_id));
   const status = scopeEntries.length === 0 || scopeEntries.every((entry) => entry.status !== "ready")
     ? "blocked"
     : blockers.length > 0
@@ -97,6 +138,7 @@ export function buildAgencyReadiness(
       reason: source.reason,
     })),
     inputs: { ...inputs },
+    operator_requirements: operatorRequirements,
     blockers,
   };
 }

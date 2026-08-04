@@ -2379,3 +2379,18 @@ auth or schema is unknown.
   build, audit with zero high vulnerabilities and `git diff --check`.
 - No provider request, credential read, Ahrefs rerun, SERPROBOT rerun or report
   regeneration occurred.
+
+## Structured operator readiness contract — 2026-08-04
+
+- `--agency-readiness` now exposes deterministic `operator_requirements`
+  records alongside human-readable blockers. Each record identifies a stable
+  requirement, client/provider/target where applicable, the
+  `needs_operator_input` state and the next safe action.
+- Requirements cover unavailable scope/source evidence, missing Google OAuth,
+  missing SERPROBOT input, unsupported external executors, GA4 scope mismatch
+  and an empty scope. The command still does not inspect credentials or call
+  providers.
+- Focused readiness assertions and the full local proof pass with 227
+  TypeScript tests + 3 context tests, build, audit with zero high
+  vulnerabilities and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun or report regeneration occurred.
