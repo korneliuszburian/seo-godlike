@@ -2406,3 +2406,18 @@ auth or schema is unknown.
   remain authoritative until a reviewer returns a complete response.
 - No provider request, credential read, report rerun, repository mutation or
   publication occurred during the review attempt.
+
+## Read-only property mapping template — 2026-08-04
+
+- Added `--property-mapping-template --input <discovery.json>` to turn a saved
+  Google Search Console discovery response into a deterministic operator intake
+  template. It preserves every raw property entry, adds a normalized host for
+  review, and leaves `client_id`, canonical property, aliases and Ahrefs target
+  empty until the operator confirms them.
+- The template explicitly declares `ownership_inferred: false`; it does not
+  write the client registry or call Google. Focused tests cover ordering,
+  normalization, malformed input and unparseable legacy identifiers.
+- No provider request, credential read, Ahrefs rerun, report generation or
+  registry mutation occurred.
+- The existing Google runbook now documents this local intake command; it is a
+  procedure reference, not a second source of mapping state.

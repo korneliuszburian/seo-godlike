@@ -29,6 +29,7 @@ import { writeClientContentBundle, writeClientContentCsvBundle } from "./client-
 import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringApiBundle, writeRankMonitoringBundle, writeRankMonitoringCsvBundle } from "./rank-monitoring.js";
 import { writeRankHistoryDashboard } from "./rank-history.js";
 import { getSerprobotApiKey, querySerprobotProject, SerprobotApiRequest, writeSerprobotApiBundle } from "./serprobot.js";
+import { buildPropertyMappingTemplate } from "./property-mapping.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -638,6 +639,15 @@ async function main(): Promise<void> {
     const clientJson = JSON.parse(await readFile(resolve(oauthClientPath), "utf8"));
     const sites = await listSearchConsoleSites(await getGoogleAccessToken(clientJson));
     process.stdout.write(`${JSON.stringify({ provider: "google-search-console", sites }, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--property-mapping-template")) {
+    const input = JSON.parse(await readFile(resolve(argument("--input")), "utf8")) as unknown;
+    const sites = input && typeof input === "object" && Array.isArray((input as { sites?: unknown }).sites)
+      ? (input as { sites: unknown[] }).sites
+      : Array.isArray(input) ? input : null;
+    if (!sites || sites.some((site) => typeof site !== "string")) throw new Error("property mapping input must be a discovery JSON object with a sites string array");
+    process.stdout.write(`${JSON.stringify(buildPropertyMappingTemplate(sites), null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--analytics-batch")) {

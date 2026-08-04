@@ -58,6 +58,22 @@ repository.
 Record the exact returned `siteUrl` for `bodymove.pl`; do not substitute a
 `sc-domain:` or URL-prefix value without discovery evidence.
 
+To prepare the one-time multi-domain mapping without assigning ownership,
+save the discovery JSON and run:
+
+```bash
+node dist/cli.js \
+  --property-mapping-template \
+  --input /absolute/path/discovery.json \
+  > /absolute/path/property-mapping-template.json
+```
+
+The resulting template preserves raw property entries, adds normalized hosts
+for review, and leaves `client_id`, canonical properties, aliases and Ahrefs
+targets empty. Fill those fields only after the operator confirms ownership and
+access, then use the existing atomic registry intake. The template is not a
+registry and does not mutate one.
+
 ## Bounded report
 
 Create a request containing the discovered `property_id`, the intended
