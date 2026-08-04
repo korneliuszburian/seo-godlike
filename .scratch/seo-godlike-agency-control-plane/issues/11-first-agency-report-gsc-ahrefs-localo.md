@@ -2352,3 +2352,18 @@ auth or schema is unknown.
   managed Localo profile, SERPROBOT snapshot/API input and Semstorm input;
   OAuth input is also intentionally absent. Readiness reports
   `credential_posture: not_inspected` and performed no provider IO.
+
+## Recurring orchestration proof — 2026-08-04
+
+- The generated monthly cron was exercised as a read-only planning command. It
+  emits one shared `agency_run-$agency_run_stamp` identity, an exclusive
+  `flock`, renderer preflight, `--agency-run`, agency report, client delivery,
+  analytics history and SERPROBOT rank-history outputs under explicit roots.
+- Readiness over the current Bodymove fixtures remains `partial`: three scope
+  entries are ready (canonical GSC, Kraków GSC and Ahrefs), while GA4 numeric
+  property/consent, Localo managed profile, SERPROBOT snapshot/API input,
+  Semstorm input and OAuth path are still operator inputs. No credential was
+  opened and no provider request or rerun occurred.
+- Local gates pass at 226 TypeScript tests + 3 context tests, build, audit with
+  zero high vulnerabilities and `git diff --check`. A new OpenCode/DeepSeek
+  review attempt timed out during inspection and produced no accepted verdict.
