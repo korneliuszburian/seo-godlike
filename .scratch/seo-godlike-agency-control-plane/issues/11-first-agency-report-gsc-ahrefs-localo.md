@@ -2472,3 +2472,19 @@ auth or schema is unknown.
 - Local proof after the change: 234 TypeScript tests + 3 context tests, build,
   zero high audit vulnerabilities and `git diff --check`. No provider request,
   credential read, Ahrefs rerun or report regeneration occurred.
+
+## Local dashboard application runtime — 2026-08-04
+
+- Fixed point adds `--serve-dashboard --delivery <existing-package>` as the
+  first real application seam over the existing manifest-bound delivery data.
+  It binds to loopback by default and exposes a read-only dashboard root,
+  `/healthz`, `/api/manifest`, `/api/units` and confined client assets.
+- The server validates the delivery manifest before binding, does not import or
+  invoke provider adapters, and confines every served path beneath the supplied
+  delivery directory. This is an application runtime over already captured
+  evidence, not a provider rerun or a replacement for future hosted auth.
+- Focused and full local proof pass with 236 TypeScript tests + 3 context tests,
+  build, zero high audit vulnerabilities and `git diff --check`. A real
+  existing Bodymove delivery package served successfully with
+  `provider_calls: 0`; no Ahrefs request, report regeneration or credential
+  read occurred.

@@ -30,6 +30,7 @@ import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRank
 import { writeRankHistoryDashboard } from "./rank-history.js";
 import { getSerprobotApiKey, querySerprobotProject, SerprobotApiRequest, writeSerprobotApiBundle } from "./serprobot.js";
 import { buildPropertyMappingTemplate, materializePropertyMapping } from "./property-mapping.js";
+import { serveDashboard } from "./web-app.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -210,6 +211,25 @@ async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  if (process.argv.includes("--serve-dashboard")) {
+    const app = await serveDashboard({
+      deliveryDir: resolve(argument("--delivery")),
+      host: optionalArgument("--host") ?? "127.0.0.1",
+      port: optionalPositiveIntegerArgument("--port") ?? 4173,
+    });
+    process.stdout.write(`${JSON.stringify({ url: app.url, read_only: true, delivery_dir: resolve(argument("--delivery")) })}\n`);
+    await new Promise<void>((resolveShutdown) => {
+      const shutdown = async (): Promise<void> => {
+        process.off("SIGINT", shutdown);
+        process.off("SIGTERM", shutdown);
+        await app.close();
+        resolveShutdown();
+      };
+      process.once("SIGINT", shutdown);
+      process.once("SIGTERM", shutdown);
+    });
+    return;
+  }
   if (process.argv.includes("--pull-serprobot")) {
     const request: SerprobotApiRequest = {
       client_id: argument("--client-id"),
