@@ -2460,3 +2460,15 @@ auth or schema is unknown.
   reproduction. This attempt is therefore `incomplete`, not PASS. No provider
   request, credential read, Ahrefs rerun, report rerun or repository mutation
   occurred during the review.
+
+## Deterministic onboarding/readiness ordering — 2026-08-04
+
+- Fixed point `fb3139d` replaces the remaining locale-dependent ordering in
+  property-mapping materialization and operator-readiness requirements with
+  explicit code-point comparison.
+- This keeps registry intake and readiness JSON stable across operator locale
+  settings. The change does not alter provider scope, credentials, evidence,
+  delivery output or client data.
+- Local proof after the change: 234 TypeScript tests + 3 context tests, build,
+  zero high audit vulnerabilities and `git diff --check`. No provider request,
+  credential read, Ahrefs rerun or report regeneration occurred.
