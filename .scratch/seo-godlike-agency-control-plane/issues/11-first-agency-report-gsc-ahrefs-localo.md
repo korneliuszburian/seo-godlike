@@ -2233,3 +2233,19 @@ auth or schema is unknown.
   keeps the normalized, hash-bound CSV import as the safe recurring seam and
   does not guess an API endpoint or spend provider quota. A direct adapter is
   deferred until SERPROBOT supplies a documented response contract.
+
+## Recurring operator-content root — 2026-08-04 (`94eee8f`)
+
+- Client delivery and the monthly schedule now accept `--client-content-root`
+  alongside the existing explicit bundle path. Delivery recursively selects the
+  newest verified operator-managed content bundle by the latest action period;
+  it does not infer client ownership or read provider data.
+- A delivery invocation now rejects simultaneous direct JSON, fixed bundle and
+  bundle-root inputs instead of silently preferring one. The schedule test uses
+  the root form, making the intended recurring path explicit.
+- Local proof: 211 TypeScript tests + 3 context tests, build, audit with zero
+  high vulnerabilities and `git diff --check` pass. No provider request,
+  credential read, Ahrefs/SERPROBOT rerun or report generation occurred.
+- OpenCode/DeepSeek review of parent `ed3d9d1` found no blockers; its main
+  recurring-content risk is addressed by this slice. The direct SERPROBOT API
+  remains intentionally deferred pending a documented response contract.
