@@ -367,7 +367,7 @@ async function main(): Promise<void> {
       const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath, reportKeywordBundleRoot);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
-        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath: rankMonitoringRoot ? undefined : resolvedRankMonitoringPath, rankMonitoringRoot, rankMonitoringArtifactsDir: rankMonitoringRoot ? artifactsDir : undefined, keywordBundleRoot: reportKeywordBundleRoot, agencyRunRecordPath: join(outputRoot, "agency-run.json") });
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, rankMonitoringPath: rankMonitoringRoot ? undefined : resolvedRankMonitoringPath, rankMonitoringRoot, rankMonitoringResolvedPath: rankMonitoringRoot ? resolvedRankMonitoringPath : undefined, rankMonitoringArtifactsDir: rankMonitoringRoot ? artifactsDir : undefined, keywordBundleRoot: reportKeywordBundleRoot, agencyRunRecordPath: join(outputRoot, "agency-run.json") });
         generatedDelivery = resolve(deliveryOutput);
       }
       process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);

@@ -1983,3 +1983,14 @@ auth or schema is unknown.
   longer allows provider work to start and fail later during client delivery.
 - Focused schedule/history proof passes; this change does not install cron,
   execute a provider, rerun Ahrefs, or regenerate client evidence.
+
+## Rank bundle identity binding — 2026-08-04
+
+- Agency-run delivery now receives the exact rank bundle path already resolved
+  and consumed for the agency report, while still constraining that path inside
+  the configured rank root. Delivery retains the root for history aggregation,
+  but does not independently select a potentially newer bundle for the current
+  report.
+- A focused falsifier places a newer valid bundle beside the selected bundle;
+  delivery remains bound to the declared manifest hash. CLI, delivery, full
+  test suite, audit, and diff checks pass. No provider request or rerun occurred.

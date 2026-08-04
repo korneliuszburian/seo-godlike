@@ -52,6 +52,8 @@ export interface ClientDeliveryOptions {
   clientContentBundlePath?: string;
   rankMonitoringPath?: string;
   rankMonitoringRoot?: string;
+  /** Resolved by the agency-run caller; must remain inside rankMonitoringRoot. */
+  rankMonitoringResolvedPath?: string;
   rankMonitoringArtifactsDir?: string;
   keywordBundleRoot?: string;
   agencyRunRecordPath?: string;
@@ -561,9 +563,12 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const resolvedRankMonitoringRoot = options.rankMonitoringRoot
     ? await resolveRankMonitoringRoot(options.rankMonitoringRoot, options.rankMonitoringArtifactsDir ?? options.artifactsDir)
     : null;
-  const resolvedRankMonitoringPath = resolvedRankMonitoringRoot
-    ? await resolveLatestRankMonitoringBundle(resolvedRankMonitoringRoot, rankMonitoringClientIds(summary.source_status))
-    : options.rankMonitoringPath;
+  if (options.rankMonitoringResolvedPath && !resolvedRankMonitoringRoot) throw new Error("rank monitoring resolved path requires rank monitoring root");
+  const resolvedRankMonitoringPath = options.rankMonitoringResolvedPath
+    ? await resolveExistingInside(resolvedRankMonitoringRoot!, relative(resolvedRankMonitoringRoot!, options.rankMonitoringResolvedPath), "rank monitoring resolved bundle")
+    : resolvedRankMonitoringRoot
+      ? await resolveLatestRankMonitoringBundle(resolvedRankMonitoringRoot, rankMonitoringClientIds(summary.source_status))
+      : options.rankMonitoringPath;
   const metrics = await collectMetrics(summary, options.artifactsDir);
   const agencyReportBytes = await readFile(options.agencyReportPath);
   const clientIds = [...new Set(summary.scope.entries.map((entry) => entry.client_id).concat(summary.source_status.map((source) => source.client_id)))].sort();

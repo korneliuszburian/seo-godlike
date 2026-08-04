@@ -239,14 +239,22 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
   try {
     const artifacts = join(root, "artifacts");
     const rankInput = join(root, "rank.json");
-    const rankBundle = join(artifacts, "rank");
+    const rankRoot = join(artifacts, "rank-root");
+    const rankBundle = join(rankRoot, "rank");
     await mkdir(artifacts, { recursive: true });
+    await mkdir(rankRoot, { recursive: true });
     const snapshot = (client_id: string, project_id: string, keyword: string) => ({ schema_version: "1", provider: "serprobot", client_id, captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id, search_engine: "google.pl", location: null, device: null }, rows: [{ keyword, position: 3, previous_position: null, search_engine: "google.pl", location: "PL", device: "desktop", url: null }] });
     await writeFile(rankInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [snapshot("acme", "456", "acme-fraza"), snapshot("bodymove", "123", "rehabilitacja")] }));
     const previousRankInput = join(root, "previous-rank.json");
     await writeFile(previousRankInput, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-07-01T00:00:00.000Z", date_range: { start: "2026-06-01", end: "2026-06-30" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: "desktop" }, rows: [{ keyword: "rehabilitacja", position: 5, previous_position: null, search_engine: "google.pl", location: "PL", device: "desktop", url: null }] }));
-    await writeRankMonitoringBundle(previousRankInput, join(artifacts, "previous-rank"));
+    await writeRankMonitoringBundle(previousRankInput, join(rankRoot, "previous-rank"));
     const packed = await writeRankMonitoringBundle(rankInput, rankBundle);
+    const newerRankInput = join(root, "newer-rank.json");
+    await writeFile(newerRankInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [
+      { ...snapshot("acme", "456", "acme-fraza"), captured_at: "2026-08-04T00:00:00.000Z" },
+      { ...snapshot("bodymove", "123", "rehabilitacja"), captured_at: "2026-08-04T00:00:00.000Z" },
+    ] }));
+    await writeRankMonitoringBundle(newerRankInput, join(rankRoot, "newer-rank"));
     const summary = { schema_version: "1", report_status: "partial", generated_at: "2026-08-03T00:00:00.000Z", scope: { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "ready", entries: [
       { client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
       { client_id: "acme", client_display_name: "Acme", property_id: "sc-domain:acme.example", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
@@ -258,7 +266,7 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
     const agencyText = JSON.stringify(summary);
     await writeFile(agencyPath, agencyText);
     await writeFile(join(root, "manifest.json"), manifest({ "agency-report.json": agencyText }));
-    await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery"), rankMonitoringRoot: artifacts });
+    await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "delivery"), rankMonitoringRoot: rankRoot, rankMonitoringResolvedPath: rankBundle });
     const bodymoveHtml = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
     const acmeHtml = await readFile(join(root, "delivery", "acme", "acme-seo-report.html"), "utf8");
     assert.match(bodymoveHtml, /rehabilitacja/);
