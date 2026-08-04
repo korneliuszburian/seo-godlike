@@ -2388,9 +2388,21 @@ auth or schema is unknown.
   `needs_operator_input` state and the next safe action.
 - Requirements cover unavailable scope/source evidence, missing Google OAuth,
   missing SERPROBOT input, unsupported external executors, GA4 scope mismatch
-  an empty scope and the operator-managed client-content/actions register. The
+  and empty scope and the operator-managed client-content/actions register. The
   command still does not inspect credentials or call providers.
 - Focused readiness assertions and the full local proof pass with 227
   TypeScript tests + 3 context tests, build, audit with zero high
   vulnerabilities and `git diff --check`. No provider request, credential
   read, Ahrefs rerun or report regeneration occurred.
+
+## External review attempt for readiness fixed point — 2026-08-04
+
+- OpenCode with `opencode-go/deepseek-v4-flash` was launched in the required
+  non-interactive, read-only mode against fixed point `98d856f`. The raw
+  response was retained outside the repository for auditability.
+- The bounded run reached approximately 656 KB of event output but ended at a
+  `step_start` event without a final verdict. It is therefore not accepted as
+  PASS or as evidence of a defect; the local gates and fixed-point handoff
+  remain authoritative until a reviewer returns a complete response.
+- No provider request, credential read, report rerun, repository mutation or
+  publication occurred during the review attempt.
