@@ -81,6 +81,7 @@ zastosować atomowy batch intake:
 
 ```bash
 node dist/cli.js --add-sources /absolute/path/source-intake.json \
+  --source-registry /absolute/path/source-registry.json \
   --registry /absolute/path/client-registry.json
 ```
 

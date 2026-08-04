@@ -46,6 +46,25 @@ test("CLI packs operator actions CSV without provider IO", async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test("CLI atomically onboards a source batch", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-source-batch-"));
+  try {
+    const registryPath = join(root, "client-registry.json");
+    const sourcePath = join(root, "source-registry.json");
+    const intakePath = join(root, "source-intake.json");
+    await writeFile(registryPath, JSON.stringify({ clients: [{ client_id: "bodymove", properties: [] }] }));
+    await writeFile(sourcePath, JSON.stringify({ sources: [] }));
+    await writeFile(intakePath, JSON.stringify({ sources: [
+      { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/123456789", status: "ready" },
+      { source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "123456", status: "ready", search_engine: "google.pl", location: "Warszawa", device: "desktop" },
+    ] }));
+    const result = await execFileAsync(process.execPath, ["dist/cli.js", "--add-sources", intakePath, "--source-registry", sourcePath, "--registry", registryPath], { cwd: process.cwd() });
+    assert.match(result.stdout, /ga4\.bodymove/);
+    const persisted = JSON.parse(await readFile(sourcePath, "utf8")) as { sources: Array<{ source_id: string }> };
+    assert.deepEqual(persisted.sources.map((source) => source.source_id), ["ga4.bodymove", "serprobot.bodymove"]);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("agency-run rejects malformed keyword budget before creating output or running tasks", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-budget-"));
   const output = join(root, "run");
