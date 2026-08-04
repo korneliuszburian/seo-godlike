@@ -18,6 +18,22 @@ test("daily schedule fails closed without an OAuth client path", async () => {
   );
 });
 
+test("CLI packs a normalized SERPROBOT CSV without provider IO", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-rank-csv-"));
+  try {
+    const input = join(root, "rank.csv");
+    const output = join(root, "bundle");
+    await writeFile(input, "keyword,position,previous_position\nrehabilitacja,7,9\n");
+    const result = await execFileAsync(process.execPath, [
+      "dist/cli.js", "--pack-rank-monitoring-csv", "--input", input, "--output", output,
+      "--client-id", "bodymove", "--project-id", "123", "--captured-at", "2026-08-04T10:00:00.000Z",
+      "--date-start", "2026-07-01", "--date-end", "2026-07-31", "--search-engine", "google.pl",
+    ], { cwd: process.cwd() });
+    assert.match(result.stdout, /"client_id": "bodymove"/);
+    assert.match(await readFile(join(output, "manifest.json"), "utf8"), /report\.json/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("agency-run rejects malformed keyword budget before creating output or running tasks", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-budget-"));
   const output = join(root, "run");

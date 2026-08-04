@@ -4,7 +4,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { readRankMonitoringBundle, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringBundle } from "./rank-monitoring.js";
+import { readRankMonitoringBundle, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringBundle, writeRankMonitoringCsvBundle } from "./rank-monitoring.js";
 import { sha256 } from "./serialize.js";
 
 test("rank monitoring bundle verifies identity and deterministic row order", async () => {
@@ -80,6 +80,27 @@ test("rank monitoring packer creates the manifest-bound input expected by delive
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("rank monitoring CSV packer normalizes a supplied export without provider IO", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-csv-"));
+  try {
+    const input = join(root, "export.csv");
+    const output = join(root, "bundle");
+    await writeFile(input, 'keyword,position,previous_position,location,device,url\nrehabilitacja,7,9,Warszawa,desktop,https://bodymove.pl/\n"fizjoterapia, dzieci",12,,Warszawa,desktop,\n');
+    const result = await writeRankMonitoringCsvBundle(input, output, { client_id: "bodymove", project_id: "123", captured_at: "2026-08-04T10:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, search_engine: "google.pl" });
+    assert.deepEqual(result.snapshot.rows.map((row) => [row.keyword, row.position, row.previous_position]), [["fizjoterapia, dzieci", 12, null], ["rehabilitacja", 7, 9]]);
+    assert.equal((await readRankMonitoringBundle(output, ["bodymove"])).manifest_sha256, result.manifest_sha256);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank monitoring CSV packer rejects a guessed or incomplete export", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-csv-invalid-"));
+  try {
+    const input = join(root, "export.csv");
+    await writeFile(input, "phrase,rank\nrehabilitacja,7\n");
+    await assert.rejects(writeRankMonitoringCsvBundle(input, join(root, "bundle"), { client_id: "bodymove", project_id: "123", captured_at: "2026-08-04T10:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, search_engine: "google.pl" }), /requires keyword and position columns/);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test("rank monitoring collection keeps multiple client snapshots in one manifest-bound bundle", async () => {

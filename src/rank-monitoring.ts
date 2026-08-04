@@ -10,6 +10,16 @@ export interface RankMonitoringBundle { snapshot: RankMonitoringSnapshot; snapsh
 export const RANK_MONITORING_PROVIDER = "serprobot" as const;
 export const RANK_MONITORING_SOURCE_LABEL = "Observed — SERPROBOT rank snapshot" as const;
 
+export interface RankMonitoringCsvOptions {
+  client_id: string;
+  project_id: string;
+  captured_at: string;
+  date_range: { start: string; end: string };
+  search_engine: string;
+  location?: string | null;
+  device?: string | null;
+}
+
 export function rankMonitoringClientIds(sources: readonly { provider: string; client_id: string }[]): string[] {
   return [...new Set(sources.filter((source) => source.provider === RANK_MONITORING_PROVIDER).map((source) => source.client_id))].sort();
 }
@@ -137,8 +147,7 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
   return selected.path;
 }
 
-export async function writeRankMonitoringBundle(inputPath: string, outputDir: string): Promise<RankMonitoringBundle> {
-  const snapshots = parseRankMonitoringCollection(JSON.parse(await readFile(inputPath, "utf8")) as unknown);
+async function writeRankMonitoringSnapshots(snapshots: RankMonitoringSnapshot[], outputDir: string): Promise<RankMonitoringBundle> {
   const report = canonicalJson(snapshots.length === 1 ? snapshots[0] : { schema_version: "1", provider: RANK_MONITORING_PROVIDER, snapshots });
   const snapshot = snapshots[0]!;
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
@@ -146,4 +155,66 @@ export async function writeRankMonitoringBundle(inputPath: string, outputDir: st
   await writeFile(join(outputDir, "report.json"), report, { encoding: "utf8", flag: "wx", mode: 0o600 });
   await writeFile(join(outputDir, "manifest.json"), manifest, { encoding: "utf8", flag: "wx", mode: 0o600 });
   return { snapshot, snapshots, manifest_sha256: sha256(manifest) };
+}
+
+export async function writeRankMonitoringBundle(inputPath: string, outputDir: string): Promise<RankMonitoringBundle> {
+  return writeRankMonitoringSnapshots(parseRankMonitoringCollection(JSON.parse(await readFile(inputPath, "utf8")) as unknown), outputDir);
+}
+
+function parseCsvLine(line: string, lineNumber: number): string[] {
+  const cells: string[] = [];
+  let cell = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]!;
+    if (character === '"') {
+      if (quoted && line[index + 1] === '"') { cell += '"'; index += 1; }
+      else quoted = !quoted;
+    } else if (character === "," && !quoted) {
+      cells.push(cell); cell = "";
+    } else cell += character;
+  }
+  if (quoted) throw new Error(`rank monitoring CSV line ${lineNumber} has an unterminated quoted field`);
+  cells.push(cell);
+  return cells;
+}
+
+function csvNullableNumber(value: string, label: string): number | null {
+  if (value.trim() === "") return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error(`${label} must be a finite number or empty`);
+  return parsed;
+}
+
+/**
+ * Packs a deliberately normalized CSV export without making a provider request.
+ * Required columns: keyword, position. Optional columns may override the
+ * snapshot metadata: previous_position, search_engine, location, device, url.
+ */
+export async function writeRankMonitoringCsvBundle(inputPath: string, outputDir: string, options: RankMonitoringCsvOptions): Promise<RankMonitoringBundle> {
+  if (!options.client_id || !/^[1-9]\d*$/.test(options.project_id) || !options.search_engine) throw new Error("rank monitoring CSV metadata is invalid");
+  if (Number.isNaN(Date.parse(options.captured_at)) || !/^\d{4}-\d{2}-\d{2}$/.test(options.date_range.start) || !/^\d{4}-\d{2}-\d{2}$/.test(options.date_range.end)) throw new Error("rank monitoring CSV metadata dates are invalid");
+  const lines = (await readFile(inputPath, "utf8")).replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim() !== "");
+  if (lines.length < 2) throw new Error("rank monitoring CSV must contain a header and at least one row");
+  const headers = parseCsvLine(lines[0]!, 1).map((header) => header.trim());
+  const index = new Map<string, number>();
+  headers.forEach((header, position) => { if (!header || index.has(header)) throw new Error(`rank monitoring CSV has duplicate or empty header '${header}'`); index.set(header, position); });
+  if (!index.has("keyword") || !index.has("position")) throw new Error("rank monitoring CSV requires keyword and position columns");
+  const value = (cells: string[], name: string): string => cells[index.get(name) ?? -1]?.trim() ?? "";
+  const rows: RankRow[] = lines.slice(1).map((line, offset) => {
+    const cells = parseCsvLine(line, offset + 2);
+    const keyword = value(cells, "keyword");
+    if (!keyword) throw new Error(`rank monitoring CSV line ${offset + 2} has an empty keyword`);
+    const search_engine = value(cells, "search_engine") || options.search_engine;
+    return {
+      keyword,
+      position: csvNullableNumber(value(cells, "position"), `rank monitoring CSV line ${offset + 2}.position`),
+      previous_position: csvNullableNumber(value(cells, "previous_position"), `rank monitoring CSV line ${offset + 2}.previous_position`),
+      search_engine,
+      location: value(cells, "location") || (options.location ?? null),
+      device: value(cells, "device") || (options.device ?? null),
+      url: value(cells, "url") || null,
+    };
+  });
+  return writeRankMonitoringSnapshots([parseRankMonitoringSnapshot({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, client_id: options.client_id, captured_at: options.captured_at, date_range: options.date_range, source_config: { project_id: options.project_id, search_engine: options.search_engine, location: options.location ?? null, device: options.device ?? null }, rows })], outputDir);
 }

@@ -2138,3 +2138,21 @@ auth or schema is unknown.
 - The readiness command reports `credential_posture: not_inspected` and
   `policy_mode: read_only`; supplied paths were treated only as presence
   flags. No credential file was read and no provider request or rerun occurred.
+
+## SERPROBOT/Looker CSV import seam — 2026-08-04
+
+- Looker Studio remains a presentation layer; the official SERPROBOT connector
+  is the upstream read source. The downloaded PDF is therefore not parsed as
+  evidence and no ranking rerun is required.
+- Added `--pack-rank-monitoring-csv` for an operator-supplied, explicitly
+  normalized CSV (`keyword,position` plus optional previous position, search,
+  location, device and URL columns). Project identity, dates and client scope
+  are supplied as CLI metadata and are validated before the existing
+  manifest-bound packer runs.
+- The CLI path is covered by a no-provider-IO falsifier; malformed or guessed
+  column names fail closed. This does not claim a live SERPROBOT API
+  connection, nor does it infer ownership from a Looker report.
+- Focused proof: build and rank-monitoring suite pass (18 tests); full suite,
+  audit and diff checks are the remaining gates for this slice. No GSC,
+  Ahrefs, SERPROBOT, GA4 or Localo request was made and no report rerun was
+  performed.

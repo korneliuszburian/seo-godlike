@@ -68,6 +68,25 @@ Następnie miesięczny pipeline dostaje katalog bundle przez
 konfigurację projektu przed wyrenderowaniem HTML/PDF/email. Powtórne użycie
 tego samego outputu jest odrzucane przez kontrakt exclusive-write.
 
+Jeżeli operator eksportuje ranking jako CSV z SERPROBOT/Looker Studio, można
+spakować go bez ponownego odpytywania dostawcy. CSV musi być znormalizowany i
+zawierać kolumny `keyword,position`; opcjonalne kolumny to
+`previous_position,search_engine,location,device,url`. Metadane projektu są
+podawane jawnie, więc sam eksport nie przypisuje projektu do klienta:
+
+```bash
+node dist/cli.js --pack-rank-monitoring-csv \
+  --input /absolute/path/serprobot-export.csv \
+  --output /absolute/path/artifacts/analysis/serprobot/bodymove-2026-07 \
+  --client-id bodymove --project-id 123456 \
+  --captured-at 2026-08-04T08:00:00.000Z \
+  --date-start 2026-07-01 --date-end 2026-07-31 \
+  --search-engine google.pl --location Warszawa --device desktop
+```
+
+Eksport PDF nie jest wejściem do tego polecenia: nie zawiera wystarczająco
+pewnej, maszynowej semantyki wierszy.
+
 ## Prerequisites for scheduled PDF delivery
 
 The monthly cron invokes `dist/cli.js`, so a fresh checkout must build the

@@ -26,7 +26,7 @@ import { writeClientDelivery } from "./client-delivery.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 import { writeClientContentBundle } from "./client-content.js";
-import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringBundle } from "./rank-monitoring.js";
+import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringBundle, writeRankMonitoringCsvBundle } from "./rank-monitoring.js";
 import { writeRankHistoryDashboard } from "./rank-history.js";
 
 function argument(name: string): string {
@@ -216,6 +216,19 @@ async function main(): Promise<void> {
   if (process.argv.includes("--pack-rank-monitoring")) {
     const result = await writeRankMonitoringBundle(argument("--input"), argument("--output"));
     process.stdout.write(`${JSON.stringify({ client_id: result.snapshot.client_id, client_ids: result.snapshots.map((snapshot) => snapshot.client_id), rows: result.snapshot.rows.length, rows_by_client: Object.fromEntries(result.snapshots.map((snapshot) => [snapshot.client_id, snapshot.rows.length])), manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--pack-rank-monitoring-csv")) {
+    const result = await writeRankMonitoringCsvBundle(argument("--input"), argument("--output"), {
+      client_id: argument("--client-id"),
+      project_id: argument("--project-id"),
+      captured_at: argument("--captured-at"),
+      date_range: { start: argument("--date-start"), end: argument("--date-end") },
+      search_engine: argument("--search-engine"),
+      location: optionalArgument("--location") ?? null,
+      device: optionalArgument("--device") ?? null,
+    });
+    process.stdout.write(`${JSON.stringify({ client_id: result.snapshot.client_id, rows: result.snapshot.rows.length, manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--codex-manager")) {
