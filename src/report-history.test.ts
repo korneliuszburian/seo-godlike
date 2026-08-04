@@ -485,3 +485,16 @@ test("monthly agency schedule never prepares the filesystem root", () => {
   });
   assert.doesNotMatch(entry, /install -d -m 700[^&]*'\/'/);
 });
+
+test("monthly agency schedule rejects parent traversal in explicit history roots", () => {
+  assert.throws(() => buildMonthlyAgencyCron({
+    workingDirectory: "/work/seo-godlike",
+    oauthClientPath: "/secure/oauth-client.json",
+    registryPath: "registry.json",
+    capabilitiesPath: "capabilities.json",
+    artifactsDir: "artifacts",
+    reportDir: "reports",
+    deliveryDir: "delivery",
+    historyDir: "custom/../history",
+  }), /historyDir must not contain parent traversal/);
+});

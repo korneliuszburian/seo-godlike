@@ -5,6 +5,10 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
+function assertNoParentTraversal(value: string, label: string): void {
+  if (value.split(/[\\/]+/).includes("..")) throw new Error(`${label} must not contain parent traversal`);
+}
+
 export interface ScheduleOptions {
   workingDirectory: string;
   oauthClientPath: string;
@@ -65,6 +69,8 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   if (options.keywordResearch && !options.keywordInputPath) throw new Error("keyword research scheduling requires keywordInputPath");
   if (options.keywordResearch && !options.allowEstimatedBudget) throw new Error("keyword research scheduling requires allowEstimatedBudget");
+  if (options.historyDir) assertNoParentTraversal(options.historyDir, "historyDir");
+  if (options.rankHistoryDir) assertNoParentTraversal(options.rankHistoryDir, "rankHistoryDir");
   const lockPath = options.lockPath ?? `${options.artifactsDir}/.agency-monthly.lock`;
   const stamp = '"$agency_run_stamp"';
   const output = `${shellQuote(options.artifactsDir)}/agency-run-${stamp}`;

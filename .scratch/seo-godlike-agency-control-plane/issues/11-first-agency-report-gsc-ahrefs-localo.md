@@ -1718,7 +1718,7 @@ auth or schema is unknown.
 - The schedule now filters `.`/empty parent paths and has a single-segment
   falsifier. Readiness now fails closed with an explicit blocker when a ready
   GA4 target is not present in the ready scope plan.
-- Proof: 180 TypeScript tests + 3 context tests, build, zero high audit
+- Proof: 182 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
 
@@ -1729,6 +1729,16 @@ auth or schema is unknown.
   cannot satisfy readiness. A focused cross-client falsifier covers this.
 - Schedule root preparation now excludes `.`, empty paths, and `/`; a focused
   absolute-root falsifier covers the last case.
-- The control-plane map is pinned to `db81888` as the current route fixed point.
+- The control-plane map is pinned to `e685be7` as the current route fixed point.
+- No provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.
+
+## Schedule parent-traversal hardening — 2026-08-04
+
+- Explicit history roots now reject `..` path segments before cron text is
+  emitted; the dedicated falsifier covers `custom/../history`.
+- Map and tracker pins now identify `e685be7`, the reviewed fixed point.
+- Local proof after this hardening: 183 TypeScript tests + 3 context tests,
+  build, zero high audit vulnerabilities, and `git diff --check`.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
