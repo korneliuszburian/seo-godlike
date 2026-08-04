@@ -5,7 +5,7 @@ import { resolveExistingInside } from "./path-confinement.js";
 
 export interface RankRow { keyword: string; position: number | null; previous_position: number | null; search_engine: string; location: string | null; device: string | null; url: string | null; }
 export interface RankMonitoringSourceConfig { project_id: string; search_engine: string; location: string | null; device: string | null; }
-export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; source_config: RankMonitoringSourceConfig | null; rows: RankRow[]; }
+export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; source_config: RankMonitoringSourceConfig | null; rows: RankRow[]; input_sha256?: string; import_mode?: "normalized_json" | "normalized_csv"; }
 export interface RankMonitoringBundle { snapshot: RankMonitoringSnapshot; snapshots: RankMonitoringSnapshot[]; manifest_sha256: string; }
 export const RANK_MONITORING_PROVIDER = "serprobot" as const;
 export const RANK_MONITORING_SOURCE_LABEL = "Observed — SERPROBOT rank snapshot" as const;
@@ -31,7 +31,7 @@ export async function resolveRankMonitoringRoot(rootDir: string, artifactsDir: s
 }
 
 function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
-function nullableNumber(value: unknown, label: string): number | null { if (value === null || value === undefined) return null; if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${label} must be a finite number or null`); return value; }
+function nullableRank(value: unknown, label: string): number | null { if (value === null || value === undefined) return null; if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) throw new Error(`${label} must be a positive integer or null`); return value; }
 function nullableString(value: unknown, label: string): string | null { if (value === null || value === undefined) return null; if (typeof value !== "string") throw new Error(`${label} must be a string or null`); return value; }
 
 export function parseRankMonitoringSnapshot(value: unknown): RankMonitoringSnapshot {
@@ -43,8 +43,10 @@ export function parseRankMonitoringSnapshot(value: unknown): RankMonitoringSnaps
     if (!record(configValue) || typeof configValue.project_id !== "string" || !/^[1-9]\d*$/.test(configValue.project_id) || typeof configValue.search_engine !== "string") throw new Error("invalid SERPROBOT source configuration");
     source_config = { project_id: configValue.project_id, search_engine: configValue.search_engine, location: nullableString(configValue.location, "source_config.location"), device: nullableString(configValue.device, "source_config.device") };
   }
-  const rows = value.rows.map((row, index) => { if (!record(row) || typeof row.keyword !== "string" || typeof row.search_engine !== "string") throw new Error(`invalid rank row ${index}`); return { keyword: row.keyword, position: nullableNumber(row.position, `rank row ${index}.position`), previous_position: nullableNumber(row.previous_position, `rank row ${index}.previous_position`), search_engine: row.search_engine, location: nullableString(row.location, `rank row ${index}.location`), device: nullableString(row.device, `rank row ${index}.device`), url: nullableString(row.url, `rank row ${index}.url`) }; }).sort((a, b) => a.keyword.localeCompare(b.keyword) || a.search_engine.localeCompare(b.search_engine) || (a.location ?? "").localeCompare(b.location ?? "") || (a.device ?? "").localeCompare(b.device ?? "") || (a.position ?? Infinity) - (b.position ?? Infinity));
-  return { schema_version: "1", provider: "serprobot", client_id: value.client_id, captured_at: value.captured_at, date_range: { start: value.date_range.start, end: value.date_range.end }, source_config, rows };
+  const rows = value.rows.map((row, index) => { if (!record(row) || typeof row.keyword !== "string" || typeof row.search_engine !== "string") throw new Error(`invalid rank row ${index}`); return { keyword: row.keyword, position: nullableRank(row.position, `rank row ${index}.position`), previous_position: nullableRank(row.previous_position, `rank row ${index}.previous_position`), search_engine: row.search_engine, location: nullableString(row.location, `rank row ${index}.location`), device: nullableString(row.device, `rank row ${index}.device`), url: nullableString(row.url, `rank row ${index}.url`) }; }).sort((a, b) => a.keyword.localeCompare(b.keyword) || a.search_engine.localeCompare(b.search_engine) || (a.location ?? "").localeCompare(b.location ?? "") || (a.device ?? "").localeCompare(b.device ?? "") || (a.position ?? Infinity) - (b.position ?? Infinity));
+  const input_sha256 = value.input_sha256 === undefined ? undefined : typeof value.input_sha256 === "string" && /^[a-f0-9]{64}$/.test(value.input_sha256) ? value.input_sha256 : (() => { throw new Error("rank monitoring input_sha256 must be a lowercase SHA-256 hash"); })();
+  const import_mode = value.import_mode === undefined ? undefined : value.import_mode === "normalized_json" || value.import_mode === "normalized_csv" ? value.import_mode : (() => { throw new Error("rank monitoring import_mode is unsupported"); })();
+  return { schema_version: "1", provider: "serprobot", client_id: value.client_id, captured_at: value.captured_at, date_range: { start: value.date_range.start, end: value.date_range.end }, source_config, rows, ...(input_sha256 ? { input_sha256 } : {}), ...(import_mode ? { import_mode } : {}) };
 }
 
 function parseRankMonitoringCollection(value: unknown): RankMonitoringSnapshot[] {
@@ -147,18 +149,19 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
   return selected.path;
 }
 
-async function writeRankMonitoringSnapshots(snapshots: RankMonitoringSnapshot[], outputDir: string): Promise<RankMonitoringBundle> {
-  const report = canonicalJson(snapshots.length === 1 ? snapshots[0] : { schema_version: "1", provider: RANK_MONITORING_PROVIDER, snapshots });
+async function writeRankMonitoringSnapshots(snapshots: RankMonitoringSnapshot[], outputDir: string, provenance: { input_sha256: string; import_mode: "normalized_json" | "normalized_csv" }): Promise<RankMonitoringBundle> {
+  const report = canonicalJson(snapshots.length === 1 ? { ...snapshots[0], ...provenance } : { schema_version: "1", provider: RANK_MONITORING_PROVIDER, snapshots: snapshots.map((snapshot) => ({ ...snapshot, ...provenance })), ...provenance });
   const snapshot = snapshots[0]!;
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
-  const manifest = canonicalJson({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, client_id: snapshots.length === 1 ? snapshot.client_id : "multi-client", client_ids: snapshots.map((item) => item.client_id), files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
+  const manifest = canonicalJson({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, import_mode: provenance.import_mode, input_sha256: provenance.input_sha256, client_id: snapshots.length === 1 ? snapshot.client_id : "multi-client", client_ids: snapshots.map((item) => item.client_id), files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
   await writeFile(join(outputDir, "report.json"), report, { encoding: "utf8", flag: "wx", mode: 0o600 });
   await writeFile(join(outputDir, "manifest.json"), manifest, { encoding: "utf8", flag: "wx", mode: 0o600 });
   return { snapshot, snapshots, manifest_sha256: sha256(manifest) };
 }
 
 export async function writeRankMonitoringBundle(inputPath: string, outputDir: string): Promise<RankMonitoringBundle> {
-  return writeRankMonitoringSnapshots(parseRankMonitoringCollection(JSON.parse(await readFile(inputPath, "utf8")) as unknown), outputDir);
+  const input = await readFile(inputPath, "utf8");
+  return writeRankMonitoringSnapshots(parseRankMonitoringCollection(JSON.parse(input) as unknown), outputDir, { input_sha256: sha256(input), import_mode: "normalized_json" });
 }
 
 function parseCsvLine(line: string, lineNumber: number): string[] {
@@ -182,8 +185,14 @@ function parseCsvLine(line: string, lineNumber: number): string[] {
 function csvNullableNumber(value: string, label: string): number | null {
   if (value.trim() === "") return null;
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) throw new Error(`${label} must be a finite number or empty`);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error(`${label} must be a positive integer or empty`);
   return parsed;
+}
+
+function validDateOnly(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return parsed.toISOString().slice(0, 10) === value;
 }
 
 /**
@@ -193,8 +202,9 @@ function csvNullableNumber(value: string, label: string): number | null {
  */
 export async function writeRankMonitoringCsvBundle(inputPath: string, outputDir: string, options: RankMonitoringCsvOptions): Promise<RankMonitoringBundle> {
   if (!options.client_id || !/^[1-9]\d*$/.test(options.project_id) || !options.search_engine) throw new Error("rank monitoring CSV metadata is invalid");
-  if (Number.isNaN(Date.parse(options.captured_at)) || !/^\d{4}-\d{2}-\d{2}$/.test(options.date_range.start) || !/^\d{4}-\d{2}-\d{2}$/.test(options.date_range.end)) throw new Error("rank monitoring CSV metadata dates are invalid");
-  const lines = (await readFile(inputPath, "utf8")).replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim() !== "");
+  if (Number.isNaN(Date.parse(options.captured_at)) || !validDateOnly(options.date_range.start) || !validDateOnly(options.date_range.end) || options.date_range.start > options.date_range.end) throw new Error("rank monitoring CSV metadata dates are invalid");
+  const input = await readFile(inputPath, "utf8");
+  const lines = input.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim() !== "");
   if (lines.length < 2) throw new Error("rank monitoring CSV must contain a header and at least one row");
   const headers = parseCsvLine(lines[0]!, 1).map((header) => header.trim());
   const index = new Map<string, number>();
@@ -216,5 +226,5 @@ export async function writeRankMonitoringCsvBundle(inputPath: string, outputDir:
       url: value(cells, "url") || null,
     };
   });
-  return writeRankMonitoringSnapshots([parseRankMonitoringSnapshot({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, client_id: options.client_id, captured_at: options.captured_at, date_range: options.date_range, source_config: { project_id: options.project_id, search_engine: options.search_engine, location: options.location ?? null, device: options.device ?? null }, rows })], outputDir);
+  return writeRankMonitoringSnapshots([parseRankMonitoringSnapshot({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, client_id: options.client_id, captured_at: options.captured_at, date_range: options.date_range, source_config: { project_id: options.project_id, search_engine: options.search_engine, location: options.location ?? null, device: options.device ?? null }, rows })], outputDir, { input_sha256: sha256(input), import_mode: "normalized_csv" });
 }

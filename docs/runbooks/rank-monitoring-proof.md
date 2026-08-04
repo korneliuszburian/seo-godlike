@@ -85,7 +85,11 @@ node dist/cli.js --pack-rank-monitoring-csv \
 ```
 
 Eksport PDF nie jest wejściem do tego polecenia: nie zawiera wystarczająco
-pewnej, maszynowej semantyki wierszy.
+pewnej, maszynowej semantyki wierszy. Katalog `--output` musi znajdować się
+wewnątrz `--rank-monitoring-root` używanego przez cron (a ten root musi być
+wewnątrz `--artifacts-dir`); po spakowaniu można go wskazać jako aktualny
+bundle albo pozostawić resolverowi najnowszego kompletnego exportu. Manifest
+zachowuje SHA-256 wejściowego CSV oraz tryb `normalized_csv`.
 
 ## Prerequisites for scheduled PDF delivery
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -90,7 +90,23 @@ test("rank monitoring CSV packer normalizes a supplied export without provider I
     await writeFile(input, 'keyword,position,previous_position,location,device,url\nrehabilitacja,7,9,Warszawa,desktop,https://bodymove.pl/\n"fizjoterapia, dzieci",12,,Warszawa,desktop,\n');
     const result = await writeRankMonitoringCsvBundle(input, output, { client_id: "bodymove", project_id: "123", captured_at: "2026-08-04T10:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, search_engine: "google.pl" });
     assert.deepEqual(result.snapshot.rows.map((row) => [row.keyword, row.position, row.previous_position]), [["fizjoterapia, dzieci", 12, null], ["rehabilitacja", 7, 9]]);
-    assert.equal((await readRankMonitoringBundle(output, ["bodymove"])).manifest_sha256, result.manifest_sha256);
+    const read = await readRankMonitoringBundle(output, ["bodymove"]);
+    assert.equal(read.manifest_sha256, result.manifest_sha256);
+    const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { import_mode: string; input_sha256: string };
+    assert.equal(manifest.import_mode, "normalized_csv");
+    assert.match(manifest.input_sha256, /^[a-f0-9]{64}$/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank monitoring CSV packer validates calendar dates, positive positions and CSV edge cases", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-csv-edge-"));
+  try {
+    const input = join(root, "export.csv");
+    await writeFile(input, "\uFEFFkeyword,position,previous_position\r\nrehabilitacja,0,9\r\n");
+    await assert.rejects(writeRankMonitoringCsvBundle(input, join(root, "bad-position"), { client_id: "bodymove", project_id: "123", captured_at: "2026-08-04T10:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, search_engine: "google.pl" }), /positive integer/);
+    await assert.rejects(writeRankMonitoringCsvBundle(input, join(root, "bad-date"), { client_id: "bodymove", project_id: "123", captured_at: "2026-08-04T10:00:00.000Z", date_range: { start: "2026-02-30", end: "2026-07-31" }, search_engine: "google.pl" }), /metadata dates are invalid/);
+    await writeFile(input, 'keyword,position\n"unterminated,7\n');
+    await assert.rejects(writeRankMonitoringCsvBundle(input, join(root, "bad-csv"), { client_id: "bodymove", project_id: "123", captured_at: "2026-08-04T10:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, search_engine: "google.pl" }), /unterminated quoted field/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
