@@ -87,6 +87,15 @@ test("scoped history fails closed for a malformed in-scope report", async () => 
   await rm(root, { recursive: true, force: true });
 });
 
+test("scoped history fails closed when an in-scope manifest omits report.json", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-missing-report-binding-"));
+  try {
+    await writeBundle(root, "bodymove", "2026-07-01", 4);
+    await writeFile(join(root, "bodymove", "manifest.json"), JSON.stringify({ files: {} }), "utf8");
+    await assert.rejects(readAnalyticsHistory(root, [{ client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }]), /history manifest does not bind report.json/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("history follows an in-root bundle symlink without dropping the bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-symlink-test-"));
   try {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -90,5 +90,34 @@ test("rank history does not compare across a missing period", async () => {
     assert.equal(summary.comparisons.length, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rank history follows an in-root bundle symlink", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-symlink-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-07-31T12:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [] }));
+    await mkdir(join(root, "exports"));
+    await writeRankMonitoringBundle(input, join(root, "exports", "real"));
+    await symlink(join(root, "exports", "real"), join(root, "exports", "alias"));
+    const summary = await writeRankHistoryDashboard(root, join(root, "dashboard"), ["bodymove"]);
+    assert.equal(summary.snapshot_count, 1);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank history rejects an escaping manifest symlink", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-escape-"));
+  const outside = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-outside-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-07-31T12:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [] }));
+    await mkdir(join(root, "exports", "bundle"), { recursive: true });
+    await writeRankMonitoringBundle(input, join(outside, "foreign"));
+    await symlink(join(outside, "foreign", "manifest.json"), join(root, "exports", "bundle", "manifest.json"));
+    await assert.rejects(writeRankHistoryDashboard(root, join(root, "dashboard"), ["bodymove"]), /rank history symlink escapes artifacts root/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
   }
 });

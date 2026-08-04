@@ -1,5 +1,5 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { join, relative, resolve } from "node:path";
+import { mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
+import { join, relative, resolve, sep } from "node:path";
 import { RankMonitoringSnapshot, readRankMonitoringBundle } from "./rank-monitoring.js";
 import { resolveExistingInside } from "./path-confinement.js";
 
@@ -41,13 +41,38 @@ function markdownCell(value: unknown): string { return String(value ?? "—").re
 
 async function manifestPaths(root: string): Promise<string[]> {
   const paths: string[] = [];
+  const realRoot = await realpath(resolve(root));
+  const seenDirectories = new Set<string>();
+  const seenManifests = new Set<string>();
+  const insideRoot = (path: string): boolean => path === realRoot || path.startsWith(`${realRoot}${sep}`);
   async function walk(directory: string): Promise<void> {
+    const realDirectory = await realpath(directory);
+    if (!insideRoot(realDirectory) || seenDirectories.has(realDirectory)) return;
+    seenDirectories.add(realDirectory);
     let entries;
     try { entries = await readdir(directory, { withFileTypes: true }); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       const path = join(directory, entry.name);
-      if (entry.isDirectory()) await walk(path);
-      else if (entry.isFile() && entry.name === "manifest.json") paths.push(path);
+      if (entry.name === "manifest.json" && (entry.isFile() || entry.isSymbolicLink())) {
+        const realManifest = await realpath(path).catch((error: unknown) => {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+          throw error;
+        });
+        if (!realManifest) continue;
+        if (!insideRoot(realManifest)) throw new Error(`rank history symlink escapes artifacts root: ${path}`);
+        if (!seenManifests.has(realManifest)) {
+          seenManifests.add(realManifest);
+          paths.push(path);
+        }
+      } else if (entry.isDirectory()) await walk(path);
+      else if (entry.isSymbolicLink()) {
+        const realPath = await realpath(path).catch((error: unknown) => {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+          throw error;
+        });
+        if (!realPath || !insideRoot(realPath)) continue;
+        if ((await stat(path)).isDirectory()) await walk(path);
+      }
     }
   }
   await walk(root);
@@ -56,8 +81,12 @@ async function manifestPaths(root: string): Promise<string[]> {
 
 async function readRankBundleIfPresent(manifestPath: string, artifactsDir: string, expectedClientIds: readonly string[]): Promise<RankHistoryEntry[]> {
   const bundleDir = await resolveExistingInside(artifactsDir, relative(resolve(artifactsDir), resolve(manifestPath, "..")), "rank history bundle");
-  const manifest = JSON.parse(await readFile(join(bundleDir, "manifest.json"), "utf8")) as { files?: Record<string, unknown> };
-  if (!isRecord(manifest.files) || !("report.json" in manifest.files)) return [];
+  const manifestPathSafe = await resolveExistingInside(bundleDir, "manifest.json", "rank history manifest");
+  const manifest = JSON.parse(await readFile(manifestPathSafe, "utf8")) as { provider?: unknown; files?: Record<string, unknown> };
+  if (!isRecord(manifest.files) || !("report.json" in manifest.files)) {
+    if (manifest.provider === "serprobot") throw new Error(`rank history manifest does not bind report.json: ${manifestPath}`);
+    return [];
+  }
   const report = JSON.parse(await readFile(await resolveExistingInside(bundleDir, "report.json", "rank history report"), "utf8")) as unknown;
   if (!isRecord(report) || report.provider !== "serprobot") return [];
   const verified = await readRankMonitoringBundle(bundleDir, expectedClientIds);

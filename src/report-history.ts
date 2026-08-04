@@ -197,7 +197,10 @@ async function readVerifiedBundle(manifestPath: string, artifactsDir: string, sc
     verifiedFiles.set(name, bytes);
   }
   const reportBytes = verifiedFiles.get("report.json");
-  if (!reportBytes) return null;
+  if (!reportBytes) {
+    if (scope && inScopeCandidate) throw new Error(`history manifest does not bind report.json: ${manifestPath}`);
+    return null;
+  }
   const report = parseAnalyticsReport(JSON.parse(reportBytes.toString("utf8")) as unknown);
   if (!report) return null;
   return {
