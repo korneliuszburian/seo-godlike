@@ -1648,3 +1648,14 @@ auth or schema is unknown.
   and asserts `missing_freshness_baseline` for the root Ahrefs source.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
+
+## Freshness and email status follow-up — 2026-08-04
+
+- Ahrefs now fails closed whenever the same client has a ready GSC scope but no
+  selected baseline for the Ahrefs host, including `sc-domain:` versus `www`
+  host mismatches. The dedicated falsifier covers that subdomain case.
+- Draft email source labels are deduplicated like the HTML headline, and an
+  unsupported source retains its concrete reason instead of the generic
+  "wymaga wyjaśnienia" label.
+- No provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.

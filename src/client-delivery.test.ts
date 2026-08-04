@@ -85,6 +85,8 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.match(email, /Content-Disposition: attachment; filename="bodymove-seo-report\.html"/);
     assert.match(email, /bodymove-seo-report\.html/);
     assert.match(email, /Ahrefs: Dane nieaktualne — snapshot Ahrefs jest starszy niż wybrany okres Google Search Console/);
+    assert.equal((email.match(/Ahrefs: Dane nieaktualne — snapshot Ahrefs jest starszy niż wybrany okres Google Search Console/g) ?? []).length, 1);
+    assert.match(email, /Semstorm: Zablokowane — no catalog metrics/);
     assert.match(email, /Porównanie GSC: .*kliknięcia 5 → 10/);
     const domainEmail = await readFile(join(root, "delivery", "domain-other.pl", "domain-other.pl-seo-report.eml"), "utf8");
     assert.equal(domainEmail.split("\r\n", 1)[0], "Subject: Raport SEO — other.pl");

@@ -587,7 +587,8 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
       ? selectedGscPeriodEndsByClientAndHost.get(`${source.client_id}\u0000${propertyHost(source.property_id) ?? source.property_id.toLowerCase()}`) ?? []
       : [];
     const hasMatchingGscScope = source.provider === "ahrefs" && readyGscScopeHosts.has(`${source.client_id}\u0000${propertyHost(source.property_id) ?? source.property_id.toLowerCase()}`);
-    if (accepted && hasMatchingGscScope && freshnessPeriods.length === 0) return { ...source, status: "unavailable" as const, reason: "Ahrefs freshness cannot be verified because the selected Google Search Console baseline is missing", reason_code: "missing_freshness_baseline" as const, bundle_path: null };
+    const hasSameClientGscScope = source.provider === "ahrefs" && scope.entries.some((entry) => entry.client_id === source.client_id && entry.status === "ready" && entry.provider === "google-search-console");
+    if (accepted && (hasMatchingGscScope || hasSameClientGscScope) && freshnessPeriods.length === 0) return { ...source, status: "unavailable" as const, reason: "Ahrefs freshness cannot be verified because the selected Google Search Console baseline is missing", reason_code: "missing_freshness_baseline" as const, bundle_path: null };
     if (accepted && !ahrefsSnapshotFreshForGsc(accepted, freshnessPeriods)) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", reason_code: "stale_snapshot" as const, bundle_path: null };
     if (accepted) return { ...source, status: "ready" as const, reason: null, bundle_path: accepted.bundle_path };
     if (source.status === "ready") return { ...source, status: "unavailable" as const, reason: "No accepted evidence bundle was found for this source", reason_code: "missing_evidence_bundle" as const, bundle_path: null };

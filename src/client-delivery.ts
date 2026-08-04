@@ -118,7 +118,7 @@ function sourceStatusInterpretation(source: AgencyReportSummary["source_status"]
   if (source.reason_code === "no_evidence_path") return "Brak ścieżki evidence — źródło nie ma jeszcze obsługiwanej ścieżki importu danych";
   if (source.status === "unavailable") return "Niedostępne — źródło niepodłączone";
   if (source.status === "ready") return "Dostępne — dane zweryfikowane";
-  return "Zablokowane — wymaga wyjaśnienia";
+  return `Zablokowane — ${source.reason ?? "wymaga wyjaśnienia"}`;
 }
 function sourceReasonLabel(source: AgencyReportSummary["source_status"][number]): string {
   if (source.reason_code === "missing_freshness_baseline") return "Nie znaleziono zaakceptowanej bazy Google Search Console dla tej właściwości; świeżość estymacji Ahrefs nie jest weryfikowana.";
@@ -455,7 +455,7 @@ function emailDraft(unit: DeliveryUnit, generatedAt: string, htmlPath: string, p
   const subject = `Raport SEO — ${headerValue(unit.title)}`;
   const recipient = unit.content?.contact?.email ? `To: ${headerValue(unit.content.contact.email)}\r\n` : "";
   const currentPeriod = unit.metrics.find((metric) => metric.current_range)?.current_range;
-  const sourceLabels = unit.sources.map((source) => `${providerLabel(source.provider)}: ${sourceStatusInterpretation(source)}`).join(", ") || "Brak podłączonych źródeł";
+  const sourceLabels = [...new Set(unit.sources.map((source) => `${providerLabel(source.provider)}: ${sourceStatusInterpretation(source)}`))].join(", ") || "Brak podłączonych źródeł";
   const gscComparisons = unit.metrics.filter((metric) => metric.provider === "google-search-console").map((metric) => `${metric.property_id}: kliknięcia ${comparisonText(metric, "clicks", "count")}; wyświetlenia ${comparisonText(metric, "impressions", "count")}; CTR ${comparisonText(metric, "ctr", "ratio")}; pozycja ${comparisonText(metric, "position", "position")}`);
   const attachmentList = [htmlPath, ...(pdfPath ? [pdfPath] : [])].join(", ");
   const titleText = plainTextValue(unit.title);
