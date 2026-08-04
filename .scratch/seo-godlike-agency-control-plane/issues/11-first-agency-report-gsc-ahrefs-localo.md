@@ -2078,3 +2078,16 @@ auth or schema is unknown.
   possible on that path. Full proof passes with 201 TypeScript tests + 3
   context tests, build, zero high audit vulnerabilities, and
   `git diff --check`. No provider request or rerun occurred.
+
+## OpenCode review attempt — 2026-08-04 (`5ca2b5f`)
+
+- Two bounded, read-only runs with `opencode-go/deepseek-v4-flash` inspected
+  the current clean fixed point, including the GA4 scope-mismatch guard and
+  recurring rank/schedule wiring. Raw packets are retained outside the
+  repository at `/tmp/seo-godlike-review-5ca2b5f.json` and
+  `/tmp/seo-godlike-review-5ca2b5f-retry.json`.
+- Both runs stopped during tool inspection before producing a final review
+  verdict. This is incomplete review evidence, not a PASS or blocker finding;
+  the prior completed `f4ee86a` review remains the latest completed external
+  opinion. No provider request, credential read, Ahrefs rerun, SERPROBOT rerun,
+  report regeneration, or publication occurred.
