@@ -57,6 +57,7 @@ export interface AgencyScheduleOptions {
   rankHistoryDir?: string;
   clientContentPath?: string;
   clientContentBundlePath?: string;
+  clientContentRoot?: string;
   rankMonitoringPath?: string;
   rankMonitoringRoot?: string;
   keywordBundlePath?: string;
@@ -74,6 +75,7 @@ export interface AgencyScheduleOptions {
 
 export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
+  if ([options.clientContentPath, options.clientContentBundlePath, options.clientContentRoot].filter(Boolean).length > 1) throw new Error("client content path, bundle and root are mutually exclusive");
   if (options.keywordResearch && !options.keywordInputPath) throw new Error("keyword research scheduling requires keywordInputPath");
   if (options.keywordResearch && options.keywordBundlePath) throw new Error("keyword research scheduling cannot combine with an existing keyword bundle");
   if (options.keywordResearch && !options.allowEstimatedBudget) throw new Error("keyword research scheduling requires allowEstimatedBudget");
@@ -106,6 +108,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     ...(options.sourceRegistryPath ? ["--source-registry", shellQuote(options.sourceRegistryPath)] : []),
     ...(options.clientContentPath ? ["--client-content", shellQuote(options.clientContentPath)] : []),
     ...(options.clientContentBundlePath ? ["--client-content-bundle", shellQuote(options.clientContentBundlePath)] : []),
+    ...(options.clientContentRoot ? ["--client-content-root", shellQuote(options.clientContentRoot)] : []),
     ...(options.rankMonitoringPath ? ["--rank-monitoring", shellQuote(options.rankMonitoringPath)] : []),
     ...(options.rankMonitoringRoot ? ["--rank-monitoring-root", shellQuote(options.rankMonitoringRoot)] : []),
     ...(options.keywordBundlePath ? ["--keyword-bundle", shellQuote(options.keywordBundlePath)] : []),

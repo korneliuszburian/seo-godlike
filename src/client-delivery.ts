@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import { AgencyReportSummary, CrossSourceContextEntry } from "./agency-report.js";
 import { PhraseGroup } from "./ahrefs-keywords.js";
 import { canonicalJson, sha256 } from "./serialize.js";
-import { ClientContent, readClientContent, readClientContentBundle } from "./client-content.js";
+import { ClientContent, readClientContent, readClientContentBundle, resolveLatestClientContentBundle } from "./client-content.js";
 import { RANK_MONITORING_SOURCE_LABEL, RankMonitoringSnapshot, rankMonitoringClientIds, readRankMonitoringBundle, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot } from "./rank-monitoring.js";
 import { RankHistoryComparison, readRankHistory, summarizeRankHistory } from "./rank-history.js";
 import { ProviderHistoryEntry, readProviderHistory } from "./provider-history.js";
@@ -50,6 +50,7 @@ export interface ClientDeliveryOptions {
   renderPdf?: boolean;
   clientContentPath?: string;
   clientContentBundlePath?: string;
+  clientContentRoot?: string;
   rankMonitoringPath?: string;
   rankMonitoringRoot?: string;
   /** Resolved by the agency-run caller; must remain inside rankMonitoringRoot. */
@@ -559,6 +560,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   if (!options.artifactsDir) throw new Error("client delivery requires artifactsDir");
   if (options.renderPdf && !options.pdfRenderer) await assertPdfRendererAvailable();
   const summary = await readAgencyReport(options.agencyReportPath, options.artifactsDir);
+  if ([options.clientContentPath, options.clientContentBundlePath, options.clientContentRoot].filter(Boolean).length > 1) throw new Error("client content path, bundle and root are mutually exclusive");
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   const resolvedRankMonitoringRoot = options.rankMonitoringRoot
     ? await resolveRankMonitoringRoot(options.rankMonitoringRoot, options.rankMonitoringArtifactsDir ?? options.artifactsDir)
@@ -579,7 +581,8 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const metrics = await collectMetrics(summary, options.artifactsDir);
   const agencyReportBytes = await readFile(options.agencyReportPath);
   const clientIds = [...new Set(summary.scope.entries.map((entry) => entry.client_id).concat(summary.source_status.map((source) => source.client_id)))].sort();
-  const clientContentBundle = options.clientContentBundlePath ? await readClientContentBundle(options.clientContentBundlePath, clientIds) : null;
+  const resolvedClientContentBundle = options.clientContentRoot ? await resolveLatestClientContentBundle(options.clientContentRoot, clientIds) : options.clientContentBundlePath;
+  const clientContentBundle = resolvedClientContentBundle ? await readClientContentBundle(resolvedClientContentBundle, clientIds) : null;
   const clientContentById = new Map((clientContentBundle?.contents ?? []).map((content) => [content.client_id, content] as const));
   const directClientContent = options.clientContentPath ? await readClientContent(options.clientContentPath) : null;
   if (directClientContent && !clientIds.includes(directClientContent.client_id)) throw new Error(`client content client_id '${directClientContent.client_id}' is outside delivery scope`);

@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { join, resolve, sep } from "node:path";
 import { resolveExistingInside } from "./path-confinement.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { csvHeaderIndex, parseCsvRows } from "./csv.js";
@@ -104,6 +104,57 @@ export async function readClientContentBundle(bundleDir: string, expectedClientI
   if (JSON.stringify(manifestClientIds) !== JSON.stringify(payloadClientIds)) throw new Error("client content manifest client_ids do not match payload");
   for (const content of contents) if (!expectedClientIds.includes(content.client_id)) throw new Error(`client content identity mismatch: ${content.client_id}`);
   return { content: contents[0]!, contents, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
+}
+
+/** Select the newest verified operator bundle without requiring monthly path edits. */
+export async function resolveLatestClientContentBundle(rootDir: string, expectedClientIds: readonly string[]): Promise<string> {
+  if (expectedClientIds.length === 0) throw new Error("client content root requires at least one expected client");
+  const root = await realpath(resolve(rootDir));
+  const insideRoot = (path: string): boolean => path === root || path.startsWith(`${root}${sep}`);
+  const candidates: Array<{ path: string; periodEnd: string }> = [];
+  const seen = new Set<string>();
+  async function inspect(directory: string): Promise<void> {
+    const realDirectory = await realpath(directory);
+    if (!insideRoot(realDirectory) || seen.has(realDirectory)) return;
+    seen.add(realDirectory);
+    let entries;
+    try { entries = await readdir(directory, { withFileTypes: true }); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+    const manifest = entries.find((entry) => entry.name === "manifest.json" && (entry.isFile() || entry.isSymbolicLink()));
+    if (manifest) {
+      const manifestPath = join(directory, manifest.name);
+      const realManifest = await realpath(manifestPath).catch((error: unknown) => {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+        throw error;
+      });
+      if (realManifest && insideRoot(realManifest)) {
+        const bundle = await readClientContentBundle(directory, expectedClientIds).catch((error: unknown) => {
+          if (error instanceof Error && error.message.startsWith("client content identity mismatch:")) return null;
+          throw error;
+        });
+        if (bundle) {
+          const periodEnd = bundle.contents.flatMap((content) => content.actions.map((action) => action.period.end)).sort().at(-1) ?? "";
+          candidates.push({ path: directory, periodEnd });
+        }
+      }
+    }
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.name === "manifest.json") continue;
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) await inspect(path);
+      else if (entry.isSymbolicLink()) {
+        const realPath = await realpath(path).catch((error: unknown) => {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+          throw error;
+        });
+        if (realPath && insideRoot(realPath) && (await stat(path)).isDirectory()) await inspect(path);
+      }
+    }
+  }
+  await inspect(root);
+  candidates.sort((a, b) => b.periodEnd.localeCompare(a.periodEnd) || b.path.localeCompare(a.path));
+  if (!candidates[0]) throw new Error("no verified client content bundle found for expected clients");
+  return candidates[0].path;
 }
 
 async function writeClientContentContents(contents: ClientContent[], outputDir: string, provenance: { input_sha256: string; import_mode: "normalized_json" | "normalized_csv" }): Promise<ClientContentBundle> {

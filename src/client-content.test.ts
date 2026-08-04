@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { sha256 } from "./serialize.js";
 import test from "node:test";
-import { parseClientContent, readClientContentBundle, writeClientContentBundle, writeClientContentCsvBundle } from "./client-content.js";
+import { parseClientContent, readClientContentBundle, resolveLatestClientContentBundle, writeClientContentBundle, writeClientContentCsvBundle } from "./client-content.js";
 
 test("client content is deterministic and sorted", () => {
   const content = parseClientContent({ schema_version: "1", client_id: "bodymove", actions: [
@@ -135,4 +135,19 @@ test("client content bundle preserves multiple client action registers", async (
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("client content root resolves the newest verified action bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-client-content-root-"));
+  try {
+    const write = async (name: string, end: string) => {
+      const input = join(root, `${name}.json`);
+      const output = join(root, name);
+      await writeFile(input, JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [{ action_id: name, client_id: "bodymove", period: { start: end, end }, type: "other", status: "published", title: name, target_url: null, published_at: null, notes: null }], glossary: [], contact: null }));
+      await writeClientContentBundle(input, output);
+    };
+    await write("2026-06", "2026-06-30");
+    await write("2026-07", "2026-07-31");
+    assert.equal(await resolveLatestClientContentBundle(root, ["bodymove"]), join(root, "2026-07"));
+  } finally { await rm(root, { recursive: true, force: true }); }
 });

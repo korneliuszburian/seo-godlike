@@ -430,7 +430,7 @@ test("schedule rejects unsafe client id path segments", () => {
 });
 
 test("monthly agency schedule runs the complete report and delivery pipeline", () => {
-  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentPath: "fixtures/client-content.json", clientContentBundlePath: "fixtures/client-content-bundle", rankMonitoringRoot: "artifacts/analysis/rank-exports", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles", keywordCountry: "pl", ahrefsDate: "2026-07-29", ahrefsCountry: "pl" });
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "fixtures/client-registry.json", capabilitiesPath: "fixtures/capability-registry.json", sourceRegistryPath: "fixtures/source-registry.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", clientContentRoot: "artifacts/analysis/client-content", rankMonitoringRoot: "artifacts/analysis/rank-exports", keywordBundlePath: "artifacts/keyword-bundles/report", keywordInputPath: "fixtures/keywords.txt", keywordBundleRoot: "artifacts/keyword-bundles", keywordCountry: "pl", ahrefsDate: "2026-07-29", ahrefsCountry: "pl" });
   assert.match(entry, /^47 3 1 \* \* /);
   assert.match(entry, /install -d -m 700 'artifacts\/analysis' 'artifacts\/reports' 'artifacts\/delivery'/);
   assert.match(entry, /--agency-run/);
@@ -456,10 +456,8 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.doesNotMatch(entry, /--output 'artifacts\/reports\/history-\$\(date/);
   assert.match(entry, /--source-registry/);
   assert.match(entry, /source-registry\.json/);
-  assert.match(entry, /--client-content/);
-  assert.match(entry, /client-content\.json/);
-  assert.match(entry, /--client-content-bundle/);
-  assert.match(entry, /client-content-bundle/);
+  assert.match(entry, /--client-content-root/);
+  assert.match(entry, /client-content/);
   assert.match(entry, /--rank-monitoring-root.*artifacts\/analysis\/rank-exports/);
   assert.match(entry, /--keyword-bundle/);
   assert.match(entry, /keyword-bundles\/report/);
