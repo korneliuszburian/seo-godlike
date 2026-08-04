@@ -2010,3 +2010,19 @@ auth or schema is unknown.
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, SERPROBOT rerun, report regeneration, or publication
   occurred.
+
+## Independent OpenCode re-review — 2026-08-04
+
+- Fixed point `101a260` was reviewed read-only with
+  `opencode-go/deepseek-v4-flash`; the raw packet is retained outside the
+  repository at `/tmp/seo-godlike-review-101a260.json`.
+- Verdict: no blockers. The reviewer reproduced 199 TypeScript tests + 3
+  context tests, build/type proof, zero high audit vulnerabilities, clean
+  working tree, path confinement, manifest provenance, tenant isolation,
+  deterministic ordering, and the corrected nested rank-root schedule.
+- Remaining items are deferred rather than hidden: XDG/PDF renderer
+  dependency in cron, operator-side cron installation proof, real Chromium
+  network/determinism proof, nullable SERPROBOT location/device wildcard,
+  `manifests_verified` count semantics, and GA4 readiness observability in a
+  recurring run. No provider request, credential read, Ahrefs rerun, SERPROBOT
+  rerun, report regeneration, or publication occurred during review.
