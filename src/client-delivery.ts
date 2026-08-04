@@ -119,9 +119,19 @@ function sourceStatusInterpretation(source: AgencyReportSummary["source_status"]
   if (source.reason_code === "stale_snapshot") return "Dane nieaktualne — snapshot Ahrefs jest starszy niż wybrany okres Google Search Console";
   if (source.reason_code === "missing_evidence_bundle") return "Brak zweryfikowanych danych — nie znaleziono zaakceptowanego pakietu evidence";
   if (source.reason_code === "no_evidence_path") return "Brak ścieżki evidence — źródło nie ma jeszcze obsługiwanej ścieżki importu danych";
-  if (source.status === "unavailable") return "Niedostępne — źródło niepodłączone";
+  if (source.status === "unavailable") return `Niedostępne — ${localizedSourceReason(source.reason)}`;
   if (source.status === "ready") return "Dostępne — dane zweryfikowane";
-  return `Zablokowane — ${source.reason ?? "wymaga wyjaśnienia"}`;
+  return `Zablokowane — ${localizedSourceReason(source.reason)}`;
+}
+function localizedSourceReason(reason: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    "numeric GA4 property ID and analytics.readonly proof are not registered": "Brak zarejestrowanej numerycznej właściwości GA4 i potwierdzonego dostępu analytics.readonly.",
+    "managed Localo profile unavailable; discovery snapshot is not a canonical profile": "Nie potwierdzono zarządzanego profilu Localo; snapshot discovery nie jest profilem kanonicznym.",
+    "SERPROBOT rank snapshot or API source has not been imported": "Nie zaimportowano zweryfikowanego snapshotu pozycji ani źródła API SERPROBOT.",
+    "Semstorm visibility export or API source has not been imported": "Nie zaimportowano eksportu widoczności ani źródła API Semstorm.",
+    "no catalog metrics": "Brak zdefiniowanych metryk dla tego źródła.",
+  };
+  return labels[reason ?? ""] ?? reason ?? "Wymaga wyjaśnienia.";
 }
 function sourceReasonLabel(source: AgencyReportSummary["source_status"][number]): string {
   if (source.reason_code === "missing_freshness_baseline") return "Nie znaleziono zaakceptowanej bazy Google Search Console dla tej właściwości; świeżość estymacji Ahrefs nie jest weryfikowana.";
@@ -129,7 +139,7 @@ function sourceReasonLabel(source: AgencyReportSummary["source_status"][number])
   if (source.reason_code === "missing_evidence_bundle") return "Nie znaleziono zaakceptowanego pakietu evidence dla tego źródła; źródło nie jest traktowane jako gotowe ani jako zero.";
   if (source.reason_code === "no_evidence_path") return "Dla tego zewnętrznego źródła nie ma jeszcze obsługiwanej ścieżki importu evidence; nie pokazujemy danych ani wartości zero.";
   if (source.status === "ready") return "Dane zweryfikowane.";
-  return source.reason ?? "Brak szczegółowego powodu niedostępności.";
+  return localizedSourceReason(source.reason);
 }
 function sourceHeadlineLabel(source: AgencyReportSummary["source_status"][number]): string {
   if (source.reason_code === "missing_freshness_baseline") return `${providerLabel(source.provider)} — brak bazy porównawczej`;
@@ -434,7 +444,7 @@ function appendClientContent(html: string, content: ClientContent | null, rankMo
   const rankSection = rankMonitoring
     ? `<section class="section"><div class="eyebrow">MONITORING FRAZ</div><h2>Pozycje monitorowanych fraz</h2><p class="muted">Źródło: SERPROBOT · okres ${escapeHtml(rankMonitoring.date_range.start)} — ${escapeHtml(rankMonitoring.date_range.end)}.${rankMonitoring.source_config ? ` Projekt ${escapeHtml(rankMonitoring.source_config.project_id)} · ${escapeHtml(rankMonitoring.source_config.search_engine)}${rankMonitoring.source_config.location ? ` · ${escapeHtml(rankMonitoring.source_config.location)}` : ""}${rankMonitoring.source_config.device ? ` · ${escapeHtml(rankMonitoring.source_config.device)}` : ""}.` : ""} To snapshot pozycji, nie pomiar ruchu.</p><div class="table-wrap"><table><thead><tr><th>Fraza</th><th>Pozycja</th><th>Poprzednio</th><th>Wyszukiwarka</th><th>Lokalizacja</th><th>Adres</th></tr></thead><tbody>${rankRows || `<tr><td colspan="6" class="no-data">Brak zwróconych fraz.</td></tr>`}</tbody></table></div></section>`
     : includeClientSections && rankSource
-      ? `<section class="section"><div class="eyebrow">MONITORING FRAZ</div><h2>Pozycje monitorowanych fraz</h2><p class="muted"><span class="tag">Unavailable · źródło niepodłączone</span> ${escapeHtml(rankSource.reason ?? "Nie dostarczono zweryfikowanego snapshotu SERPROBOT.")} Brak danych nie oznacza zerowych pozycji.</p></section>`
+      ? `<section class="section"><div class="eyebrow">MONITORING FRAZ</div><h2>Pozycje monitorowanych fraz</h2><p class="muted"><span class="tag">Unavailable · źródło niepodłączone</span> ${escapeHtml(sourceReasonLabel(rankSource))} Brak danych nie oznacza zerowych pozycji.</p></section>`
       : "";
   const rankHistoryRows = rankHistory.map((entry) => `<tr><td>${escapeHtml(entry.current_period.start)} — ${escapeHtml(entry.current_period.end)}</td><td>${escapeHtml(entry.keyword)}</td><td>${escapeHtml(entry.search_engine)}</td><td>${escapeHtml(entry.location ?? "—")}</td><td>${escapeHtml(entry.previous_position ?? "—")}</td><td>${escapeHtml(entry.current_position ?? "—")}</td><td>${escapeHtml(entry.position_delta ?? "—")}</td><td>${escapeHtml(entry.previous_manifest_sha256)}</td><td>${escapeHtml(entry.manifest_sha256)}</td></tr>`).join("");
   const rankHistorySection = rankHistory.length
