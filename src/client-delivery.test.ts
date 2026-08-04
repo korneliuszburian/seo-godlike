@@ -234,6 +234,9 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
     await mkdir(artifacts, { recursive: true });
     const snapshot = (client_id: string, project_id: string, keyword: string) => ({ schema_version: "1", provider: "serprobot", client_id, captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id, search_engine: "google.pl", location: null, device: null }, rows: [{ keyword, position: 3, previous_position: null, search_engine: "google.pl", location: "PL", device: "desktop", url: null }] });
     await writeFile(rankInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [snapshot("acme", "456", "acme-fraza"), snapshot("bodymove", "123", "rehabilitacja")] }));
+    const previousRankInput = join(root, "previous-rank.json");
+    await writeFile(previousRankInput, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-07-01T00:00:00.000Z", date_range: { start: "2026-06-01", end: "2026-06-30" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: "desktop" }, rows: [{ keyword: "rehabilitacja", position: 5, previous_position: null, search_engine: "google.pl", location: "PL", device: "desktop", url: null }] }));
+    await writeRankMonitoringBundle(previousRankInput, join(artifacts, "previous-rank"));
     const packed = await writeRankMonitoringBundle(rankInput, rankBundle);
     const summary = { schema_version: "1", report_status: "partial", generated_at: "2026-08-03T00:00:00.000Z", scope: { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "ready", entries: [
       { client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] },
@@ -250,6 +253,8 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
     const bodymoveHtml = await readFile(join(root, "delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
     const acmeHtml = await readFile(join(root, "delivery", "acme", "acme-seo-report.html"), "utf8");
     assert.match(bodymoveHtml, /rehabilitacja/);
+    assert.match(bodymoveHtml, /Zmiana pozycji monitorowanych fraz/);
+    assert.match(bodymoveHtml, />-2</);
     assert.doesNotMatch(bodymoveHtml, /acme-fraza/);
     assert.match(acmeHtml, /acme-fraza/);
     assert.doesNotMatch(acmeHtml, /rehabilitacja/);

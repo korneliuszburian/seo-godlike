@@ -84,7 +84,8 @@ async function manifestPaths(root: string): Promise<string[]> {
 async function readRankBundleIfPresent(manifestPath: string, artifactsDir: string, expectedClientIds: readonly string[]): Promise<RankHistoryEntry[]> {
   const bundleDir = await resolveExistingInside(artifactsDir, relative(resolve(artifactsDir), resolve(manifestPath, "..")), "rank history bundle");
   const manifestPathSafe = await resolveExistingInside(bundleDir, "manifest.json", "rank history manifest");
-  const manifest = JSON.parse(await readFile(manifestPathSafe, "utf8")) as { provider?: unknown; files?: Record<string, unknown> };
+  const manifest = JSON.parse(await readFile(manifestPathSafe, "utf8")) as { provider?: unknown; artifact_type?: unknown; files?: Record<string, unknown> };
+  if (manifest.artifact_type === "rank-history-dashboard") return [];
   if (!isRecord(manifest.files) || !("report.json" in manifest.files)) {
     if (manifest.provider === "serprobot") throw new Error(`rank history manifest does not bind report.json: ${manifestPath}`);
     return [];
@@ -179,6 +180,7 @@ export async function writeRankHistoryDashboard(artifactsDir: string, outputDir:
   await writeFile(join(resolve(outputDir), "manifest.json"), JSON.stringify({
     schema_version: "1",
     provider: "serprobot",
+    artifact_type: "rank-history-dashboard",
     source_manifest_sha256: sourceManifestSha256,
     files: Object.fromEntries(Object.entries(files).map(([name, content]) => {
       const bytes = Buffer.from(content);

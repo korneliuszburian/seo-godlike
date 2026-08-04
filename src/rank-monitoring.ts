@@ -95,7 +95,7 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
           let manifestValue: unknown;
           try { manifestValue = JSON.parse(await readFile(manifestPath, "utf8")) as unknown; }
           catch (error) { throw new Error(`invalid rank monitoring manifest: ${manifestPath}`, { cause: error }); }
-          if (record(manifestValue) && manifestValue.provider === RANK_MONITORING_PROVIDER) {
+          if (record(manifestValue) && manifestValue.provider === RANK_MONITORING_PROVIDER && manifestValue.artifact_type !== "rank-history-dashboard") {
             try {
               const bundle = await readRankMonitoringBundle(directory, expectedClientIds);
               const ids = new Set(bundle.snapshots.map((snapshot) => snapshot.client_id));

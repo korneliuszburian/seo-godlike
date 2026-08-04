@@ -9,6 +9,7 @@ import { PhraseGroup } from "./ahrefs-keywords.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { ClientContent, readClientContent, readClientContentBundle } from "./client-content.js";
 import { RANK_MONITORING_SOURCE_LABEL, RankMonitoringSnapshot, rankMonitoringClientIds, readRankMonitoringBundle, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot } from "./rank-monitoring.js";
+import { RankHistoryComparison, readRankHistory, summarizeRankHistory } from "./rank-history.js";
 import { ProviderHistoryEntry, readProviderHistory } from "./provider-history.js";
 import { AgencyRunRecord, assertAgencyReadOnlyPolicy } from "./agency-run.js";
 import { resolveExistingInside, resolveInside } from "./path-confinement.js";
@@ -76,6 +77,7 @@ interface DeliveryUnit {
   notes: string[];
   content: ClientContent | null;
   rankMonitoring: RankMonitoringSnapshot | null;
+  rankHistory: RankHistoryComparison[];
   history: ProviderHistoryEntry[];
 }
 
@@ -421,7 +423,7 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string, clientLinks: UnitNavi
   </style></head><body><main class="sheet">${renderDashboardNav()}<section class="cover"><div class="brand">Rekurencja.com · SEO intelligence</div><h1>${escapeHtml(unit.title)}</h1><p class="subtitle">Raport wyników organicznych przygotowany wyłącznie na podstawie zweryfikowanych danych źródłowych.</p><div class="cover-meta"><span>${escapeHtml(unit.mappingLabel)}</span><span>${escapeHtml(currentPeriod ? `${currentPeriod.start} — ${currentPeriod.end}` : "Brak okresu GSC")}</span><span>${escapeHtml(generatedAt.slice(0,10))}</span></div></section><div class="content"><section id="summary"><div class="eyebrow">PODSUMOWANIE</div><h2>Najważniejsze wyniki</h2><p><span class="status ${unit.kind === "domain" ? "pending" : ""}">${escapeHtml(unit.kind === "domain" ? "Przypisanie do klienta: oczekuje na potwierdzenie operatora" : clientStatus)}</span></p><div class="callout ${unit.kind === "domain" ? "warning" : ""}">${escapeHtml(unit.kind === "domain" ? "Ta domena pochodzi z dostarczonej listy fraz, ale nie ma jeszcze jawnego przypisania do klienta. Raport pokazuje wyłącznie jej wyniki i nie przypisuje własności automatycznie." : "GSC pokazuje obserwowane dane. Ahrefs pokazuje estymacje dostawcy. Tych wartości nie sumujemy. Źródła niepodłączone nie oznaczają wartości zero.")}</div><div class="grid">${cards}${ahrefsCards}</div><div class="section"><div class="eyebrow">OKRES RAPORTOWANIA</div><h2>Zakres danych</h2><p>${currentPeriod ? `GSC: ${escapeHtml(currentPeriod.start)} — ${currentPeriod.end}.` : "Brak okresu GSC."} ${escapeHtml(previousLabel)}</p></div></section><section id="sources" class="section"><div class="eyebrow">STATUS ŹRÓDEŁ</div><h2>Źródła danych</h2><p class="muted">${escapeHtml(sourceSummary || "Dla tej jednostki nie ma jeszcze źródła pozycyjnego lub analitycznego.")}</p><div class="table-wrap"><table><thead><tr><th>Źródło</th><th>Status</th><th>Interpretacja</th></tr></thead><tbody>${sourceRows || `<tr><td colspan="3" class="no-data">Brak źródeł dla tej jednostki.</td></tr>`}</tbody></table></div></section>${keywordSection}<section id="visibility" class="page-break wide-table"><div class="eyebrow">SZCZEGÓŁY WIDOCZNOŚCI</div><h2>Widoczność organiczna</h2><p class="muted">Pełny zbiór wyników z zachowaniem rozróżnienia źródeł i typu dopasowania: w obu źródłach, tylko GSC albo tylko Ahrefs.</p><div class="table-wrap"><table><thead><tr><th>Typ</th><th>Pokrycie</th><th>Adres / zapytanie</th><th>GSC — kliknięcia</th><th>GSC — wyświetlenia</th><th>Ahrefs — szac. ruch</th></tr></thead><tbody>${contextRows || `<tr><td colspan="6" class="no-data">Brak cross-source context.</td></tr>`}</tbody></table></div></section><section id="signals" class="page-break"><div class="eyebrow">SYGNAŁY REGUŁOWE</div><h2>Sygnały do omówienia</h2><p class="muted">Rule-based signal — not a recommendation. Sygnały wynikają z wymienionych danych; nie są rekomendacjami ani wnioskami przyczynowymi.</p><div class="table-wrap"><table><thead><tr><th>Typ</th><th>Obszar</th><th>Dowód</th><th>Waga</th></tr></thead><tbody>${signalRows || `<tr><td colspan="4" class="no-data">Brak sygnałów.</td></tr>`}</tbody></table></div></section><section id="limitations" class="section"><div class="eyebrow">OGRANICZENIA I NOTATKI</div><h2>Co należy wiedzieć</h2><ul><li>Raport nie wykonuje nowych requestów i nie rozszerza zakresu danych.</li><li>Ahrefs pokazuje szacunki w ograniczonym zakresie; nie jest to pełna inwentaryzacja.</li><li>GA4 i Localo są niepodłączone; ich brak nie oznacza wartości zero.</li><li>Dostęp do GSC nie potwierdza własności domeny.</li><li>Przypisanie tej jednostki do klienta pozostaje decyzją operatora.</li>${unit.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul><div class="footer"><span>Lokalny raport oparty na zweryfikowanych danych</span><span>${escapeHtml(unit.id)}</span></div></section></div><!-- supplements -->${renderClientSwitcher(unit, clientLinks)}</main></body></html>`;
 }
 
-function appendClientContent(html: string, content: ClientContent | null, rankMonitoring: RankMonitoringSnapshot | null, history: ProviderHistoryEntry[], includeClientSections: boolean, sources: DeliveryUnit["sources"]): string {
+function appendClientContent(html: string, content: ClientContent | null, rankMonitoring: RankMonitoringSnapshot | null, rankHistory: RankHistoryComparison[], history: ProviderHistoryEntry[], includeClientSections: boolean, sources: DeliveryUnit["sources"]): string {
   const rankSource = sources.find((source) => source.provider === "serprobot");
   if (!content && !rankMonitoring && history.length === 0 && !includeClientSections) return html;
   const actions = content ? content.actions.map((action) => `<tr><td>${escapeHtml(action.period.start)} — ${escapeHtml(action.period.end)}</td><td>${escapeHtml(actionTypeLabel(action.type))}</td><td>${escapeHtml(actionStatusLabel(action.status))}</td><td>${escapeHtml(action.title)}</td><td>${escapeHtml(action.target_url ?? "—")}</td></tr>`).join("") : "";
@@ -433,11 +435,16 @@ function appendClientContent(html: string, content: ClientContent | null, rankMo
     : includeClientSections && rankSource
       ? `<section class="section"><div class="eyebrow">MONITORING FRAZ</div><h2>Pozycje monitorowanych fraz</h2><p class="muted"><span class="tag">Unavailable · źródło niepodłączone</span> ${escapeHtml(rankSource.reason ?? "Nie dostarczono zweryfikowanego snapshotu SERPROBOT.")} Brak danych nie oznacza zerowych pozycji.</p></section>`
       : "";
+  const rankHistoryRows = rankHistory.map((entry) => `<tr><td>${escapeHtml(entry.current_period.start)} — ${escapeHtml(entry.current_period.end)}</td><td>${escapeHtml(entry.keyword)}</td><td>${escapeHtml(entry.search_engine)}</td><td>${escapeHtml(entry.location ?? "—")}</td><td>${escapeHtml(entry.previous_position ?? "—")}</td><td>${escapeHtml(entry.current_position ?? "—")}</td><td>${escapeHtml(entry.position_delta ?? "—")}</td><td>${escapeHtml(entry.previous_manifest_sha256)}</td><td>${escapeHtml(entry.manifest_sha256)}</td></tr>`).join("");
+  const rankHistorySection = rankHistory.length
+    ? `<section class="section"><div class="eyebrow">HISTORIA MONITORINGU</div><h2>Zmiana pozycji monitorowanych fraz</h2><p class="muted">Observed — SERPROBOT. Porównanie obejmuje wyłącznie bezpośrednio sąsiadujące, zweryfikowane snapshoty. Ujemna delta oznacza poprawę, ponieważ niższa pozycja jest lepsza.</p><div class="table-wrap"><table><thead><tr><th>Bieżący okres</th><th>Fraza</th><th>Wyszukiwarka</th><th>Lokalizacja</th><th>Poprzednio</th><th>Obecnie</th><th>Delta</th><th>Manifest poprzedni</th><th>Manifest obecny</th></tr></thead><tbody>${rankHistoryRows}</tbody></table></div></section>`
+    : "";
   const actionsSection = includeClientSections
     ? `<section class="section"><div class="eyebrow">DZIAŁANIA DLA STRONY</div><h2>Wykonane i zaplanowane działania</h2>${content ? `<p class="muted">Rejestr działań pochodzi z jawnego inputu operatora; pozycje nie są wywnioskowane z metryk.</p><div class="table-wrap"><table><thead><tr><th>Okres</th><th>Typ</th><th>Status</th><th>Opis</th><th>Adres</th></tr></thead><tbody>${actions || `<tr><td colspan="5" class="no-data">Brak wpisów dla tego okresu.</td></tr>`}</tbody></table></div>${contact}` : `<p class="muted"><span class="tag">Unavailable · brak rejestru działań</span> Nie dostarczono manifest-bound rejestru działań off-site/on-site. Nie wywnioskujemy działań z metryk.</p>`}</section>${content ? `<section class="section"><div class="eyebrow">PRZYDATNE POJĘCIA</div><h2>Słownik raportu</h2><div class="table-wrap"><table><thead><tr><th>Pojęcie</th><th>Wyjaśnienie</th></tr></thead><tbody>${glossary || `<tr><td colspan="2" class="no-data">Brak wpisów słownika.</td></tr>`}</tbody></table></div></section>` : ""}`
     : "";
-  const section = `${historySection(history)}${rankSection}${actionsSection}`
+  const section = `${historySection(history)}${rankHistorySection}${rankSection}${actionsSection}`
     .replace('<section class="section"><div class="eyebrow">HISTORIA WYNIKÓW', '<section id="history" class="section supplement" style="margin-left:18mm;margin-right:18mm"><div class="eyebrow">HISTORIA WYNIKÓW')
+    .replace('<section class="section"><div class="eyebrow">HISTORIA MONITORINGU', '<section id="rank-history" class="section supplement" style="margin-left:18mm;margin-right:18mm"><div class="eyebrow">HISTORIA MONITORINGU')
     .replace('<section class="section"><div class="eyebrow">MONITORING FRAZ', '<section id="ranking" class="section supplement" style="margin-left:18mm;margin-right:18mm"><div class="eyebrow">MONITORING FRAZ')
     .replace('<section class="section"><div class="eyebrow">DZIAŁANIA DLA STRONY', '<section id="actions" class="section supplement" style="margin-left:18mm;margin-right:18mm"><div class="eyebrow">DZIAŁANIA DLA STRONY');
   return html.replace("<!-- supplements -->", `${section}<!-- supplements -->`);
@@ -540,8 +547,11 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   if (options.renderPdf && !options.pdfRenderer) await assertPdfRendererAvailable();
   const summary = await readAgencyReport(options.agencyReportPath, options.artifactsDir);
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
-  const resolvedRankMonitoringPath = options.rankMonitoringRoot
-    ? await resolveLatestRankMonitoringBundle(await resolveRankMonitoringRoot(options.rankMonitoringRoot, options.artifactsDir), rankMonitoringClientIds(summary.source_status))
+  const resolvedRankMonitoringRoot = options.rankMonitoringRoot
+    ? await resolveRankMonitoringRoot(options.rankMonitoringRoot, options.artifactsDir)
+    : null;
+  const resolvedRankMonitoringPath = resolvedRankMonitoringRoot
+    ? await resolveLatestRankMonitoringBundle(resolvedRankMonitoringRoot, rankMonitoringClientIds(summary.source_status))
     : options.rankMonitoringPath;
   const metrics = await collectMetrics(summary, options.artifactsDir);
   const agencyReportBytes = await readFile(options.agencyReportPath);
@@ -561,6 +571,13 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const outputDir = resolve(options.outputDir);
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
   const rankBundle = resolvedRankMonitoringPath ? await readRankMonitoringBundle(resolvedRankMonitoringPath, clientIds) : null;
+  const rankHistory = resolvedRankMonitoringRoot && rankBundle ? summarizeRankHistory(await readRankHistory(resolvedRankMonitoringRoot, clientIds)) : null;
+  const rankComparisonsByClient = new Map<string, RankHistoryComparison[]>();
+  for (const comparison of rankHistory?.comparisons ?? []) {
+    const entries = rankComparisonsByClient.get(comparison.client_id) ?? [];
+    entries.push(comparison);
+    rankComparisonsByClient.set(comparison.client_id, entries);
+  }
   const declaredRankEvidence = summary.rank_monitoring_snapshots ?? (summary.rank_monitoring ? [summary.rank_monitoring] : []);
   if (declaredRankEvidence.length) {
     if (!rankBundle) throw new Error("agency report declares rank monitoring evidence but no rank bundle was supplied");
@@ -583,12 +600,12 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
       clientKeywordGroups.set(owner.client_id, groups);
     }
   }
-  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContentById.get(clientId) ?? (directClientContent?.client_id === clientId ? directClientContent : null); const rankMonitoring = rankBundle?.snapshots.find((snapshot) => snapshot.client_id === clientId) ?? null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${actionStatusLabel(action.status)}: ${action.title}`) : [], content, rankMonitoring, history: historyEntries.filter((entry) => entry.client_id === clientId) }; });
+  const units: DeliveryUnit[] = clientIds.map((clientId) => { const content = clientContentById.get(clientId) ?? (directClientContent?.client_id === clientId ? directClientContent : null); const rankMonitoring = rankBundle?.snapshots.find((snapshot) => snapshot.client_id === clientId) ?? null; return { id: clientId, title: summary.scope.entries.find((entry) => entry.client_id === clientId)?.client_display_name ?? clientId, kind: "client", mappingLabel: `Klient: ${clientId}`, sources: summary.source_status.filter((source) => source.client_id === clientId), metrics: metrics.filter((metric) => summary.accepted_bundles.some((bundle) => bundle.client_id === clientId && bundle.property_id === metric.property_id && bundle.provider === metric.provider)), context: summary.cross_source_context.filter((entry) => entry.client_id === clientId), insights: summary.insights.filter((insight) => insight.client_id === clientId), keywordGroups: clientKeywordGroups.get(clientId) ?? [], notes: content ? content.actions.map((action) => `Działanie ${actionStatusLabel(action.status)}: ${action.title}`) : [], content, rankMonitoring, rankHistory: rankComparisonsByClient.get(clientId) ?? [], history: historyEntries.filter((entry) => entry.client_id === clientId) }; });
   if (keyword) {
     for (const inputGroup of keyword.input_groups) {
       if (summary.scope.entries.some((entry) => hostFromProperty(entry.property_id) === inputGroup.host.toLowerCase())) continue;
       const result = keyword.groups.find((group) => group.host === inputGroup.host);
-      units.push({ id: `domain-${inputGroup.host}`, title: inputGroup.host, kind: "domain", mappingLabel: "Przypisanie do klienta: oczekuje na potwierdzenie operatora", sources: [{ client_id: "unassigned", property_id: inputGroup.host, provider: "ahrefs-keywords-explorer", status: "ready", reason: "Dane fraz zweryfikowane w bundle Keywords Explorer", bundle_path: keyword.bundle_path }], metrics: [], context: [], insights: [], keywordGroups: [{ group: inputGroup, rows: result?.rows ?? [] }], notes: keyword.notes.filter((note) => note.startsWith(`${inputGroup.host}:`)), content: null, rankMonitoring: null, history: [] });
+      units.push({ id: `domain-${inputGroup.host}`, title: inputGroup.host, kind: "domain", mappingLabel: "Przypisanie do klienta: oczekuje na potwierdzenie operatora", sources: [{ client_id: "unassigned", property_id: inputGroup.host, provider: "ahrefs-keywords-explorer", status: "ready", reason: "Dane fraz zweryfikowane w bundle Keywords Explorer", bundle_path: keyword.bundle_path }], metrics: [], context: [], insights: [], keywordGroups: [{ group: inputGroup, rows: result?.rows ?? [] }], notes: keyword.notes.filter((note) => note.startsWith(`${inputGroup.host}:`)), content: null, rankMonitoring: null, rankHistory: [], history: [] });
     }
   }
   units.sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
@@ -610,7 +627,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
       kind: linkUnit.kind,
       href: relative(unitDir, join(outputDir, unitSegments.get(linkUnit.id) ?? safeSegment(linkUnit.id), `${safeSegment(linkUnit.id)}-seo-report.html`)),
     }));
-    const html = appendClientContent(omitEmptyEvidenceSections(unitHtml(unit, generatedAt, navigationLinks), unit), unit.content, unit.rankMonitoring, unit.history, unit.kind === "client", unit.sources);
+    const html = appendClientContent(omitEmptyEvidenceSections(unitHtml(unit, generatedAt, navigationLinks), unit), unit.content, unit.rankMonitoring, unit.rankHistory, unit.history, unit.kind === "client", unit.sources);
     await writeFile(htmlPath, html, { encoding: "utf8", flag: "wx", mode: 0o600 });
     let pdf: string | null = null;
     if (options.renderPdf) {
@@ -629,13 +646,14 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   await writeFile(join(outputDir, "index.html"), index, { encoding: "utf8", flag: "wx", mode: 0o600 });
   const files: Record<string, string | Buffer> = { "index.html": index };
   for (const unit of resultUnits) { files[unit.html] = await readFile(join(outputDir, unit.html), "utf8"); if (unit.pdf) files[unit.pdf] = await readFile(join(outputDir, unit.pdf)); files[unit.email] = await readFile(join(outputDir, unit.email), "utf8"); }
-  const manifest = { schema_version: "1", source: "agency-report.json", agency_report_sha256: hashBytes(agencyReportBytes), agency_run_record_sha256: agencyRunRecord?.sha256 ?? null, source_manifest_sha256: sourceManifestHashes, history_manifest_sha256: [...new Set(historyEntries.map((entry) => entry.manifest_sha256))].sort(), keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? options.pdfRenderer ? "renderer_custom" : "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
+  const manifest = { schema_version: "1", source: "agency-report.json", agency_report_sha256: hashBytes(agencyReportBytes), agency_run_record_sha256: agencyRunRecord?.sha256 ?? null, source_manifest_sha256: sourceManifestHashes, history_manifest_sha256: [...new Set(historyEntries.map((entry) => entry.manifest_sha256))].sort(), rank_history_source_manifest_sha256: [...new Set(rankHistory?.snapshots.map((entry) => entry.manifest_sha256) ?? [])].sort(), keyword_manifest_sha256: keywordManifestSha256, client_content_sha256: clientContentBundle ? null : options.clientContentPath ? hashBytes(await readFile(options.clientContentPath)) : null, client_content_manifest_sha256: clientContentBundle?.manifest_sha256 ?? null, rank_monitoring_manifest_sha256: rankBundle?.manifest_sha256 ?? null, execution: { provider_calls: 0, network_policy: options.renderPdf ? options.pdfRenderer ? "renderer_custom" : "renderer_network_isolated" : "no_renderer" }, units: resultUnits, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: hashBytes(content), bytes: Buffer.byteLength(content) }])) };
   await writeFile(join(outputDir, "manifest.json"), canonicalJson(manifest), { encoding: "utf8", flag: "wx", mode: 0o600 });
   const verifiedManifestHashes = new Set<string>([
     ...Object.values(sourceManifestHashes),
     ...historyEntries.map((entry) => entry.manifest_sha256),
     ...(keywordManifestSha256 ? [keywordManifestSha256] : []),
     ...(rankBundle ? [rankBundle.manifest_sha256] : []),
+    ...(rankHistory?.snapshots.map((entry) => entry.manifest_sha256) ?? []),
     ...(clientContentBundle ? [clientContentBundle.manifest_sha256] : []),
   ]);
   return { output_dir: outputDir, units: resultUnits, manifests_verified: 1 + verifiedManifestHashes.size };

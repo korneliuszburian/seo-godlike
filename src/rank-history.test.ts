@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { writeRankHistoryDashboard } from "./rank-history.js";
+import { readRankHistory } from "./rank-history.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 
 test("rank history compares shared keywords across verified non-overlapping snapshots", async () => {
@@ -36,6 +37,7 @@ test("rank history compares shared keywords across verified non-overlapping snap
       assert.equal(manifest.files[name]?.sha256, createHash("sha256").update(bytes).digest("hex"));
       assert.equal((await stat(join(root, "dashboard", name))).mode & 0o777, 0o600);
     }
+    assert.equal((await readRankHistory(root, ["bodymove"])).length, 2);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
