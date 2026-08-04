@@ -2281,22 +2281,38 @@ auth or schema is unknown.
   suite plus context tests, build, audit and diff checks; no provider request or
   rerun occurred.
 
-## SERPROBOT read-only API seam — 2026-08-04 (working tree)
+## SERPROBOT read-only API candidate — 2026-08-04
 
-- Added a configurable, fail-closed SERPROBOT project adapter using the
-  keyring reference `keyring:seo-godlike/serprobot-api-key`. It sends only the
-  documented read operation (`action=project`) with numeric project ID and
-  explicit date range; it never writes to SERPROBOT and never logs the API key.
-- The raw response is retained beside the normalized rank snapshot in a
-  manifest-bound bundle. The normalized snapshot deliberately leaves
-  `previous_position` empty; recurring comparison is derived from separate
-  verified snapshots rather than guessed from provider history fields.
-- Added `--pull-serprobot` for one explicit project and `--agency-run
-  --serprobot-api` for the recurring source path. The monthly schedule can emit
-  the latter, with an optional endpoint override. No live SERPROBOT request,
-  credential read, Ahrefs request or report rerun was performed in this slice.
+- Added a configurable, fail-closed candidate adapter using the keyring
+  reference `keyring:seo-godlike/serprobot-api-key`. It is read-only in code,
+  retains raw responses beside normalized snapshots, and never logs the API
+  key.
+- The public SERPROBOT connector documentation confirms the key, numeric
+  project ID and date inputs, but does not confirm a standalone HTTP endpoint
+  or response schema. Therefore this API candidate is not treated as an
+  official production connector and must not be enabled by schedule merely
+  because a key exists.
+- The supported recurring boundary remains a manifest-bound SERPROBOT/Looker
+  export (`--pack-rank-monitoring` / `--rank-monitoring-root`). The API path is
+  available only for an operator-confirmed endpoint, response fixture and one
+  bounded smoke test. No live SERPROBOT request, credential read, Ahrefs
+  request or report rerun was performed in this slice.
 - Added parser, date-boundary, raw-evidence, manifest and schedule falsifiers;
-  local proof is green at 218 TypeScript tests + 3 context tests. The adapter
-  remains operationally unavailable until the operator supplies the keyring
-  secret, numeric project IDs and source configuration, then authorizes one
-  bounded smoke test.
+  local proof is green at 218 TypeScript tests + 3 context tests. The source
+  remains unavailable until the operator supplies the project mapping and
+  explicitly confirms the API contract or provides a normalized export.
+
+## Existing-evidence client delivery proof — 2026-08-04
+
+- Generated local client delivery from the existing fixed agency report only;
+  no GSC, Ahrefs, SERPROBOT, GA4 or Localo request was made and no source was
+  rerun. Output path is the ignored directory
+  `artifacts/analysis/client-delivery-no-rerun-20260804-pdf`.
+- The delivery contains 1 client unit and 5 domain units, each with HTML, PDF
+  and email output. Its root manifest declares 19 files; an independent
+  readback verified all 19 SHA-256 hashes and byte counts.
+- All six PDFs pass `qpdf --check` and have mode `0600`. The delivery manifest
+  records `provider_calls: 0` and `network_policy: renderer_network_isolated`.
+- OpenCode/DeepSeek was started for the current fixed point but timed out after
+  producing only a partial event trace; no final verdict is accepted from that
+  run. Earlier bounded reviews remain advisory evidence only.
