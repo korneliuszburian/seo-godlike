@@ -1659,3 +1659,18 @@ auth or schema is unknown.
   "wymaga wyjaśnienia" label.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
+
+## Fixed-point second opinion — 2026-08-04
+
+- OpenCode non-interactive review using `opencode-go/deepseek-v4-flash` checked
+  fixed point `4bd7b82`; it found no runtime blocker. It verified the new
+  cross-host freshness falsifier, email deduplication, manifest provenance,
+  path confinement, tenant separation, network-silent PDF boundary and Polish
+  source semantics.
+- The review records two low-risk policy notes: Ahrefs-only scopes have no GSC
+  baseline to compare, and `www` versus `sc-domain:` remains intentionally
+  conservative and therefore unavailable without an exact baseline.
+- Local proof at this fixed point: 175 TypeScript tests + 3 context tests,
+  build, zero high audit vulnerabilities, and `git diff --check`. The review
+  was read-only; no provider request, credential read, Ahrefs rerun, report
+  regeneration, or publication occurred.
