@@ -78,7 +78,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     options.deliveryDir,
     ...(options.historyDir ? [dirname(options.historyDir)] : []),
     ...(options.rankHistoryDir ? [dirname(options.rankHistoryDir)] : []),
-  ])].filter((path) => path !== "." && path !== "").map(shellQuote).join(" ")}`;
+  ])].filter((path) => path !== "." && path !== "" && path !== "/").map(shellQuote).join(" ")}`;
   const command = [
     "node", "dist/cli.js", "--agency-run",
     "--registry", shellQuote(options.registryPath), "--capabilities", shellQuote(options.capabilitiesPath),

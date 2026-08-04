@@ -471,3 +471,17 @@ test("monthly agency schedule never chmods the working directory for single-segm
   assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery'/);
   assert.doesNotMatch(entry, /install -d -m 700[^&]*'\.'/);
 });
+
+test("monthly agency schedule never prepares the filesystem root", () => {
+  const entry = buildMonthlyAgencyCron({
+    workingDirectory: "/work/seo-godlike",
+    oauthClientPath: "/secure/oauth-client.json",
+    registryPath: "registry.json",
+    capabilitiesPath: "capabilities.json",
+    artifactsDir: "artifacts",
+    reportDir: "reports",
+    deliveryDir: "delivery",
+    historyDir: "/history",
+  });
+  assert.doesNotMatch(entry, /install -d -m 700[^&]*'\/'/);
+});

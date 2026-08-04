@@ -85,3 +85,13 @@ test("readiness blocks a ready GA4 source without a matching scope property", ()
   assert.equal(readiness.status, "partial");
   assert.deepEqual(readiness.blockers, ["bodymove:google-analytics:properties/123456789: no matching ready GA4 scope entry is registered"]);
 });
+
+test("readiness does not match a GA4 scope property across clients", () => {
+  const readiness = buildAgencyReadiness(
+    { schema_version: "1", generated_at: "2026-08-04T00:00:00.000Z", status: "ready", entries: [{ client_id: "acme", client_display_name: "Acme", property_id: "properties/123456789", provider: "google-analytics", status: "ready", reason: null, metrics: [] }] },
+    { sources: [{ source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/123456789", status: "ready", reason: null }] },
+    { oauth_client_supplied: true, keyword_input_supplied: false, rank_monitoring_supplied: false, client_content_supplied: false },
+    "2026-08-04T00:00:00.000Z",
+  );
+  assert.deepEqual(readiness.blockers, ["bodymove:google-analytics:properties/123456789: no matching ready GA4 scope entry is registered"]);
+});

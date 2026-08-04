@@ -1721,3 +1721,14 @@ auth or schema is unknown.
 - Proof: 180 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
+
+## Cross-tenant readiness and root-path hardening — 2026-08-04
+
+- GA4 readiness matching now requires both the source `client_id` and exact
+  ready scope `property_id`; a same-property entry belonging to another client
+  cannot satisfy readiness. A focused cross-client falsifier covers this.
+- Schedule root preparation now excludes `.`, empty paths, and `/`; a focused
+  absolute-root falsifier covers the last case.
+- The control-plane map is pinned to `db81888` as the current route fixed point.
+- No provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.
