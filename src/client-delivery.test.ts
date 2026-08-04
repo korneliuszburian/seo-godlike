@@ -46,7 +46,7 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     const agencyRunRecordPath = join(root, "agency-run.json");
     await writeFile(agencyRunRecordPath, agencyRunRecord);
     const contentPath = join(root, "client-content.json");
-    await writeFile(contentPath, JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [{ action_id: "a-1", client_id: "bodymove", period: { start: "2026-07-01", end: "2026-07-01" }, type: "sponsored_article", status: "published", title: "Publikacja partnera", target_url: "https://bodymove.pl/", published_at: "2026-07-01", notes: null }], glossary: [{ term: "CTR", explanation: "Współczynnik klikalności" }], contact: { name: "Operator", email: "operator@example.test", phone: null } }));
+    await writeFile(contentPath, JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [{ action_id: "a-1", client_id: "bodymove", period: { start: "2026-07-01", end: "2026-07-01" }, type: "sponsored_article", status: "published", title: "Publikacja partnera", target_url: "https://bodymove.pl/", published_at: "2026-07-02", notes: "Link zweryfikowany przez operatora" }], glossary: [{ term: "CTR", explanation: "Współczynnik klikalności" }], contact: { name: "Operator", email: "operator@example.test", phone: null } }));
     const foreignContentPath = join(root, "foreign-client-content.json");
     await writeFile(foreignContentPath, JSON.stringify({ schema_version: "1", client_id: "other", actions: [], glossary: [], contact: { name: "Operator", email: "operator@example.test", phone: null } }));
     await assert.rejects(() => writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "foreign-content-delivery"), clientContentPath: foreignContentPath, agencyRunRecordPath }), /outside delivery scope/);
@@ -66,6 +66,9 @@ test("client delivery splits unmapped phrase domains and keeps the client report
     assert.match(clientHtml, /Współczynnik klikalności/);
     assert.match(clientHtml, /Zakres danych/);
     assert.match(clientHtml, /class="dashboard-nav"/);
+    assert.match(clientHtml, /Opublikowano/);
+    assert.match(clientHtml, /2026-07-02/);
+    assert.match(clientHtml, /Link zweryfikowany przez operatora/);
     assert.match(clientHtml, /id="summary"/);
     assert.match(clientHtml, /id="sources"/);
     assert.match(clientHtml, /class="client-switcher"/);
