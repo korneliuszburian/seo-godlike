@@ -11,6 +11,13 @@ import { canonicalJson, sha256 } from "./serialize.js";
 
 const execFileAsync = promisify(execFile);
 
+test("daily schedule fails closed without an OAuth client path", async () => {
+  await assert.rejects(
+    execFileAsync(process.execPath, ["dist/cli.js", "--schedule"], { cwd: process.cwd() }),
+    /--schedule requires --oauth-client for daily analytics schedule/,
+  );
+});
+
 test("agency-run rejects malformed keyword budget before creating output or running tasks", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-budget-"));
   const output = join(root, "run");

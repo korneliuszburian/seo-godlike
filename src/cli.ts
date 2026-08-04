@@ -423,12 +423,13 @@ async function main(): Promise<void> {
       })}\n`);
       return;
     }
+    if (!hasArgument("--oauth-client")) throw new Error("--schedule requires --oauth-client for daily analytics schedule");
     if (!["--client-id", "--property-id", "--registry", "--capabilities"].every(hasArgument)) {
       process.stderr.write("warning: using default schedule values; pass explicit flags for production use\n");
     }
     process.stdout.write(`${buildDailyAnalyticsCron({
       workingDirectory: process.cwd(),
-      oauthClientPath: optionalArgument("--oauth-client") ?? "/absolute/path/outside/repository/oauth-client.json",
+      oauthClientPath: argument("--oauth-client"),
       clientId: optionalArgument("--client-id") ?? "bodymove",
       propertyId: optionalArgument("--property-id") ?? "sc-domain:bodymove.pl",
       registryPath: optionalArgument("--registry") ?? "fixtures/client-registry.json",

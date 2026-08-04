@@ -2041,3 +2041,29 @@ auth or schema is unknown.
   high audit vulnerabilities, and `git diff --check`. No provider request,
   credential read, Ahrefs rerun, SERPROBOT rerun, report regeneration, or
   publication occurred.
+
+## Independent OpenCode review — 2026-08-04 (`f4ee86a`)
+
+- Fixed point `f4ee86a` was reviewed read-only with
+  `opencode-go/deepseek-v4-flash`; the raw packet is retained outside the
+  repository at `/tmp/seo-godlike-review-f4ee86a.json`.
+- Verdict: no blockers. The reviewer reproduced 200 TypeScript tests + 3
+  context tests, clean build, audit-clean dependencies, path confinement,
+  manifest provenance, tenant isolation, and the standalone declared-rank
+  snapshot binding.
+- Deferred items: daily schedule placeholder OAuth path (addressed in the next
+  local slice), PDF/cron operator proof, nullable SERPROBOT config matching,
+  history nullable-metric semantics, delivery manifest count semantics, and
+  the existing TOCTOU window. No provider request, credential read, Ahrefs
+  rerun, SERPROBOT rerun, report regeneration, or publication occurred.
+
+## Daily schedule OAuth fail-closed guard — 2026-08-04
+
+- `--schedule` now requires an explicit `--oauth-client` before generating the
+  daily analytics cron. The former placeholder path could create a cron entry
+  that only failed at runtime; the command now matches agency schedule's
+  fail-closed authority boundary.
+- Added a CLI falsifier for the missing OAuth argument. Full proof passes with
+  200 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request or evidence
+  rerun occurred.
