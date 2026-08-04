@@ -335,7 +335,7 @@ async function main(): Promise<void> {
       if (entry.provider === "google-analytics") return { id, status: "ready" as const, run: async () => { if (!oauthClientPath) throw new Error("missing --oauth-client for Google Analytics"); await runSingleGa4Analytics({ oauthClientPath, propertyId: entry.property_id, clientId: entry.client_id, registry, capabilities, outputDir }); } };
       return { id, status: "ready" as const, run: async () => runSingleAhrefsAnalytics({ clientId: entry.client_id, propertyId: entry.property_id, date: ahrefsDate, country: ahrefsCountry, registry, capabilities, outputDir }) };
     });
-    const sourceTasks = buildExternalSourceTasks(sourceRegistry, resolvedRankMonitoringPath);
+    const sourceTasks = buildExternalSourceTasks(sourceRegistry, resolvedRankMonitoringPath, scope.entries);
     const keywordTasks = keywordResearchOutputPath && keywordInputPath ? [{
       id: keywordResearchTaskId as string,
       status: "ready" as const,

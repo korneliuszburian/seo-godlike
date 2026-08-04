@@ -2067,3 +2067,14 @@ auth or schema is unknown.
   200 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request or evidence
   rerun occurred.
+
+## GA4 scope mismatch run visibility — 2026-08-04
+
+- Agency-run now emits a blocked task when a ready GA4 source-registry target
+  has no matching ready property-scope entry. Valid GA4 entries remain owned
+  by the property scope executor and are not duplicated as external tasks.
+- The focused falsifier proves the mismatch appears as
+  `no matching ready GA4 scope entry is registered`; no GA4 request is
+  possible on that path. Full proof passes with 201 TypeScript tests + 3
+  context tests, build, zero high audit vulnerabilities, and
+  `git diff --check`. No provider request or rerun occurred.

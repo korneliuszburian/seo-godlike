@@ -84,6 +84,11 @@ test("GA4 is executed by the property scope executor, not external source tasks"
   }]);
 });
 
+test("GA4 scope mismatch is recorded as a blocked agency task", () => {
+  const tasks = buildExternalSourceTasks({ sources: [{ source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/999", status: "ready", reason: null }] }, undefined, [{ client_id: "bodymove", property_id: "properties/123", provider: "google-analytics", status: "ready" }]);
+  assert.deepEqual(tasks, [{ id: "bodymove:google-analytics:properties/999", status: "blocked", reason: "no matching ready GA4 scope entry is registered" }]);
+});
+
 test("SERPROBOT collection validates the project for each client without provider IO", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-source-collection-"));
   try {

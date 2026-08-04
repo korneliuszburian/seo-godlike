@@ -5,10 +5,21 @@ export interface AgencyTask {
   run?: () => Promise<void>;
 }
 
-export function buildExternalSourceTasks(sourceRegistry: SourceRegistry, rankMonitoringPath?: string): AgencyTask[] {
+export function buildExternalSourceTasks(
+  sourceRegistry: SourceRegistry,
+  rankMonitoringPath?: string,
+  scopeEntries?: readonly { client_id: string; property_id: string; provider: string; status: string }[],
+): AgencyTask[] {
   const expectedRankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
-  return sourceRegistry.sources.filter((source) => source.provider !== "google-analytics").map((source) => {
+  return sourceRegistry.sources.filter((source) => {
+    if (source.provider !== "google-analytics") return true;
+    if (scopeEntries === undefined) return false;
+    return !scopeEntries.some((entry) => entry.status === "ready" && entry.client_id === source.client_id && entry.provider === "google-analytics" && entry.property_id === source.target);
+  }).map((source) => {
     const id = `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}`;
+    if (source.provider === "google-analytics") {
+      return { id, status: "blocked", reason: "no matching ready GA4 scope entry is registered" };
+    }
     if (source.status !== "ready") return { id, status: "blocked", reason: source.reason ?? "external source is unavailable" };
     if (source.provider !== "serprobot") return { id, status: "blocked", reason: `no local read-only executor for external provider '${source.provider}'` };
     if (!rankMonitoringPath) return { id, status: "blocked", reason: "SERPROBOT rank snapshot was not supplied" };
