@@ -1553,6 +1553,16 @@ auth or schema is unknown.
   request, credential read, Ahrefs rerun, report regeneration, or publication
   occurred.
 
+## Review hygiene and deduplicated delivery status — 2026-08-04
+
+- The control-plane map now points at fixed point `4a0711d`; it remains a
+  navigation surface, while the ticket remains the status authority.
+- Client headline and source-summary labels deduplicate identical provider
+  reason labels while retaining the full per-property source table.
+- Proof: 174 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.
+
 ## Verified keyword-only evidence status — 2026-08-04
 
 - A final exact-HEAD review found that a verified Keywords Explorer bundle was

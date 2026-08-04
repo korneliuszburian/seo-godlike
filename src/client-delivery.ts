@@ -388,9 +388,9 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string, clientLinks: UnitNavi
   const gsc = unit.metrics.filter((metric) => metric.provider === "google-search-console");
   const ahrefs = unit.metrics.filter((metric) => metric.provider === "ahrefs");
   const currentPeriod = gsc.find((metric) => metric.current_range)?.current_range;
-  const sourceSummary = unit.sources.map((source) => source.status === "ready"
+  const sourceSummary = [...new Set(unit.sources.map((source) => source.status === "ready"
     ? sourceHeadlineLabel(source)
-    : `${source.status === "unavailable" ? "Niedostępne" : "Zablokowane"} — ${sourceHeadlineLabel(source)}`).join(", ");
+    : `${source.status === "unavailable" ? "Niedostępne" : "Zablokowane"} — ${sourceHeadlineLabel(source)}`))].join(", ");
   const cards = gsc.flatMap((metric) => [
     [`Observed — Google Search Console · ${metric.property_id} · Kliknięcia`, formatNumber(metricValue(metric, "clicks")), `Zmiana: ${comparisonText(metric, "clicks", "count")}`],
     [`Observed — Google Search Console · ${metric.property_id} · Wyświetlenia`, formatNumber(metricValue(metric, "impressions")), `Zmiana: ${comparisonText(metric, "impressions", "count")}`],
@@ -406,7 +406,7 @@ function unitHtml(unit: DeliveryUnit, generatedAt: string, clientLinks: UnitNavi
   const ahrefsDetails = ahrefs.map(ahrefsDetailSection).join("");
   keywordSection += ahrefsDetails;
   const readySources = [...new Set(unit.sources.filter((source) => source.status === "ready").map((source) => source.provider))];
-  const unavailableSources = unit.sources.filter((source) => source.status !== "ready");
+  const unavailableSources = [...new Map(unit.sources.filter((source) => source.status !== "ready").map((source) => [sourceHeadlineLabel(source), source])).values()];
   const clientStatus = unavailableSources.length
     ? `Raport częściowy — dostępne: ${readySources.map(providerLabel).join(", ") || "brak"}; niedostępne: ${unavailableSources.map(sourceHeadlineLabel).join(", ")}`
     : readySources.length
