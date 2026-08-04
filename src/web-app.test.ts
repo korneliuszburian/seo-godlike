@@ -37,6 +37,10 @@ test("dashboard serves the manifest-bound delivery package read-only", async () 
     assert.equal(report.status, 200);
     assert.match(await report.text(), /client/);
 
+    const application = await fetch(`${app.url}app`);
+    assert.equal(application.status, 200);
+    assert.match(await application.text(), /fetch\('\/api\/units'\)/);
+
     const traversal = await fetch(`${app.url}../outside.txt`);
     assert.notEqual(traversal.status, 200);
   } finally {

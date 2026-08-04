@@ -2488,3 +2488,8 @@ auth or schema is unknown.
   existing Bodymove delivery package served successfully with
   `provider_calls: 0`; no Ahrefs request, report regeneration or credential
   read occurred.
+- The `/app` route is the application view: it fetches unit metadata from the
+  local API, renders the client/domain switcher and loads the selected report
+  dynamically. It is intentionally still a local read-only runtime; auth,
+  hosted persistence and write-capable operator workflows remain separate
+  slices rather than being implied by the prototype shell.

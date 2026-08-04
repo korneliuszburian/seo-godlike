@@ -57,6 +57,26 @@ function contentType(path: string): string {
   }
 }
 
+function dashboardShell(): string {
+  return `<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SEO Godlike — dashboard</title>
+<style>
+:root{color-scheme:dark;--bg:#071b1d;--panel:#0e292c;--muted:#92abad;--accent:#65e6c0;--line:#244447}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f4fbfa;font:15px/1.5 system-ui,sans-serif;min-height:100vh}
+header{display:flex;align-items:center;justify-content:space-between;padding:22px 28px;border-bottom:1px solid var(--line)}
+h1{font-size:20px;margin:0}main{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 76px)}
+nav{padding:20px;border-right:1px solid var(--line)}button{display:block;width:100%;text-align:left;background:transparent;color:var(--muted);border:1px solid transparent;border-radius:12px;padding:13px;margin-bottom:8px;cursor:pointer}
+button:hover,button[aria-current=true]{background:var(--panel);border-color:var(--accent);color:#fff}small{display:block;color:var(--muted);margin-top:3px}section{padding:22px;min-width:0}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:18px}iframe{width:100%;height:calc(100vh - 160px);border:1px solid var(--line);border-radius:18px;background:#fff}#status{color:var(--muted)}
+@media(max-width:720px){main{grid-template-columns:1fr}nav{border-right:0;border-bottom:1px solid var(--line);display:flex;gap:8px;overflow:auto;padding:12px}nav button{min-width:190px;margin:0}section{padding:12px}iframe{height:75vh}}
+</style></head><body><header><h1>SEO Godlike</h1><span id="status">Ładowanie danych…</span></header><main><nav id="units" aria-label="Klienci i domeny"></nav><section><div class="card"><strong id="title">Wybierz klienta lub domenę</strong><small>Raport jest oparty na już zweryfikowanych danych. Dashboard działa tylko w trybie odczytu.</small></div><iframe id="report" title="Raport SEO" hidden></iframe></section></main>
+<script>
+const nav=document.querySelector('#units'), frame=document.querySelector('#report'), title=document.querySelector('#title'), status=document.querySelector('#status');
+async function load(){const response=await fetch('/api/units');if(!response.ok)throw new Error('Nie udało się pobrać jednostek');const data=await response.json();status.textContent=data.units.length+' jednostek · tylko odczyt';for(const unit of data.units){const button=document.createElement('button');button.type='button';button.dataset.html=unit.html;button.innerHTML=(unit.kind==='client'?'Klient':'Domena')+'<small>'+unit.id+'</small>';button.addEventListener('click',()=>{for(const item of nav.children)item.removeAttribute('aria-current');button.setAttribute('aria-current','true');title.textContent=unit.id;frame.src='/'+unit.html;frame.hidden=false});nav.append(button)}if(nav.firstElementChild)nav.firstElementChild.click()}
+load().catch(error=>{status.textContent=error.message});
+</script></body></html>`;
+}
+
 async function serveFile(response: ServerResponse, deliveryDir: string, relativePath: string): Promise<void> {
   try {
     const path = await resolveExistingInside(deliveryDir, relativePath, "dashboard asset");
@@ -103,6 +123,10 @@ export async function serveDashboard(options: DashboardServerOptions): Promise<D
     }
     if (path === "/api/units") {
       json(response, 200, { units: manifest.units });
+      return;
+    }
+    if (path === "/app") {
+      text(response, 200, dashboardShell(), "text/html; charset=utf-8");
       return;
     }
     const relativePath = path === "/" ? "index.html" : path.slice(1);
