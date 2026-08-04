@@ -440,6 +440,7 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.match(entry, /flock -n 'artifacts\/analysis\/\.agency-monthly\.lock' sh -c/);
   assert.match(entry, /agency_run_stamp=\$\(date \+\\%Y\\%m\\%dT\\%H\\%M\\%S\)/);
   assert.match(entry, /--agency-report-output/);
+  assert.match(entry, /--run-id "agency-run-\$agency_run_stamp"/);
   assert.match(entry, /agency-report-\"\$agency_run_stamp\"/);
   assert.match(entry, /--delivery-output/);
   assert.match(entry, /client-delivery-\"\$agency_run_stamp\"/);

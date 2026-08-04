@@ -2091,3 +2091,16 @@ auth or schema is unknown.
   the prior completed `f4ee86a` review remains the latest completed external
   opinion. No provider request, credential read, Ahrefs rerun, SERPROBOT rerun,
   report regeneration, or publication occurred.
+
+## Recurring run identity binding — 2026-08-04
+
+- The generated monthly cron now passes one explicit `--run-id`
+  (`agency-run-$agency_run_stamp`) to the agency runner. Its run record,
+  agency report, delivery output, history output, and rank-history output now
+  share the same shell-generated run stamp instead of relying on separate
+  process timestamps.
+- A schedule falsifier checks the generated command contains the shared run
+  identity. Full local proof passes with 201 TypeScript tests + 3 context
+  tests, build, zero high audit vulnerabilities, and `git diff --check`. No
+  provider request, credential read, Ahrefs rerun, SERPROBOT rerun, report
+  regeneration, or publication occurred.

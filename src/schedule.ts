@@ -98,6 +98,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     "node", "dist/cli.js", "--agency-run",
     "--registry", shellQuote(options.registryPath), "--capabilities", shellQuote(options.capabilitiesPath),
     "--oauth-client", shellQuote(options.oauthClientPath), "--artifacts-dir", shellQuote(options.artifactsDir), "--output", output,
+    "--run-id", '"agency-run-$agency_run_stamp"',
     "--agency-report-output", report, "--delivery-output", delivery, "--pdf",
     ...(options.ahrefsDate ? ["--ahrefs-date", shellQuote(options.ahrefsDate)] : []),
     ...(options.ahrefsCountry ? ["--ahrefs-country", shellQuote(options.ahrefsCountry)] : []),
