@@ -1930,7 +1930,21 @@ auth or schema is unknown.
   keeping the root confined. This makes the scheduled
   `--rank-monitoring-root` → report → delivery path reachable.
 - OpenCode review of `d8ab919` reproduced this as blocker B1. The standalone
-- conflicting-input guard remains unchanged. A CLI falsifier runs the full
+  conflicting-input guard remains unchanged. A CLI falsifier runs the full
   sibling-root path with a local SERPROBOT bundle and no provider IO. No
   provider request, credential read, Ahrefs rerun, SERPROBOT rerun, report
   regeneration, or publication occurred.
+
+## Client delivery copy hardening — 2026-08-04
+
+- Client-facing source and rank-monitoring status text now localizes known
+  GA4, Localo, SERPROBOT, Semstorm, and unsupported-metric reasons instead of
+  leaking raw technical English into HTML or draft email output.
+- Focused delivery falsifiers cover translated unavailable-source reasons and
+  absence of the raw GA4/Localo reason strings. Full local proof remains green:
+  198 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`.
+- Existing local Bodymove evidence was rendered without provider IO: 6 delivery
+  units and 13 manifest-bound files verified by hash and byte count. No GSC,
+  Ahrefs, SERPROBOT, GA4, or Localo rerun occurred.
+- Fixed point: `53c98f2` (`fix(delivery): localize unavailable source reasons`).
