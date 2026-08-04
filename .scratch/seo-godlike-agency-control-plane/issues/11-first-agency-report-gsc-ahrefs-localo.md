@@ -2172,3 +2172,17 @@ auth or schema is unknown.
   direct SERPROBOT API/Looker live connector is still not implemented. No
   provider request, credential read, Ahrefs/SERPROBOT rerun, report
   regeneration or publication occurred.
+
+## Existing keyword input provenance audit — 2026-08-04
+
+- The operator-supplied `/home/krn/Downloads/frazy strony (1).txt` has SHA-256
+  `fffbd06f4bed92070a29d40d502b115633e4dab52e4f93b2db190e630821608f`, exactly
+  matching `artifacts/analysis/ahrefs-keyword-research-20260803/report.json`.
+- The accepted Ahrefs Keywords Explorer bundle retains all four supplied
+  groups: `babkamedica.pl` 15/15, `cmr-ostroleka.pl` 9/9,
+  `kartysimusa.pl` 10/10 and `www.goldenmed.pl` 7/7 (41/41 rows total,
+  country `pl`). No keyword request, credential read or report regeneration
+  was performed for this audit.
+- The matching hash is the evidence that the existing client-delivery output
+  can reuse this phrase input; a new Ahrefs run would be redundant and is not
+  authorized by this goal.
