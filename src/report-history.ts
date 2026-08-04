@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { resolveExistingInside } from "./path-confinement.js";
 
 interface ManifestFile {
   sha256: string;
@@ -183,7 +184,8 @@ async function readVerifiedBundle(manifestPath: string, artifactsDir: string, sc
   const verifiedFiles = new Map<string, Buffer>();
   for (const name of Object.keys(manifest.files).sort()) {
     if (name.startsWith("/") || name.split("/").includes("..") || name.includes(`..${sep}`)) throw new Error(`unsafe manifest path '${name}'`);
-    const bytes = await readFile(join(bundleDir, name));
+    const verifiedPath = await resolveExistingInside(bundleDir, name, "history manifest entry");
+    const bytes = await readFile(verifiedPath);
     const expected = manifest.files[name];
     if (bytes.byteLength !== expected.bytes || sha256(bytes) !== expected.sha256) throw new Error(`manifest hash mismatch for '${join(bundleDir, name)}'`);
     verifiedFiles.set(name, bytes);
@@ -331,7 +333,7 @@ function html(summary: HistorySummary): string {
     entry.bundle_path,
     entry.manifest_sha256,
   ].map(htmlEscape).map((value) => `<td>${value}</td>`).join(""));
-  const skipped = summary.skipped_bundles.length === 0 ? "" : `<h2>Skipped bundles</h2><ul>${summary.skipped_bundles.map((path) => `<li><code>${htmlEscape(path)}</code></li>`).join("")}</ul>`;
+  const skipped = summary.skipped_bundles.length === 0 ? "" : `<h2>Pominięte pakiety</h2><ul>${summary.skipped_bundles.map((path) => `<li><code>${htmlEscape(path)}</code></li>`).join("")}</ul>`;
   return [
     "<!doctype html>",
     "<html lang=\"pl\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Historia wyników SEO</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#172b36}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:900px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #dbe5e7}th{background:#eef5f4}</style></head><body>",

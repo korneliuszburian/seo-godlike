@@ -113,6 +113,22 @@ test("history rejects a symlinked bundle escaping the artifacts root", async () 
   }
 });
 
+test("history rejects a manifest file symlink escaping the bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-file-escape-test-"));
+  const outside = await mkdtemp(join(tmpdir(), "seo-godlike-history-file-outside-"));
+  try {
+    await writeBundle(root, "bundle", "2026-07-01", 4);
+    const outsideReport = join(outside, "report.json");
+    await writeFile(outsideReport, await readFile(join(root, "bundle", "report.json")));
+    await rm(join(root, "bundle", "report.json"));
+    await symlink(outsideReport, join(root, "bundle", "report.json"));
+    await assert.rejects(readAnalyticsHistory(root), /history manifest entry escapes its root through a symlink/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
+});
+
 test("history aggregates two bundles chronologically and writes deterministic dashboard", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
   await writeBundle(root, "later", "2026-07-01", 4);
@@ -467,7 +483,7 @@ test("monthly agency schedule can render rank history from existing snapshots", 
   assert.match(entry, /rank-history/);
 });
 
-test("monthly agency schedule prepares explicit history roots", () => {
+test("monthly agency schedule places recurring history outputs under explicit roots", () => {
   const entry = buildMonthlyAgencyCron({
     workingDirectory: "/work/seo-godlike",
     oauthClientPath: "/secure/oauth-client.json",
@@ -479,7 +495,9 @@ test("monthly agency schedule prepares explicit history roots", () => {
     historyDir: "custom/history",
     rankHistoryDir: "custom/rank-history",
   });
-  assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery' 'custom'/);
+  assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery' 'custom\/history' 'custom\/rank-history'/);
+  assert.match(entry, /--report-history.*custom\/history.*history-.*agency_run_stamp/);
+  assert.match(entry, /--rank-history.*custom\/rank-history.*rank-history-.*agency_run_stamp/);
 });
 
 test("monthly agency schedule never chmods the working directory for single-segment history roots", () => {
@@ -494,7 +512,7 @@ test("monthly agency schedule never chmods the working directory for single-segm
     historyDir: "history",
     rankHistoryDir: "rank-history",
   });
-  assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery'/);
+  assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery' 'history' 'rank-history'/);
   assert.doesNotMatch(entry, /install -d -m 700[^&]*'\.'/);
 });
 

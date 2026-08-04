@@ -1,5 +1,4 @@
 import { assertShellSafeSegment } from "./shell.js";
-import { dirname } from "node:path";
 
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
@@ -76,14 +75,14 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   const output = `${shellQuote(options.artifactsDir)}/agency-run-${stamp}`;
   const report = `${shellQuote(options.reportDir)}/agency-report-${stamp}`;
   const delivery = `${shellQuote(options.deliveryDir)}/client-delivery-${stamp}`;
-  const history = options.historyDir ? shellQuote(options.historyDir) : `${shellQuote(options.reportDir)}/history-${stamp}`;
-  const rankHistory = options.rankHistoryDir ? shellQuote(options.rankHistoryDir) : `${shellQuote(options.reportDir)}/rank-history-${stamp}`;
+  const history = options.historyDir ? `${shellQuote(options.historyDir)}/history-${stamp}` : `${shellQuote(options.reportDir)}/history-${stamp}`;
+  const rankHistory = options.rankHistoryDir ? `${shellQuote(options.rankHistoryDir)}/rank-history-${stamp}` : `${shellQuote(options.reportDir)}/rank-history-${stamp}`;
   const prepareRoots = `install -d -m 700 ${[...new Set([
     options.artifactsDir,
     options.reportDir,
     options.deliveryDir,
-    ...(options.historyDir ? [dirname(options.historyDir)] : []),
-    ...(options.rankHistoryDir ? [dirname(options.rankHistoryDir)] : []),
+    ...(options.historyDir ? [options.historyDir] : []),
+    ...(options.rankHistoryDir ? [options.rankHistoryDir] : []),
   ])].filter((path) => path !== "." && path !== "" && path !== "/").map(shellQuote).join(" ")}`;
   const command = [
     "node", "dist/cli.js", "--agency-run",

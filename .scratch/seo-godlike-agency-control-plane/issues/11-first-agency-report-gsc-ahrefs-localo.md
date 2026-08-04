@@ -1754,3 +1754,16 @@ auth or schema is unknown.
   high audit vulnerabilities, and `git diff --check`.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
+
+## Recurring history output hardening — 2026-08-04
+
+- History and rank-history roots supplied to the monthly schedule now receive
+  timestamped child output directories, so subsequent monthly runs do not
+  collide with write-once directory creation.
+- Each history manifest entry is now resolved through the shared confinement
+  helper before bytes are consumed; the Polish HTML label for skipped bundles
+  is aligned with the Markdown surface.
+- Map pin advanced to `5218d9b`. Local proof: 186 TypeScript tests + 3 context
+  tests, build, zero high audit vulnerabilities, and `git diff --check`.
+- No provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.
