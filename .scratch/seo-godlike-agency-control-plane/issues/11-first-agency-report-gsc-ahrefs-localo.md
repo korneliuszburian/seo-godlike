@@ -2261,3 +2261,12 @@ auth or schema is unknown.
 - Period-end ordering remains deterministic; timestamp-based import ordering is
   deferred because introducing wall-clock metadata would weaken deterministic
   bundle serialization. No provider request, credential read or rerun occurred.
+
+## History unavailable-vs-zero hardening — 2026-08-04
+
+- Empty analytics history now serializes `totals: null` and renders
+  `Brak danych` in the Markdown and HTML dashboards. A zero total is no longer
+  presented when no verified bundle exists; real snapshot totals are unchanged.
+- Focused history proof and the full local suite pass: 211 TypeScript tests + 3
+  context tests, build, audit with zero high vulnerabilities and diff check.
+  No provider request, credential read or report rerun occurred.

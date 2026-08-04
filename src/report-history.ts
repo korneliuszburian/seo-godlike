@@ -62,7 +62,7 @@ export interface HistorySummary {
   bundle_count: number;
   skipped_bundles: string[];
   periods: HistoryEntry[];
-  totals: AnalyticsMetricSummary;
+  totals: AnalyticsMetricSummary | null;
 }
 
 function sha256(bytes: Buffer): string {
@@ -269,7 +269,8 @@ export async function findPreviousBundleLinks(artifactsDir: string, currentOutpu
     .sort();
 }
 
-function aggregateTotals(entries: HistoryEntry[]): AnalyticsMetricSummary {
+function aggregateTotals(entries: HistoryEntry[]): AnalyticsMetricSummary | null {
+  if (entries.length === 0) return null;
   const clicks = entries.reduce((sum, entry) => sum + entry.metrics.clicks, 0);
   const impressions = entries.reduce((sum, entry) => sum + entry.metrics.impressions, 0);
   const positionWeighted = entries.reduce((sum, entry) => sum + entry.metrics.position * entry.metrics.impressions, 0);
@@ -302,14 +303,15 @@ function percent(value: number): string {
 }
 
 function markdown(summary: HistorySummary): string {
+  const totals = summary.totals;
   return [
     "# Historia wyników SEO — podsumowanie",
     "",
     `- Zweryfikowane pakiety analityczne: ${summary.bundle_count}`,
-    `- Łączne kliknięcia: ${summary.totals.clicks}`,
-    `- Łączne wyświetlenia: ${summary.totals.impressions}`,
-    `- CTR ważony wyświetleniami: ${percent(summary.totals.ctr)}`,
-    `- Średnia pozycja ważona wyświetleniami: ${summary.totals.position.toFixed(2)}`,
+    `- Łączne kliknięcia: ${totals?.clicks ?? "Brak danych"}`,
+    `- Łączne wyświetlenia: ${totals?.impressions ?? "Brak danych"}`,
+    `- CTR ważony wyświetleniami: ${totals ? percent(totals.ctr) : "Brak danych"}`,
+    `- Średnia pozycja ważona wyświetleniami: ${totals ? totals.position.toFixed(2) : "Brak danych"}`,
     ...(summary.skipped_bundles.length > 0 ? [
       "",
       "## Pominięte pakiety",
@@ -329,6 +331,7 @@ function htmlEscape(value: string): string {
 }
 
 function html(summary: HistorySummary): string {
+  const totals = summary.totals;
   const rows = summary.periods.map((entry) => [
     entry.period.start,
     entry.period.end,
@@ -347,7 +350,7 @@ function html(summary: HistorySummary): string {
     "<!doctype html>",
     "<html lang=\"pl\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Historia wyników SEO</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#172b36}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:900px}th,td{text-align:left;padding:.55rem;border-bottom:1px solid #dbe5e7}th{background:#eef5f4}</style></head><body>",
     "<h1>Historia wyników SEO</h1>",
-    `<p>Zweryfikowane pakiety analityczne: ${summary.bundle_count}; kliknięcia: ${summary.totals.clicks}; wyświetlenia: ${summary.totals.impressions}</p>`,
+    `<p>Zweryfikowane pakiety analityczne: ${summary.bundle_count}; kliknięcia: ${totals?.clicks ?? "Brak danych"}; wyświetlenia: ${totals?.impressions ?? "Brak danych"}</p>`,
     "<p>Delta jest liczona względem poprzedniego niepokrywającego się okresu tej samej właściwości. Ujemna delta pozycji oznacza poprawę, ponieważ niższa pozycja jest lepsza.</p>",
     skipped,
     "<div class=\"table-wrap\"><table><thead><tr><th>Okres</th><th>Klient</th><th>Właściwość</th><th>Kliknięcia</th><th>Wyświetlenia</th><th>CTR</th><th>Pozycja</th><th>Delta kliknięć</th><th>Delta pozycji</th><th>Bundle</th><th>Manifest SHA-256</th></tr></thead><tbody>",

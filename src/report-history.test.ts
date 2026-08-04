@@ -147,6 +147,7 @@ test("history aggregates two bundles chronologically and writes deterministic da
   const summary = summarizeHistory(entries);
   assert.equal(summary.bundle_count, 2);
   assert.deepEqual(summary.skipped_bundles, []);
+  assert.ok(summary.totals);
   assert.equal(summary.totals.clicks, 6);
   assert.equal(summary.totals.impressions, 60);
   assert.equal(summary.periods[1]?.comparison?.clicks_delta, 2);
@@ -237,14 +238,16 @@ test("history HTML escapes bundle paths for local export", async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-test("empty artifacts directory produces a zero-bundle dashboard", async () => {
+test("empty artifacts directory preserves unavailable totals instead of observed zero", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
   const output = join(root, "dashboard");
   const summary = await writeHistoryDashboard(root, output);
   assert.equal(summary.bundle_count, 0);
   assert.deepEqual(summary.skipped_bundles, []);
   assert.doesNotMatch(await readFile(join(output, "executive-summary.md"), "utf8"), /## Skipped bundles/);
-  assert.equal(summary.totals.clicks, 0);
+  assert.equal(summary.totals, null);
+  assert.match(await readFile(join(output, "executive-summary.md"), "utf8"), /Łączne kliknięcia: Brak danych/);
+  assert.match(await readFile(join(output, "executive-summary.html"), "utf8"), /kliknięcia: Brak danych/);
   await rm(root, { recursive: true, force: true });
 });
 
