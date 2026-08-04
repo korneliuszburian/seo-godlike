@@ -1637,3 +1637,14 @@ auth or schema is unknown.
 - Proof: 172 TypeScript tests + 3 context tests, build, zero high audit
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, report regeneration, or publication occurred.
+
+## Cross-host freshness fail-closed — 2026-08-04
+
+- Property-scoped Ahrefs freshness no longer falls back to another GSC host of
+  the same client when the matching host baseline is absent. The prior fallback
+  could make an Ahrefs snapshot appear freshness-verified against Kraków data
+  while the root property had no selected baseline.
+- A focused falsifier keeps a ready Kraków GSC bundle, omits the root GSC bundle,
+  and asserts `missing_freshness_baseline` for the root Ahrefs source.
+- No provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.

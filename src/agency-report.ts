@@ -568,12 +568,10 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
   const resolvedOutput = resolve(outputDir);
   await mkdir(resolvedOutput, { recursive: false, mode: 0o700 });
   const packageSummary = await writeReportPackage(resolvedArtifacts, join(resolvedOutput, "package"));
-  const selectedGscPeriodEndsByClient = new Map<string, string[]>();
   const selectedGscPeriodEndsByClientAndHost = new Map<string, string[]>();
   for (const entry of scope.entries.filter((candidate) => candidate.status === "ready" && candidate.provider === "google-search-console")) {
     const accepted = acceptedBundleFor({ client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null }, packageSummary);
     if (accepted) {
-      selectedGscPeriodEndsByClient.set(entry.client_id, [...(selectedGscPeriodEndsByClient.get(entry.client_id) ?? []), accepted.period.end]);
       const host = propertyHost(entry.property_id);
       if (host) selectedGscPeriodEndsByClientAndHost.set(`${entry.client_id}\u0000${host}`, [...(selectedGscPeriodEndsByClientAndHost.get(`${entry.client_id}\u0000${host}`) ?? []), accepted.period.end]);
     }
@@ -586,7 +584,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
     if (source.status !== "ready") return source;
     const accepted = acceptedBundleFor(source, packageSummary);
     const freshnessPeriods = source.provider === "ahrefs"
-      ? selectedGscPeriodEndsByClientAndHost.get(`${source.client_id}\u0000${propertyHost(source.property_id) ?? source.property_id.toLowerCase()}`) ?? selectedGscPeriodEndsByClient.get(source.client_id) ?? []
+      ? selectedGscPeriodEndsByClientAndHost.get(`${source.client_id}\u0000${propertyHost(source.property_id) ?? source.property_id.toLowerCase()}`) ?? []
       : [];
     const hasMatchingGscScope = source.provider === "ahrefs" && readyGscScopeHosts.has(`${source.client_id}\u0000${propertyHost(source.property_id) ?? source.property_id.toLowerCase()}`);
     if (accepted && hasMatchingGscScope && freshnessPeriods.length === 0) return { ...source, status: "unavailable" as const, reason: "Ahrefs freshness cannot be verified because the selected Google Search Console baseline is missing", reason_code: "missing_freshness_baseline" as const, bundle_path: null };
