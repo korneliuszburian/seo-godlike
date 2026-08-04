@@ -455,3 +455,19 @@ test("monthly agency schedule prepares explicit history roots", () => {
   });
   assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery' 'custom'/);
 });
+
+test("monthly agency schedule never chmods the working directory for single-segment history roots", () => {
+  const entry = buildMonthlyAgencyCron({
+    workingDirectory: "/work/seo-godlike",
+    oauthClientPath: "/secure/oauth-client.json",
+    registryPath: "registry.json",
+    capabilitiesPath: "capabilities.json",
+    artifactsDir: "artifacts",
+    reportDir: "reports",
+    deliveryDir: "delivery",
+    historyDir: "history",
+    rankHistoryDir: "rank-history",
+  });
+  assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery'/);
+  assert.doesNotMatch(entry, /install -d -m 700[^&]*'\.'/);
+});

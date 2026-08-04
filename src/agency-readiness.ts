@@ -62,6 +62,9 @@ export function buildAgencyReadiness(
     ...sourceRegistry.sources
       .filter((source) => source.status === "ready" && source.provider !== "serprobot" && source.provider !== "google-analytics")
       .map((source) => `${source.client_id}:${source.provider}: no agency-run executor is available for this external source`),
+    ...sourceRegistry.sources
+      .filter((source) => source.status === "ready" && source.provider === "google-analytics" && !scopeEntries.some((entry) => entry.status === "ready" && entry.provider === "google-analytics" && entry.property_id === source.target))
+      .map((source) => `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}: no matching ready GA4 scope entry is registered`),
   ];
   if (!inputs.oauth_client_supplied && scopeEntries.some((entry) => entry.status === "ready" && (entry.provider === "google-search-console" || entry.provider === "google-analytics"))) {
     blockers.push("Google sources are in scope but --oauth-client was not supplied; credential contents were not inspected");

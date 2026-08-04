@@ -1709,3 +1709,15 @@ auth or schema is unknown.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred. The remaining review follow-up is report-history
   symlink hardening and operator-owned cron installation.
+
+## Readiness and schedule follow-up — 2026-08-04
+
+- A second-opinion review of `0764852` identified two operational truthfulness
+  issues: a single-segment history root could resolve to `.`, and a ready GA4
+  source could exist without a matching ready scope property.
+- The schedule now filters `.`/empty parent paths and has a single-segment
+  falsifier. Readiness now fails closed with an explicit blocker when a ready
+  GA4 target is not present in the ready scope plan.
+- Proof: 180 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, report regeneration, or publication occurred.

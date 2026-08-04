@@ -74,3 +74,14 @@ test("readiness does not block a ready GA4 source handled by the agency scope ex
   assert.equal(readiness.status, "ready");
   assert.doesNotMatch(readiness.blockers.join("\n"), /no agency-run executor/);
 });
+
+test("readiness blocks a ready GA4 source without a matching scope property", () => {
+  const readiness = buildAgencyReadiness(
+    { schema_version: "1", generated_at: "2026-08-04T00:00:00.000Z", status: "ready", entries: [{ client_id: "bodymove", client_display_name: "Bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console", status: "ready", reason: null, metrics: [] }] },
+    { sources: [{ source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/123456789", status: "ready", reason: null }] },
+    { oauth_client_supplied: true, keyword_input_supplied: false, rank_monitoring_supplied: false, client_content_supplied: false },
+    "2026-08-04T00:00:00.000Z",
+  );
+  assert.equal(readiness.status, "partial");
+  assert.deepEqual(readiness.blockers, ["bodymove:google-analytics:properties/123456789: no matching ready GA4 scope entry is registered"]);
+});
