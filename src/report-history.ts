@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
@@ -115,7 +115,17 @@ function normalizeGeneratedAt(value: string): string {
 
 async function manifestPaths(root: string): Promise<string[]> {
   const paths: string[] = [];
+  let rootReal: string;
+  try { rootReal = await realpath(root); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+  const seenDirectories = new Set<string>();
+  const seenManifests = new Set<string>();
+  function insideRoot(path: string): boolean { return path === rootReal || path.startsWith(`${rootReal}${sep}`); }
   async function walk(directory: string): Promise<void> {
+    const realDirectory = await realpath(directory);
+    if (!insideRoot(realDirectory)) throw new Error(`history path escapes artifacts root: ${directory}`);
+    if (seenDirectories.has(realDirectory)) return;
+    seenDirectories.add(realDirectory);
     let entries;
     try {
       entries = await readdir(directory, { withFileTypes: true });
@@ -127,6 +137,21 @@ async function manifestPaths(root: string): Promise<string[]> {
       const path = join(directory, entry.name);
       if (entry.isDirectory()) await walk(path);
       else if (entry.isFile() && entry.name === "manifest.json") paths.push(path);
+      else if (entry.isSymbolicLink()) {
+        let realPath: string;
+        try { realPath = await realpath(path); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") continue; throw error; }
+        if (!insideRoot(realPath)) {
+          if (entry.name === "manifest.json") throw new Error(`history symlink escapes artifacts root: ${path}`);
+          continue;
+        }
+        const target = await stat(path);
+        if (target.isDirectory()) await walk(path);
+        else if (target.isFile() && entry.name === "manifest.json" && !seenManifests.has(realPath)) {
+          seenManifests.add(realPath);
+          paths.push(path);
+        }
+      }
     }
   }
   await walk(root);

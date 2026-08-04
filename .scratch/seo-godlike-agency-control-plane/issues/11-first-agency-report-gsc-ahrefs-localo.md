@@ -1742,3 +1742,15 @@ auth or schema is unknown.
   build, zero high audit vulnerabilities, and `git diff --check`.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
+
+## Report history symlink hardening — 2026-08-04
+
+- GSC history manifest discovery now resolves traversed directories and
+  manifest symlinks against the configured artifacts root. In-root bundle
+  symlinks remain readable; escaping manifest symlinks fail closed; unrelated
+  escaping directory symlinks are ignored.
+- Focused falsifiers cover both allowed in-root aliases and rejected escaping
+  manifests. Local proof: 185 TypeScript tests + 3 context tests, build, zero
+  high audit vulnerabilities, and `git diff --check`.
+- No provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.

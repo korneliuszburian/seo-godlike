@@ -87,6 +87,32 @@ test("scoped history fails closed for a malformed in-scope report", async () => 
   await rm(root, { recursive: true, force: true });
 });
 
+test("history follows an in-root bundle symlink without dropping the bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-symlink-test-"));
+  try {
+    await writeBundle(root, "real-bundle", "2026-07-01", 4);
+    await symlink(join(root, "real-bundle"), join(root, "alias-bundle"));
+    const entries = await readAnalyticsHistory(root);
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0]?.run_id, "real-bundle");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("history rejects a symlinked bundle escaping the artifacts root", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-escape-test-"));
+  const outside = await mkdtemp(join(tmpdir(), "seo-godlike-history-outside-"));
+  try {
+    await writeBundle(outside, "outside-bundle", "2026-07-01", 4);
+    await mkdir(join(root, "escaped-bundle"));
+    await rm(join(root, "escaped-bundle", "manifest.json"), { force: true });
+    await symlink(join(outside, "outside-bundle", "manifest.json"), join(root, "escaped-bundle", "manifest.json"));
+    await assert.rejects(readAnalyticsHistory(root), /history symlink escapes artifacts root/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
+});
+
 test("history aggregates two bundles chronologically and writes deterministic dashboard", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-history-test-"));
   await writeBundle(root, "later", "2026-07-01", 4);
