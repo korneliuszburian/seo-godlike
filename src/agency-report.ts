@@ -77,6 +77,8 @@ export interface AhrefsProfileEvidence {
 export interface AgencyRankMonitoringEvidence {
   source_label: typeof RANK_MONITORING_SOURCE_LABEL;
   client_id: string;
+  /** Relative to the artifacts root; binds standalone delivery to this snapshot. */
+  bundle_path?: string;
   manifest_sha256: string;
   captured_at: string;
   date_range: { start: string; end: string };
@@ -120,11 +122,12 @@ function safeManifestName(name: string): boolean {
   return !name.startsWith("/") && !name.split("/").includes("..") && !name.includes("..\\") && !name.includes("../");
 }
 
-async function readRankMonitoringEvidence(bundlePath: string, clientIds: readonly string[]): Promise<AgencyRankMonitoringEvidence[]> {
+async function readRankMonitoringEvidence(bundlePath: string, artifactsRoot: string, clientIds: readonly string[]): Promise<AgencyRankMonitoringEvidence[]> {
   const verified = await readRankMonitoringBundle(resolve(bundlePath), clientIds);
   return verified.snapshots.map((snapshot) => ({
     source_label: RANK_MONITORING_SOURCE_LABEL,
     client_id: snapshot.client_id,
+    bundle_path: relative(resolve(artifactsRoot), resolve(bundlePath)),
     manifest_sha256: verified.manifest_sha256,
     captured_at: snapshot.captured_at,
     date_range: snapshot.date_range,
@@ -595,7 +598,7 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
     return source;
   });
   const rankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
-  const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, rankClientIds) : [];
+  const rankMonitoringEvidence = rankMonitoringPath ? await readRankMonitoringEvidence(rankMonitoringPath, resolvedArtifacts, rankClientIds) : [];
   const externalStatus = sourceRegistry.sources.map((source) => {
     const accepted = source.provider === "google-analytics"
       ? acceptedBundleFor({ client_id: source.client_id, property_id: source.target ?? "—", provider: source.provider, status: source.status, reason: source.reason, bundle_path: null }, packageSummary)

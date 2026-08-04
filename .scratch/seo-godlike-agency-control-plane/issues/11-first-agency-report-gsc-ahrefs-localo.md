@@ -2026,3 +2026,18 @@ auth or schema is unknown.
   `manifests_verified` count semantics, and GA4 readiness observability in a
   recurring run. No provider request, credential read, Ahrefs rerun, SERPROBOT
   rerun, report regeneration, or publication occurred during review.
+
+## Standalone rank snapshot provenance — 2026-08-04
+
+- Agency reports now retain the manifest-bound rank bundle path relative to the
+  artifacts root. Standalone client delivery uses that declared path when a
+  rank root is supplied, rather than silently selecting a newer sibling
+  snapshot; the path is still constrained by realpath confinement.
+- A focused delivery falsifier places a newer valid bundle beside the declared
+  one and verifies standalone delivery renders the declared snapshot. Legacy
+  summaries without the optional path retain the existing latest-bundle
+  fallback and fail closed on provenance mismatch.
+- Full proof passes with 199 TypeScript tests + 3 context tests, build, zero
+  high audit vulnerabilities, and `git diff --check`. No provider request,
+  credential read, Ahrefs rerun, SERPROBOT rerun, report regeneration, or
+  publication occurred.

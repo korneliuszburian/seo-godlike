@@ -252,7 +252,7 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
     const newerRankInput = join(root, "newer-rank.json");
     await writeFile(newerRankInput, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [
       { ...snapshot("acme", "456", "acme-fraza"), captured_at: "2026-08-04T00:00:00.000Z" },
-      { ...snapshot("bodymove", "123", "rehabilitacja"), captured_at: "2026-08-04T00:00:00.000Z" },
+      { ...snapshot("bodymove", "123", "rehabilitacja"), captured_at: "2026-08-04T00:00:00.000Z", rows: [{ ...snapshot("bodymove", "123", "rehabilitacja").rows[0], position: 1 }] },
     ] }));
     await writeRankMonitoringBundle(newerRankInput, join(rankRoot, "newer-rank"));
     const summary = { schema_version: "1", report_status: "partial", generated_at: "2026-08-03T00:00:00.000Z", scope: { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "ready", entries: [
@@ -261,7 +261,7 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
     ] }, source_status: [
       { source_id: "serprobot.bodymove", client_id: "bodymove", property_id: "123", provider: "serprobot", status: "ready", reason: null, bundle_path: null },
       { source_id: "serprobot.acme", client_id: "acme", property_id: "456", provider: "serprobot", status: "ready", reason: null, bundle_path: null },
-    ], accepted_bundles: [], blocked_sources: [], cross_source_context: [], insights: [], executive: {}, rank_monitoring_snapshots: packed.snapshots.map((item) => ({ source_label: "Observed — SERPROBOT rank snapshot", client_id: item.client_id, manifest_sha256: packed.manifest_sha256, captured_at: item.captured_at, date_range: item.date_range, source_config: item.source_config, row_count: item.rows.length })) };
+    ], accepted_bundles: [], blocked_sources: [], cross_source_context: [], insights: [], executive: {}, rank_monitoring_snapshots: packed.snapshots.map((item) => ({ source_label: "Observed — SERPROBOT rank snapshot", client_id: item.client_id, bundle_path: "rank-root/rank", manifest_sha256: packed.manifest_sha256, captured_at: item.captured_at, date_range: item.date_range, source_config: item.source_config, row_count: item.rows.length })) };
     const agencyPath = join(root, "agency-report.json");
     const agencyText = JSON.stringify(summary);
     await writeFile(agencyPath, agencyText);
@@ -272,12 +272,15 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
     assert.match(bodymoveHtml, /rehabilitacja/);
     assert.match(bodymoveHtml, /Zmiana pozycji monitorowanych fraz/);
     assert.match(bodymoveHtml, /Okres porównania/);
-    assert.match(bodymoveHtml, />-2</);
+    assert.match(bodymoveHtml, />-4</);
     assert.doesNotMatch(bodymoveHtml, /acme-fraza/);
     assert.match(acmeHtml, /acme-fraza/);
     assert.doesNotMatch(acmeHtml, /rehabilitacja/);
     const deliveryManifest = JSON.parse(await readFile(join(root, "delivery", "manifest.json"), "utf8")) as { rank_history_source_manifest_sha256: string[] };
     assert.equal(deliveryManifest.rank_history_source_manifest_sha256.length, 2);
+    await writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "standalone-delivery"), rankMonitoringRoot: rankRoot });
+    const standaloneHtml = await readFile(join(root, "standalone-delivery", "bodymove", "bodymove-seo-report.html"), "utf8");
+    assert.match(standaloneHtml, />3<\/td>/);
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "conflict"), rankMonitoringPath: rankBundle, rankMonitoringRoot: artifacts }), /mutually exclusive/);
   } finally {
     await rm(root, { recursive: true, force: true });

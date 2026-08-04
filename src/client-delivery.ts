@@ -564,8 +564,15 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
     ? await resolveRankMonitoringRoot(options.rankMonitoringRoot, options.rankMonitoringArtifactsDir ?? options.artifactsDir)
     : null;
   if (options.rankMonitoringResolvedPath && !resolvedRankMonitoringRoot) throw new Error("rank monitoring resolved path requires rank monitoring root");
+  const declaredRankEvidence = summary.rank_monitoring_snapshots ?? (summary.rank_monitoring ? [summary.rank_monitoring] : []);
+  const declaredRankPaths = [...new Set(declaredRankEvidence.map((entry) => entry.bundle_path).filter((path): path is string => typeof path === "string" && path.length > 0))];
+  const declaredRankPath = resolvedRankMonitoringRoot && declaredRankPaths.length === 1
+    ? await resolveExistingInside(resolvedRankMonitoringRoot, relative(resolvedRankMonitoringRoot, resolve(options.artifactsDir, declaredRankPaths[0])), "declared rank monitoring bundle")
+    : null;
   const resolvedRankMonitoringPath = options.rankMonitoringResolvedPath
     ? await resolveExistingInside(resolvedRankMonitoringRoot!, relative(resolvedRankMonitoringRoot!, options.rankMonitoringResolvedPath), "rank monitoring resolved bundle")
+    : declaredRankPath
+      ? declaredRankPath
     : resolvedRankMonitoringRoot
       ? await resolveLatestRankMonitoringBundle(resolvedRankMonitoringRoot, rankMonitoringClientIds(summary.source_status))
       : options.rankMonitoringPath;
@@ -594,7 +601,6 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
     entries.push(comparison);
     rankComparisonsByClient.set(comparison.client_id, entries);
   }
-  const declaredRankEvidence = summary.rank_monitoring_snapshots ?? (summary.rank_monitoring ? [summary.rank_monitoring] : []);
   if (declaredRankEvidence.length) {
     if (!rankBundle) throw new Error("agency report declares rank monitoring evidence but no rank bundle was supplied");
     for (const declared of declaredRankEvidence) {
