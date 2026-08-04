@@ -152,3 +152,14 @@ test("client content root resolves the newest verified action bundle", async () 
     assert.equal(await resolveLatestClientContentBundle(root, ["bodymove"]), join(root, "2026-07"));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test("client content root rejects a bundle with partial client coverage", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-client-content-partial-"));
+  try {
+    const input = join(root, "partial.json");
+    const output = join(root, "2026-07");
+    await writeFile(input, JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [{ action_id: "a", client_id: "bodymove", period: { start: "2026-07-01", end: "2026-07-31" }, type: "other", status: "published", title: "Bodymove", target_url: null, published_at: null, notes: null }], glossary: [], contact: null }));
+    await writeClientContentBundle(input, output);
+    await assert.rejects(resolveLatestClientContentBundle(root, ["bodymove", "other-client"]), /no verified client content bundle/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

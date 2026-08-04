@@ -2270,3 +2270,13 @@ auth or schema is unknown.
 - Focused history proof and the full local suite pass: 211 TypeScript tests + 3
   context tests, build, audit with zero high vulnerabilities and diff check.
   No provider request, credential read or report rerun occurred.
+
+## Content-root complete-coverage hardening — 2026-08-04
+
+- Follow-up to the `b1cf1cf` OpenCode review: the recurring content-root
+  resolver now rejects a candidate bundle unless it contains every client in
+  the current delivery scope. A partial actions register cannot silently
+  produce a mixed complete/incomplete client delivery.
+- Added a focused partial-coverage falsifier. Local proof remains green: full
+  suite plus context tests, build, audit and diff checks; no provider request or
+  rerun occurred.

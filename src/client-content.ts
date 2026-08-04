@@ -136,7 +136,7 @@ export async function resolveLatestClientContentBundle(rootDir: string, expected
             if (error instanceof Error && error.message.startsWith("client content identity mismatch:")) return null;
             throw error;
           });
-          if (bundle) {
+          if (bundle && expectedClientIds.every((clientId) => bundle.contents.some((content) => content.client_id === clientId))) {
             const periodEnd = bundle.contents.flatMap((content) => content.actions.map((action) => action.period.end)).sort().at(-1) ?? "";
             candidates.push({ path: directory, periodEnd });
           }
