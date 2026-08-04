@@ -53,7 +53,7 @@ test("readiness fails closed for ready external sources without a runnable input
   }, { oauth_client_supplied: true, keyword_input_supplied: false, rank_monitoring_supplied: false, client_content_supplied: false }, "2026-08-03T00:00:00.000Z");
   assert.equal(readiness.status, "partial");
   assert.deepEqual(readiness.blockers.slice(-2), [
-    "bodymove:serprobot: --rank-monitoring or --rank-monitoring-root was not supplied",
+    "bodymove:serprobot: --rank-monitoring, --rank-monitoring-root or --serprobot-api was not supplied",
     "bodymove:semstorm: no agency-run executor is available for this external source",
   ]);
 });

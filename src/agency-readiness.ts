@@ -58,7 +58,7 @@ export function buildAgencyReadiness(
     ...unavailableSources.map((source) => `${source.client_id}:${source.provider}: ${source.reason ?? "source unavailable"}`),
     ...sourceRegistry.sources
       .filter((source) => source.status === "ready" && source.provider === "serprobot" && !inputs.rank_monitoring_supplied)
-      .map((source) => `${source.client_id}:${source.provider}: --rank-monitoring or --rank-monitoring-root was not supplied`),
+      .map((source) => `${source.client_id}:${source.provider}: --rank-monitoring, --rank-monitoring-root or --serprobot-api was not supplied`),
     ...sourceRegistry.sources
       .filter((source) => source.status === "ready" && source.provider !== "serprobot" && source.provider !== "google-analytics")
       .map((source) => `${source.client_id}:${source.provider}: no agency-run executor is available for this external source`),

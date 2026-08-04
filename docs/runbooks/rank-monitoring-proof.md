@@ -14,12 +14,13 @@ wyszukiwarkę, lokalizację i urządzenie.
 
 Źródło: [SERPROBOT Google Data Studio Connector](https://www.serprobot.com/data-studio-connector).
 
-Nie zapisujemy klucza API w repozytorium i nie zgadujemy endpointu aplikacyjnego,
-jeżeli dostawca nie przekazał jego stabilnego schematu. Do czasu potwierdzenia
-takiego schematu używamy manifest-bound snapshotu wejściowego. Adapter API
-przyjmuje endpoint jawnie (domyślnie oficjalny adres API) i waliduje odpowiedź
-przed zapisaniem snapshotu; jeden nieznany kształt odpowiedzi kończy się błędem,
-a nie częściowym raportem.
+Nie zapisujemy klucza API w repozytorium. Oficjalna dokumentacja potwierdza
+klucz, projekt i zakres dat dla konektora, ale nie publikuje lokalnego,
+maszynowego kontraktu odpowiedzi API. Dlatego endpoint i odpowiedź adaptera
+pozostają konfigurowalne oraz fail-closed: przed pierwszym użyciem operator musi
+potwierdzić endpoint i wykonać jeden kontrolowany smoke test. Nieznany kształt
+odpowiedzi kończy się błędem, a nie częściowym raportem. Do tego czasu używamy
+manifest-bound snapshotu wejściowego.
 
 ## Bezpośredni odczyt API
 
