@@ -1694,3 +1694,18 @@ auth or schema is unknown.
   build, zero high audit vulnerabilities, and `git diff --check`. The review
   was read-only; no provider request, credential read, Ahrefs rerun, report
   regeneration, or publication occurred.
+
+## Schedule and GA4 executor alignment — 2026-08-04
+
+- Follow-up review of `d134c8d` found two blockers. The explicit history-root
+  preparation pre-created leaf directories that history writers create
+  exclusively; the schedule now prepares only their parent directories.
+- GA4 is owned by the property/scope executor and is no longer emitted as a
+  blocked external-source task. Localo and other unsupported external sources
+  retain their explicit blocked status.
+- Focused falsifiers cover both the parent-only schedule preparation and the
+  GA4/external-task boundary. Local proof: 178 TypeScript tests + 3 context
+  tests, build, zero high audit vulnerabilities, and `git diff --check`.
+- No provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred. The remaining review follow-up is report-history
+  symlink hardening and operator-owned cron installation.

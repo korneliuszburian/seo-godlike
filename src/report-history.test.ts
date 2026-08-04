@@ -450,8 +450,8 @@ test("monthly agency schedule prepares explicit history roots", () => {
     artifactsDir: "artifacts",
     reportDir: "reports",
     deliveryDir: "delivery",
-    historyDir: "reports/history",
-    rankHistoryDir: "reports/rank-history",
+    historyDir: "custom/history",
+    rankHistoryDir: "custom/rank-history",
   });
-  assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery' 'reports\/history' 'reports\/rank-history'/);
+  assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery' 'custom'/);
 });

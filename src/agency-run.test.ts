@@ -72,6 +72,18 @@ test("SERPROBOT snapshot is a local read-only source task and missing input is b
   }
 });
 
+test("GA4 is executed by the property scope executor, not external source tasks", async () => {
+  const sourceRegistry = { sources: [
+    { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics" as const, target: "properties/123", status: "ready" as const, reason: null },
+    { source_id: "localo.bodymove", client_id: "bodymove", provider: "localo" as const, target: "profile-1", status: "unavailable" as const, reason: "managed profile unavailable" },
+  ] };
+  assert.deepEqual(buildExternalSourceTasks(sourceRegistry), [{
+    id: "bodymove:localo:profile-1",
+    status: "blocked",
+    reason: "managed profile unavailable",
+  }]);
+});
+
 test("SERPROBOT collection validates the project for each client without provider IO", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-agency-source-collection-"));
   try {

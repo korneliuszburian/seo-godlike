@@ -7,7 +7,7 @@ export interface AgencyTask {
 
 export function buildExternalSourceTasks(sourceRegistry: SourceRegistry, rankMonitoringPath?: string): AgencyTask[] {
   const expectedRankClientIds = rankMonitoringClientIds(sourceRegistry.sources);
-  return sourceRegistry.sources.map((source) => {
+  return sourceRegistry.sources.filter((source) => source.provider !== "google-analytics").map((source) => {
     const id = `${source.client_id}:${source.provider}:${source.target ?? "unregistered"}`;
     if (source.status !== "ready") return { id, status: "blocked", reason: source.reason ?? "external source is unavailable" };
     if (source.provider !== "serprobot") return { id, status: "blocked", reason: `no local read-only executor for external provider '${source.provider}'` };
