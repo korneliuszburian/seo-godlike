@@ -212,3 +212,15 @@ test("rank monitoring root rejects an escaping manifest symlink", async () => {
     await rm(outside, { recursive: true, force: true });
   }
 });
+
+test("rank monitoring root ignores a dangling manifest symlink", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-dangling-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [] }));
+    await mkdir(join(root, "exports", "valid"), { recursive: true });
+    await writeRankMonitoringBundle(input, join(root, "exports", "valid", "bundle"));
+    await symlink(join(root, "missing-manifest.json"), join(root, "exports", "manifest.json"));
+    assert.equal(await resolveLatestRankMonitoringBundle(join(root, "exports"), ["bodymove"]), join(root, "exports", "valid", "bundle"));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

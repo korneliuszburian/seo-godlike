@@ -88,20 +88,22 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
         throw error;
       });
-      if (!realManifest) return;
-      if (!insideRoot(realManifest)) throw new Error(`rank monitoring symlink escapes artifacts root: ${manifestPath}`);
-      if (seenManifests.has(realManifest)) return;
-      seenManifests.add(realManifest);
-      let manifestValue: unknown;
-      try { manifestValue = JSON.parse(await readFile(manifestPath, "utf8")) as unknown; }
-      catch (error) { throw new Error(`invalid rank monitoring manifest: ${manifestPath}`, { cause: error }); }
-      if (record(manifestValue) && manifestValue.provider === RANK_MONITORING_PROVIDER) {
-        try {
-          const bundle = await readRankMonitoringBundle(directory, expectedClientIds);
-          const ids = new Set(bundle.snapshots.map((snapshot) => snapshot.client_id));
-          if (expectedClientIds.every((clientId) => ids.has(clientId))) candidates.push({ path: directory, bundle });
-        } catch (error) {
-          if (!(error instanceof Error) || !error.message.startsWith("rank monitoring client identity mismatch:")) throw error;
+      if (realManifest) {
+        if (!insideRoot(realManifest)) throw new Error(`rank monitoring symlink escapes artifacts root: ${manifestPath}`);
+        if (!seenManifests.has(realManifest)) {
+          seenManifests.add(realManifest);
+          let manifestValue: unknown;
+          try { manifestValue = JSON.parse(await readFile(manifestPath, "utf8")) as unknown; }
+          catch (error) { throw new Error(`invalid rank monitoring manifest: ${manifestPath}`, { cause: error }); }
+          if (record(manifestValue) && manifestValue.provider === RANK_MONITORING_PROVIDER) {
+            try {
+              const bundle = await readRankMonitoringBundle(directory, expectedClientIds);
+              const ids = new Set(bundle.snapshots.map((snapshot) => snapshot.client_id));
+              if (expectedClientIds.every((clientId) => ids.has(clientId))) candidates.push({ path: directory, bundle });
+            } catch (error) {
+              if (!(error instanceof Error) || !error.message.startsWith("rank monitoring client identity mismatch:")) throw error;
+            }
+          }
         }
       }
     }
