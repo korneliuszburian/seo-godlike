@@ -1,4 +1,5 @@
 import { mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { join, relative, resolve, sep } from "node:path";
 import { RankMonitoringSnapshot, readRankMonitoringBundle } from "./rank-monitoring.js";
 import { resolveExistingInside } from "./path-confinement.js";
@@ -38,6 +39,7 @@ export interface RankHistorySummary {
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function escapeHtml(value: string): string { return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;"); }
 function markdownCell(value: unknown): string { return String(value ?? "—").replaceAll("|", "\\|").replaceAll("\n", " "); }
+function sha256(bytes: Buffer): string { return createHash("sha256").update(bytes).digest("hex"); }
 
 async function manifestPaths(root: string): Promise<string[]> {
   const paths: string[] = [];
@@ -165,8 +167,23 @@ function html(summary: RankHistorySummary): string {
 export async function writeRankHistoryDashboard(artifactsDir: string, outputDir: string, expectedClientIds: readonly string[]): Promise<RankHistorySummary> {
   const summary = summarizeRankHistory(await readRankHistory(artifactsDir, expectedClientIds));
   await mkdir(resolve(outputDir), { recursive: false, mode: 0o700 });
-  await writeFile(join(resolve(outputDir), "rank-history.json"), `${JSON.stringify(summary, null, 2)}\n`, { encoding: "utf8", flag: "wx", mode: 0o600 });
-  await writeFile(join(resolve(outputDir), "rank-history.md"), markdown(summary), { encoding: "utf8", flag: "wx", mode: 0o600 });
-  await writeFile(join(resolve(outputDir), "rank-history.html"), html(summary), { encoding: "utf8", flag: "wx", mode: 0o600 });
+  const files = {
+    "rank-history.json": `${JSON.stringify(summary, null, 2)}\n`,
+    "rank-history.md": markdown(summary),
+    "rank-history.html": html(summary),
+  };
+  for (const [name, content] of Object.entries(files)) {
+    await writeFile(join(resolve(outputDir), name), content, { encoding: "utf8", flag: "wx", mode: 0o600 });
+  }
+  const sourceManifestSha256 = [...new Set(summary.snapshots.map((snapshot) => snapshot.manifest_sha256))].sort();
+  await writeFile(join(resolve(outputDir), "manifest.json"), JSON.stringify({
+    schema_version: "1",
+    provider: "serprobot",
+    source_manifest_sha256: sourceManifestSha256,
+    files: Object.fromEntries(Object.entries(files).map(([name, content]) => {
+      const bytes = Buffer.from(content);
+      return [name, { sha256: sha256(bytes), bytes: bytes.byteLength }];
+    })),
+  }, null, 2) + "\n", { encoding: "utf8", flag: "wx", mode: 0o600 });
   return summary;
 }

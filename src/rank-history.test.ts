@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -26,6 +27,15 @@ test("rank history compares shared keywords across verified non-overlapping snap
     assert.deepEqual(summary.comparisons.map((entry) => [entry.keyword, entry.previous_position, entry.current_position, entry.position_delta]), [["rehabilitacja", 9, 7, -2]]);
     assert.equal(summary.comparisons[0]?.manifest_sha256, summary.snapshots.find((snapshot) => snapshot.date_range.start === "2026-07-01")?.manifest_sha256);
     assert.match(await readFile(join(root, "dashboard", "rank-history.md"), "utf8"), /Historia monitoringu fraz/);
+    const manifest = JSON.parse(await readFile(join(root, "dashboard", "manifest.json"), "utf8")) as { provider: string; source_manifest_sha256: string[]; files: Record<string, { sha256: string; bytes: number }> };
+    assert.equal(manifest.provider, "serprobot");
+    assert.equal(manifest.source_manifest_sha256.length, 2);
+    for (const name of ["rank-history.json", "rank-history.md", "rank-history.html"]) {
+      const bytes = await readFile(join(root, "dashboard", name));
+      assert.equal(manifest.files[name]?.bytes, bytes.byteLength);
+      assert.equal(manifest.files[name]?.sha256, createHash("sha256").update(bytes).digest("hex"));
+      assert.equal((await stat(join(root, "dashboard", name))).mode & 0o777, 0o600);
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }
