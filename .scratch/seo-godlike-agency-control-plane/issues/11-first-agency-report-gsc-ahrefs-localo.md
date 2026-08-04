@@ -1994,3 +1994,19 @@ auth or schema is unknown.
 - A focused falsifier places a newer valid bundle beside the selected bundle;
   delivery remains bound to the declared manifest hash. CLI, delivery, full
   test suite, audit, and diff checks pass. No provider request or rerun occurred.
+
+## Scheduled rank-root confinement repair — 2026-08-04
+
+- Independent OpenCode review of `7f9fc50` found one blocker: the schedule
+  fixture generated `artifacts/rank-exports` beside, rather than inside,
+  `--artifacts-dir artifacts/analysis`, while runtime confinement correctly
+  rejected that layout.
+- The schedule generator now rejects a `rankMonitoringRoot` outside
+  `artifactsDir`, and the complete-pipeline fixture uses the valid nested root
+  `artifacts/analysis/rank-exports`. This keeps the recurring command and its
+  runtime policy aligned instead of relying on a test-only layout.
+- Focused falsifier covers the rejected sibling root. Full proof passes with
+  199 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, SERPROBOT rerun, report regeneration, or publication
+  occurred.

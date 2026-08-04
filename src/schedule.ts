@@ -1,3 +1,4 @@
+import { isAbsolute, relative, resolve } from "node:path";
 import { assertShellSafeSegment } from "./shell.js";
 
 function shellQuote(value: string): string {
@@ -6,6 +7,13 @@ function shellQuote(value: string): string {
 
 function assertNoParentTraversal(value: string, label: string): void {
   if (value.split(/[\\/]+/).includes("..")) throw new Error(`${label} must not contain parent traversal`);
+}
+
+function assertPathWithin(root: string, candidate: string, label: string): void {
+  const relativePath = relative(resolve(root), resolve(candidate));
+  if (relativePath === ".." || relativePath.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(relativePath)) {
+    throw new Error(`${label} must be inside artifactsDir`);
+  }
 }
 
 export interface ScheduleOptions {
@@ -68,6 +76,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   if (options.keywordResearch && !options.keywordInputPath) throw new Error("keyword research scheduling requires keywordInputPath");
   if (options.keywordResearch && !options.allowEstimatedBudget) throw new Error("keyword research scheduling requires allowEstimatedBudget");
+  if (options.rankMonitoringRoot) assertPathWithin(options.artifactsDir, options.rankMonitoringRoot, "rankMonitoringRoot");
   if (options.historyDir) assertNoParentTraversal(options.historyDir, "historyDir");
   if (options.rankHistoryDir) assertNoParentTraversal(options.rankHistoryDir, "rankHistoryDir");
   const lockPath = options.lockPath ?? `${options.artifactsDir}/.agency-monthly.lock`;
