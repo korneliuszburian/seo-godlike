@@ -57,3 +57,20 @@ test("readiness fails closed for ready external sources without a runnable input
     "bodymove:semstorm: no agency-run executor is available for this external source",
   ]);
 });
+
+test("readiness does not block a ready GA4 source handled by the agency scope executor", () => {
+  const ga4Registry: ClientRegistry = {
+    clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "properties/123456789", provider: "google-analytics" }] }],
+  };
+  const ga4Capabilities: CapabilityRegistry = {
+    capabilities: [{ capability_id: "ga4", provider: "google-analytics", operation_id: "properties.runReport", api_version: "v1beta", metric_ids: ["ga4.sessions"], read_write: "read", state: "schema_verified" }],
+  };
+  const readiness = buildAgencyReadiness(
+    buildScopePlan(ga4Registry, ga4Capabilities, "2026-08-03T00:00:00.000Z"),
+    { sources: [{ source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/123456789", status: "ready", reason: null }] },
+    { oauth_client_supplied: true, keyword_input_supplied: false, rank_monitoring_supplied: false, client_content_supplied: false },
+    "2026-08-03T00:00:00.000Z",
+  );
+  assert.equal(readiness.status, "ready");
+  assert.doesNotMatch(readiness.blockers.join("\n"), /no agency-run executor/);
+});

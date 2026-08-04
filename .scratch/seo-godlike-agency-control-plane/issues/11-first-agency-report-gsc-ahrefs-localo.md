@@ -1458,6 +1458,16 @@ auth or schema is unknown.
   `git diff --check`. No provider request, credential read, Ahrefs rerun,
   report regeneration, or publication occurred.
 
+## GA4 readiness executor alignment — 2026-08-04
+
+- Readiness no longer reports a ready Google Analytics 4 source as lacking an
+  external executor: GA4 is collected by the existing agency scope executor,
+  while SERPROBOT, Localo and Semstorm retain their separate source-input
+  boundaries.
+- A focused readiness falsifier proves a ready GA4 source with a registered
+  numeric property and read-only capability is not blocked by executor
+  classification. No OAuth credential was read and no provider request ran.
+
 - Follow-up OpenCode/DeepSeek review confirmed the same boundary for
   standalone external sources: a ready SERPROBOT/Localo/GA4/visibility
   registry entry without its corresponding evidence is now unavailable and

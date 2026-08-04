@@ -60,7 +60,7 @@ export function buildAgencyReadiness(
       .filter((source) => source.status === "ready" && source.provider === "serprobot" && !inputs.rank_monitoring_supplied)
       .map((source) => `${source.client_id}:${source.provider}: --rank-monitoring or --rank-monitoring-root was not supplied`),
     ...sourceRegistry.sources
-      .filter((source) => source.status === "ready" && source.provider !== "serprobot")
+      .filter((source) => source.status === "ready" && source.provider !== "serprobot" && source.provider !== "google-analytics")
       .map((source) => `${source.client_id}:${source.provider}: no agency-run executor is available for this external source`),
   ];
   if (!inputs.oauth_client_supplied && scopeEntries.some((entry) => entry.status === "ready" && (entry.provider === "google-search-console" || entry.provider === "google-analytics"))) {
