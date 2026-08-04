@@ -2493,3 +2493,16 @@ auth or schema is unknown.
   dynamically. It is intentionally still a local read-only runtime; auth,
   hosted persistence and write-capable operator workflows remain separate
   slices rather than being implied by the prototype shell.
+
+## Operator pause — access handoff pending — 2026-08-04
+
+- The current product slice is intentionally paused after `eaf7e28`: the local
+  runtime is pushed and the minimal floating client switcher was visually
+  verified against the existing delivery package.
+- Resume only after the operator supplies and confirms the required provider
+  access/mapping inputs for the next bounded collection slice. Until then, do
+  not rerun Ahrefs, GSC, SERPROBOT, GA4 or Localo and do not regenerate the
+  existing reports.
+- External OpenCode review for the dashboard fixed point remains incomplete
+  because the non-interactive process stopped without a final verdict; this is
+  advisory status, not a claim of review approval.
