@@ -2339,7 +2339,7 @@ auth or schema is unknown.
 - Duplicate source IDs, unknown clients, invalid provider targets and mixed
   valid/invalid batches are covered by focused falsifiers; a rejected batch
   leaves the original registry byte-for-byte unchanged.
-- Local proof passes with 225 TypeScript tests + 3 context tests, build, audit
+- Local proof passes with 226 TypeScript tests + 3 context tests, build, audit
   with zero high vulnerabilities and `git diff --check`. No provider request,
   credential read, Ahrefs rerun or report regeneration occurred.
 

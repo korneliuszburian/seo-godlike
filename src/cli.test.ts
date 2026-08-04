@@ -65,6 +65,24 @@ test("CLI atomically onboards a source batch", async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test("CLI rejects a mixed source batch without mutating the source registry", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-source-batch-invalid-"));
+  try {
+    const registryPath = join(root, "client-registry.json");
+    const sourcePath = join(root, "source-registry.json");
+    const intakePath = join(root, "source-intake.json");
+    await writeFile(registryPath, JSON.stringify({ clients: [{ client_id: "bodymove", properties: [] }] }));
+    const original = JSON.stringify({ sources: [] });
+    await writeFile(sourcePath, original);
+    await writeFile(intakePath, JSON.stringify({ sources: [
+      { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/123456789", status: "ready" },
+      { source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "not-a-project", status: "ready" },
+    ] }));
+    await assert.rejects(execFileAsync(process.execPath, ["dist/cli.js", "--add-sources", intakePath, "--source-registry", sourcePath, "--registry", registryPath], { cwd: process.cwd() }), /numeric SERPROBOT project target/);
+    assert.equal(await readFile(sourcePath, "utf8"), original);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("agency-run rejects malformed keyword budget before creating output or running tasks", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-budget-"));
   const output = join(root, "run");
