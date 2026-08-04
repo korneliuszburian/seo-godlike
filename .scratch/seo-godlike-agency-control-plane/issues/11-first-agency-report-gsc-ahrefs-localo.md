@@ -1431,6 +1431,16 @@ auth or schema is unknown.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
 
+## Rank walker dangling-alias follow-up — 2026-08-04
+
+- A final second-opinion review found that a dangling `manifest.json` symlink
+  could abort rank-root discovery before valid nested bundles were scanned.
+  The walker now skips that dangling alias and continues through the subtree.
+- Focused falsifier plus local gates pass: 193 TypeScript tests + 3 context
+  tests, build, zero high audit vulnerabilities, and `git diff --check`.
+- Fixed point: `c7b8a6e`. No provider request, credential read, Ahrefs rerun,
+  report regeneration, or publication occurred.
+
 ## OpenCode second-opinion follow-up — 2026-08-04
 
 - OpenCode/DeepSeek review of `01c1346` found no blocker. Its scoped-read and
