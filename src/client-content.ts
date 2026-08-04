@@ -128,13 +128,18 @@ export async function resolveLatestClientContentBundle(rootDir: string, expected
         throw error;
       });
       if (realManifest && insideRoot(realManifest)) {
-        const bundle = await readClientContentBundle(directory, expectedClientIds).catch((error: unknown) => {
-          if (error instanceof Error && error.message.startsWith("client content identity mismatch:")) return null;
-          throw error;
-        });
-        if (bundle) {
-          const periodEnd = bundle.contents.flatMap((content) => content.actions.map((action) => action.period.end)).sort().at(-1) ?? "";
-          candidates.push({ path: directory, periodEnd });
+        let manifestValue: unknown;
+        try { manifestValue = JSON.parse(await readFile(manifestPath, "utf8")) as unknown; }
+        catch (error) { throw new Error(`invalid client content manifest: ${manifestPath}`, { cause: error }); }
+        if (record(manifestValue) && manifestValue.provider === "operator-managed-content") {
+          const bundle = await readClientContentBundle(directory, expectedClientIds).catch((error: unknown) => {
+            if (error instanceof Error && error.message.startsWith("client content identity mismatch:")) return null;
+            throw error;
+          });
+          if (bundle) {
+            const periodEnd = bundle.contents.flatMap((content) => content.actions.map((action) => action.period.end)).sort().at(-1) ?? "";
+            candidates.push({ path: directory, periodEnd });
+          }
         }
       }
     }

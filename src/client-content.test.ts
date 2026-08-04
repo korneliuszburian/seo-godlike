@@ -148,6 +148,7 @@ test("client content root resolves the newest verified action bundle", async () 
     };
     await write("2026-06", "2026-06-30");
     await write("2026-07", "2026-07-31");
+    await mkdir(join(root, "foreign")).then(async () => writeFile(join(root, "foreign", "manifest.json"), JSON.stringify({ schema_version: "1", provider: "serprobot", files: {} })));
     assert.equal(await resolveLatestClientContentBundle(root, ["bodymove"]), join(root, "2026-07"));
   } finally { await rm(root, { recursive: true, force: true }); }
 });

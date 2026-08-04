@@ -2249,3 +2249,15 @@ auth or schema is unknown.
 - OpenCode/DeepSeek review of parent `ed3d9d1` found no blockers; its main
   recurring-content risk is addressed by this slice. The direct SERPROBOT API
   remains intentionally deferred pending a documented response contract.
+
+## Content-root foreign manifest hardening — 2026-08-04
+
+- Follow-up to the OpenCode review: the client-content root walker now filters
+  manifest metadata for `provider: operator-managed-content` before invoking the
+  content reader. Co-located SERPROBOT, rank-history or delivery manifests are
+  ignored rather than aborting an otherwise valid content-root scan.
+- A focused falsifier places a foreign provider manifest beside two valid monthly
+  content bundles and confirms that the newest valid operator bundle is selected.
+- Period-end ordering remains deterministic; timestamp-based import ordering is
+  deferred because introducing wall-clock metadata would weaken deterministic
+  bundle serialization. No provider request, credential read or rerun occurred.
