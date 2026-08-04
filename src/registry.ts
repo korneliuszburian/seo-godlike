@@ -39,8 +39,12 @@ function propertyEntries(registry: ClientRegistry, clientId: string): Registered
 
 export function validateClientRegistry(registry: ClientRegistry): void {
   if (!registry || !Array.isArray(registry.clients)) throw new PolicyError("schema", "schema: invalid client registry");
+  const clientIds = new Set<string>();
+  const globalPropertyOwners = new Map<string, string>();
   for (const client of registry.clients) {
     if (!client.client_id || !Array.isArray(client.properties)) throw new PolicyError("schema", "schema: invalid client registry entry");
+    if (clientIds.has(client.client_id)) throw new PolicyError("scope", `scope: duplicate client '${client.client_id}'`);
+    clientIds.add(client.client_id);
     const seen = new Set<string>();
     for (const property of client.properties) {
       if (!propertyFormat(property.property_id, property.provider)) throw new PolicyError("schema", `schema: invalid property_id '${property.property_id}'`);
@@ -52,6 +56,12 @@ export function validateClientRegistry(registry: ClientRegistry): void {
       for (const id of ids) {
         if (!propertyFormat(id, property.provider)) throw new PolicyError("schema", `schema: invalid property alias '${id}'`);
         if (seen.has(id)) throw new PolicyError("scope", `scope: duplicate property '${id}' for client '${client.client_id}'`);
+        const globalKey = `${property.provider}\u0000${id}`;
+        const owner = globalPropertyOwners.get(globalKey);
+        if (owner !== undefined && owner !== client.client_id) {
+          throw new PolicyError("scope", `scope: property '${id}' for provider '${property.provider}' is assigned to clients '${owner}' and '${client.client_id}'`);
+        }
+        globalPropertyOwners.set(globalKey, client.client_id);
         seen.add(id);
       }
     }

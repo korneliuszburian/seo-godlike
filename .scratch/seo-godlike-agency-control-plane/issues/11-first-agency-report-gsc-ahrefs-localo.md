@@ -2367,3 +2367,15 @@ auth or schema is unknown.
 - Local gates pass at 226 TypeScript tests + 3 context tests, build, audit with
   zero high vulnerabilities and `git diff --check`. A new OpenCode/DeepSeek
   review attempt timed out during inspection and produced no accepted verdict.
+
+## Cross-client property collision hardening — 2026-08-04
+
+- Client-registry validation now rejects duplicate `client_id` values and any
+  canonical property or alias assigned to more than one client for the same
+  provider. This closes a tenant-isolation gap in batch onboarding before the
+  registry can be replaced.
+- A focused falsifier covers a GSC canonical/alias collision across two
+  clients. Full local proof passes with 227 TypeScript tests + 3 context tests,
+  build, audit with zero high vulnerabilities and `git diff --check`.
+- No provider request, credential read, Ahrefs rerun, SERPROBOT rerun or report
+  regeneration occurred.

@@ -8,7 +8,7 @@ import { test } from "node:test";
 import { GSC_ANALYTICS_DIMENSIONS } from "./analytics.js";
 import { CapabilityRegistry, ClientRegistry, GscAnalyticsRequest, PolicyError } from "./domain.js";
 import { runGscAnalytics } from "./gsc-analytics.js";
-import { resolveRegisteredProperty } from "./registry.js";
+import { resolveRegisteredProperty, validateClientRegistry } from "./registry.js";
 
 const execFileAsync = promisify(execFile);
 const capabilities: CapabilityRegistry = {
@@ -49,6 +49,18 @@ test("--add-property fails closed on a duplicate canonical or alias id", async (
   await assert.rejects(execFileAsync(process.execPath, args, { cwd: process.cwd() }), /duplicate property 'sc-domain:bodymove.pl'/);
   await assert.rejects(execFileAsync(process.execPath, [...args.slice(0, -1), "https://bodymove.pl/"], { cwd: process.cwd() }), /duplicate property 'https:\/\/bodymove.pl\/'/);
   await rm(directory, { recursive: true, force: true });
+});
+
+test("client registry rejects cross-client property identity collisions", () => {
+  assert.throws(
+    () => validateClientRegistry({
+      clients: [
+        { client_id: "bodymove", properties: [{ property_id: "sc-domain:shared.pl", provider: "google-search-console", canonical_property: true, aliases: ["https://shared.pl/"] }] },
+        { client_id: "other-client", properties: [{ property_id: "https://shared.pl/", provider: "google-search-console", canonical_property: true }] },
+      ],
+    }),
+    (error: unknown) => error instanceof PolicyError && error.category === "scope" && /assigned to clients 'bodymove' and 'other-client'/.test(error.message),
+  );
 });
 
 test("analytics rejects an unregistered property with an exact scope error", async () => {
