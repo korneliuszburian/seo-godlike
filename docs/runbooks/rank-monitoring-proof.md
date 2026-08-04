@@ -103,6 +103,13 @@ node dist/cli.js --pack-client-content-csv \
   --client-id bodymove
 ```
 
+W raporcie miesięcznym nie wskazuj pojedynczego katalogu, tylko root bundle’ów
+działań, np. `--client-content-root /absolute/path/artifacts/analysis/client-content`.
+Resolver wybiera najnowszy zweryfikowany bundle po końcu okresu działania;
+obce manifesty w tym katalogu są pomijane. Root powinien zawierać bundle’y dla
+wszystkich klientów objętych danym raportem — częściowe pokrycie jest odrzucane
+przy odczycie, zamiast cicho wygenerować niepełny raport.
+
 Importer waliduje zakres dat oraz słownik typów i statusów, a manifest wiąże
 bundle z SHA-256 pliku CSV i trybem `normalized_csv`. Brak wierszy oznacza
 niepoprawny lub niedostarczony rejestr — importer odrzuca pusty CSV. Brak
