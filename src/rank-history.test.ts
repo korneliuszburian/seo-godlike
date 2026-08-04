@@ -90,14 +90,15 @@ test("rank history does not compare adjacent snapshots from different SERPROBOT 
   }
 });
 
-test("rank history rejects a snapshot outside the registry client scope", async () => {
+test("rank history skips a snapshot outside the registry client scope", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-scope-"));
   try {
     const input = join(root, "foreign.json");
     await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "other-client", captured_at: "2026-07-31T12:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [] }));
     await mkdir(join(root, "foreign"));
     await writeRankMonitoringBundle(input, join(root, "foreign", "bundle"));
-    await assert.rejects(writeRankHistoryDashboard(root, join(root, "dashboard"), ["bodymove"]), /rank monitoring client identity mismatch/);
+    const summary = await writeRankHistoryDashboard(root, join(root, "dashboard"), ["bodymove"]);
+    assert.equal(summary.snapshot_count, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

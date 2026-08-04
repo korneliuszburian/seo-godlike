@@ -92,7 +92,13 @@ async function readRankBundleIfPresent(manifestPath: string, artifactsDir: strin
   }
   const report = JSON.parse(await readFile(await resolveExistingInside(bundleDir, "report.json", "rank history report"), "utf8")) as unknown;
   if (!isRecord(report) || report.provider !== "serprobot") return [];
-  const verified = await readRankMonitoringBundle(bundleDir, expectedClientIds);
+  let verified: Awaited<ReturnType<typeof readRankMonitoringBundle>>;
+  try {
+    verified = await readRankMonitoringBundle(bundleDir, expectedClientIds);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("rank monitoring client identity mismatch:")) return [];
+    throw error;
+  }
   return verified.snapshots.map((snapshot) => ({
     bundle_path: relative(resolve(artifactsDir), bundleDir) || ".",
     client_id: snapshot.client_id,

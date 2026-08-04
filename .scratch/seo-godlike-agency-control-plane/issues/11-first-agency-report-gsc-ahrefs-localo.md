@@ -1886,3 +1886,15 @@ auth or schema is unknown.
   Existing multi-client delivery and same-keyword configuration tests remain
   green. No provider request, credential read, Ahrefs rerun, SERPROBOT rerun,
   report regeneration, or publication occurred.
+
+## Foreign rank snapshot tolerance — 2026-08-04
+
+- Aligned rank-history consumption with latest-rank selection: a verified
+  snapshot bundle whose client identity is outside the requested registry
+  scope is skipped instead of aborting the complete recurring delivery. Other
+  manifest, hash, path, and schema failures still fail closed.
+- The scope falsifier now proves a foreign-only bundle yields zero history
+  entries. OpenCode review of `88f960f` found this as S1; the review had no
+  blocker otherwise and is superseded by this repair. No provider request,
+  credential read, Ahrefs rerun, SERPROBOT rerun, report regeneration, or
+  publication occurred.
