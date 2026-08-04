@@ -2128,3 +2128,13 @@ auth or schema is unknown.
   vulnerabilities, and `git diff --check`. No provider request, credential
   read, Ahrefs rerun, SERPROBOT rerun, report regeneration, or publication
   occurred.
+
+## Readiness audit — 2026-08-04
+
+- A local `--agency-readiness` run over the current fixture registry reports
+  three ready scope entries for Bodymove (GSC root, GSC Kraków, and Ahrefs)
+  and four explicitly unavailable sources: GA4, Localo, SERPROBOT, and
+  Semstorm.
+- The readiness command reports `credential_posture: not_inspected` and
+  `policy_mode: read_only`; supplied paths were treated only as presence
+  flags. No credential file was read and no provider request or rerun occurred.
