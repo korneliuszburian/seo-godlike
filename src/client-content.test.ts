@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { sha256 } from "./serialize.js";
 import test from "node:test";
-import { parseClientContent, readClientContentBundle, writeClientContentBundle } from "./client-content.js";
+import { parseClientContent, readClientContentBundle, writeClientContentBundle, writeClientContentCsvBundle } from "./client-content.js";
 
 test("client content is deterministic and sorted", () => {
   const content = parseClientContent({ schema_version: "1", client_id: "bodymove", actions: [
@@ -77,6 +77,34 @@ test("client content packer writes a deterministic operator bundle", async () =>
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("client content CSV importer preserves input provenance and quoted fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-content-csv-"));
+  try {
+    const input = join(root, "actions.csv");
+    const output = join(root, "bundle");
+    const csv = "period_start,period_end,type,status,title,target_url,notes\n2026-07-01,2026-07-31,sponsored_article,published,Artykuł,https://example.test/,\"Opis, z przecinkiem\"\n";
+    await writeFile(input, csv);
+    const result = await writeClientContentCsvBundle(input, output, "bodymove");
+    assert.equal(result.content.actions.length, 1);
+    assert.equal(result.content.actions[0]?.notes, "Opis, z przecinkiem");
+    const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8")) as { input_sha256: string; import_mode: string };
+    assert.equal(manifest.input_sha256, sha256(csv));
+    assert.equal(manifest.import_mode, "normalized_csv");
+    assert.equal((await readClientContentBundle(output, ["bodymove"])).content.actions[0]?.client_id, "bodymove");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("client content CSV importer rejects invalid dates and missing columns", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-content-csv-invalid-"));
+  try {
+    const input = join(root, "actions.csv");
+    await writeFile(input, "period_start,period_end,type,status,title\n2026-02-30,2026-03-01,other,planned,Wpis\n");
+    await assert.rejects(writeClientContentCsvBundle(input, join(root, "invalid-date"), "bodymove"), /valid YYYY-MM-DD/);
+    await writeFile(input, "period_start,period_end,type\n2026-02-01,2026-03-01,other\n");
+    await assert.rejects(writeClientContentCsvBundle(input, join(root, "missing-column"), "bodymove"), /missing required column 'status'/);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test("client content bundle preserves multiple client action registers", async () => {

@@ -91,6 +91,23 @@ wewnątrz `--artifacts-dir`); po spakowaniu można go wskazać jako aktualny
 bundle albo pozostawić resolverowi najnowszego kompletnego exportu. Manifest
 zachowuje SHA-256 wejściowego CSV oraz tryb `normalized_csv`.
 
+Jeżeli ten sam eksport Looker/SERPROBOT zawiera tabelę „Działania dla strony”,
+można ją zachować osobno jako rejestr działań operatora. Znormalizowany CSV
+musi zawierać `period_start,period_end,type,status,title`; opcjonalne są
+`action_id,target_url,published_at,notes`. Spakowanie wykonuje się lokalnie:
+
+```bash
+node dist/cli.js --pack-client-content-csv \
+  --input /absolute/path/actions.csv \
+  --output /absolute/path/artifacts/analysis/client-content/bodymove-2026-07 \
+  --client-id bodymove
+```
+
+Importer waliduje zakres dat oraz słownik typów i statusów, a manifest wiąże
+bundle z SHA-256 pliku CSV i trybem `normalized_csv`. Brak wierszy oznacza
+brak dostarczonego rejestru, nie brak wykonanych działań. Rejestr nie jest
+automatyczną rekomendacją i nie wykonuje żadnych zmian u dostawcy.
+
 Przed uruchomieniem raportu klienta operator musi również jawnie oznaczyć
 źródło SERPROBOT jako gotowe w `source-registry.json`, z tym samym numerem
 projektu co w eksporcie, np. `serprobot.bodymove` z `status: "ready"` i

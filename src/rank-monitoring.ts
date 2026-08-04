@@ -2,6 +2,7 @@ import { mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/pro
 import { join, resolve, sep } from "node:path";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { resolveExistingInside } from "./path-confinement.js";
+import { csvHeaderIndex, parseCsvRows } from "./csv.js";
 
 export interface RankRow { keyword: string; position: number | null; previous_position: number | null; search_engine: string; location: string | null; device: string | null; url: string | null; }
 export interface RankMonitoringSourceConfig { project_id: string; search_engine: string; location: string | null; device: string | null; }
@@ -164,24 +165,6 @@ export async function writeRankMonitoringBundle(inputPath: string, outputDir: st
   return writeRankMonitoringSnapshots(parseRankMonitoringCollection(JSON.parse(input) as unknown), outputDir, { input_sha256: sha256(input), import_mode: "normalized_json" });
 }
 
-function parseCsvLine(line: string, lineNumber: number): string[] {
-  const cells: string[] = [];
-  let cell = "";
-  let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index]!;
-    if (character === '"') {
-      if (quoted && line[index + 1] === '"') { cell += '"'; index += 1; }
-      else quoted = !quoted;
-    } else if (character === "," && !quoted) {
-      cells.push(cell); cell = "";
-    } else cell += character;
-  }
-  if (quoted) throw new Error(`rank monitoring CSV line ${lineNumber} has an unterminated quoted field`);
-  cells.push(cell);
-  return cells;
-}
-
 function csvNullableNumber(value: string, label: string): number | null {
   if (value.trim() === "") return null;
   const parsed = Number(value);
@@ -204,15 +187,12 @@ export async function writeRankMonitoringCsvBundle(inputPath: string, outputDir:
   if (!options.client_id || !/^[1-9]\d*$/.test(options.project_id) || !options.search_engine) throw new Error("rank monitoring CSV metadata is invalid");
   if (Number.isNaN(Date.parse(options.captured_at)) || !validDateOnly(options.date_range.start) || !validDateOnly(options.date_range.end) || options.date_range.start > options.date_range.end) throw new Error("rank monitoring CSV metadata dates are invalid");
   const input = await readFile(inputPath, "utf8");
-  const lines = input.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim() !== "");
-  if (lines.length < 2) throw new Error("rank monitoring CSV must contain a header and at least one row");
-  const headers = parseCsvLine(lines[0]!, 1).map((header) => header.trim());
-  const index = new Map<string, number>();
-  headers.forEach((header, position) => { if (!header || index.has(header)) throw new Error(`rank monitoring CSV has duplicate or empty header '${header}'`); index.set(header, position); });
+  const rows = parseCsvRows(input, "rank monitoring CSV");
+  if (rows.length < 2) throw new Error("rank monitoring CSV must contain a header and at least one row");
+  const index = csvHeaderIndex(rows, "rank monitoring CSV");
   if (!index.has("keyword") || !index.has("position")) throw new Error("rank monitoring CSV requires keyword and position columns");
   const value = (cells: string[], name: string): string => cells[index.get(name) ?? -1]?.trim() ?? "";
-  const rows: RankRow[] = lines.slice(1).map((line, offset) => {
-    const cells = parseCsvLine(line, offset + 2);
+  const rankRows: RankRow[] = rows.slice(1).map((cells, offset) => {
     const keyword = value(cells, "keyword");
     if (!keyword) throw new Error(`rank monitoring CSV line ${offset + 2} has an empty keyword`);
     const search_engine = value(cells, "search_engine") || options.search_engine;
@@ -226,5 +206,5 @@ export async function writeRankMonitoringCsvBundle(inputPath: string, outputDir:
       url: value(cells, "url") || null,
     };
   });
-  return writeRankMonitoringSnapshots([parseRankMonitoringSnapshot({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, client_id: options.client_id, captured_at: options.captured_at, date_range: options.date_range, source_config: { project_id: options.project_id, search_engine: options.search_engine, location: options.location ?? null, device: options.device ?? null }, rows })], outputDir, { input_sha256: sha256(input), import_mode: "normalized_csv" });
+  return writeRankMonitoringSnapshots([parseRankMonitoringSnapshot({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, client_id: options.client_id, captured_at: options.captured_at, date_range: options.date_range, source_config: { project_id: options.project_id, search_engine: options.search_engine, location: options.location ?? null, device: options.device ?? null }, rows: rankRows })], outputDir, { input_sha256: sha256(input), import_mode: "normalized_csv" });
 }

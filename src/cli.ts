@@ -25,7 +25,7 @@ import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeClientDelivery } from "./client-delivery.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
-import { writeClientContentBundle } from "./client-content.js";
+import { writeClientContentBundle, writeClientContentCsvBundle } from "./client-content.js";
 import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringBundle, writeRankMonitoringCsvBundle } from "./rank-monitoring.js";
 import { writeRankHistoryDashboard } from "./rank-history.js";
 
@@ -211,6 +211,11 @@ async function main(): Promise<void> {
   if (process.argv.includes("--pack-client-content")) {
     const result = await writeClientContentBundle(argument("--input"), argument("--output"));
     process.stdout.write(`${JSON.stringify({ client_id: result.content.client_id, client_ids: result.contents.map((content) => content.client_id), manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--pack-client-content-csv")) {
+    const result = await writeClientContentCsvBundle(argument("--input"), argument("--output"), argument("--client-id"));
+    process.stdout.write(`${JSON.stringify({ client_id: result.content.client_id, actions: result.content.actions.length, manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--pack-rank-monitoring")) {

@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { resolveExistingInside } from "./path-confinement.js";
 import { canonicalJson, sha256 } from "./serialize.js";
+import { csvHeaderIndex, parseCsvRows } from "./csv.js";
 
 export type ClientActionType = "sponsored_article" | "forum_marketing" | "nap_listing" | "on_site" | "other";
 export type ClientActionStatus = "planned" | "in_progress" | "published" | "paused" | "cancelled";
@@ -95,12 +96,43 @@ export async function readClientContentBundle(bundleDir: string, expectedClientI
   return { content: contents[0]!, contents, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
 }
 
-export async function writeClientContentBundle(inputPath: string, outputDir: string): Promise<ClientContentBundle> {
-  const contents = parseClientContentCollection(JSON.parse(await readFile(resolve(inputPath), "utf8")) as unknown);
+async function writeClientContentContents(contents: ClientContent[], outputDir: string, provenance: { input_sha256: string; import_mode: "normalized_json" | "normalized_csv" }): Promise<ClientContentBundle> {
   const report = canonicalJson(contents.length === 1 ? contents[0] : { schema_version: "1", clients: contents } satisfies ClientContentCollection);
   await mkdir(resolve(outputDir), { recursive: false, mode: 0o700 });
-  const manifest = canonicalJson({ schema_version: "1", provider: "operator-managed-content", client_id: contents.length === 1 ? contents[0]?.client_id : "multi-client", client_ids: contents.map((content) => content.client_id), files: { "client-content.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
+  const manifest = canonicalJson({ schema_version: "1", provider: "operator-managed-content", client_id: contents.length === 1 ? contents[0]?.client_id : "multi-client", client_ids: contents.map((content) => content.client_id), ...provenance, files: { "client-content.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
   await writeFile(join(resolve(outputDir), "client-content.json"), report, { encoding: "utf8", flag: "wx", mode: 0o600 });
   await writeFile(join(resolve(outputDir), "manifest.json"), manifest, { encoding: "utf8", flag: "wx", mode: 0o600 });
   return { content: contents[0]!, contents, manifest_sha256: sha256(manifest) };
+}
+
+export async function writeClientContentBundle(inputPath: string, outputDir: string): Promise<ClientContentBundle> {
+  const input = await readFile(resolve(inputPath));
+  const contents = parseClientContentCollection(JSON.parse(input.toString("utf8")) as unknown);
+  return writeClientContentContents(contents, outputDir, { input_sha256: sha256(input.toString("utf8")), import_mode: "normalized_json" });
+}
+
+function validDateOnly(value: string, label: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) !== value) throw new Error(`client content ${label} must be a valid YYYY-MM-DD date`);
+  return value;
+}
+
+export async function writeClientContentCsvBundle(inputPath: string, outputDir: string, clientId: string): Promise<ClientContentBundle> {
+  if (!clientId.trim()) throw new Error("client content client_id must be a non-empty string");
+  const input = await readFile(resolve(inputPath));
+  const rows = parseCsvRows(input.toString("utf8"), "client content CSV");
+  const headers = csvHeaderIndex(rows, "client content CSV");
+  const required = ["period_start", "period_end", "type", "status", "title"];
+  for (const header of required) if (!headers.has(header)) throw new Error(`client content CSV is missing required column '${header}'`);
+  if (rows.length < 2) throw new Error("client content CSV must contain at least one action row");
+  const value = (row: string[], header: string): string => row[headers.get(header)!]?.trim() ?? "";
+  const actions = rows.slice(1).map((row, index) => {
+    const start = validDateOnly(value(row, "period_start"), `row ${index + 2} period_start`);
+    const end = validDateOnly(value(row, "period_end"), `row ${index + 2} period_end`);
+    if (start > end) throw new Error(`client content CSV row ${index + 2} period_start must not be after period_end`);
+    const action = { action_id: value(row, "action_id"), client_id: clientId, period: { start, end }, type: value(row, "type"), status: value(row, "status"), title: value(row, "title"), target_url: value(row, "target_url") || null, published_at: value(row, "published_at") || null, notes: value(row, "notes") || null };
+    if (!action.action_id) action.action_id = `csv-${sha256(canonicalJson(action)).slice(0, 16)}`;
+    return action;
+  });
+  const content = parseClientContent({ schema_version: "1", client_id: clientId, actions, glossary: [], contact: null });
+  return writeClientContentContents([content], outputDir, { input_sha256: sha256(input.toString("utf8")), import_mode: "normalized_csv" });
 }

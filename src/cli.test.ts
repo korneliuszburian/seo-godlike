@@ -34,6 +34,18 @@ test("CLI packs a normalized SERPROBOT CSV without provider IO", async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test("CLI packs operator actions CSV without provider IO", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-content-csv-"));
+  try {
+    const input = join(root, "actions.csv");
+    const output = join(root, "bundle");
+    await writeFile(input, "period_start,period_end,type,status,title\n2026-07-01,2026-07-31,nap_listing,published,Wizytówka NAP\n");
+    const result = await execFileAsync(process.execPath, ["dist/cli.js", "--pack-client-content-csv", "--input", input, "--output", output, "--client-id", "bodymove"], { cwd: process.cwd() });
+    assert.match(result.stdout, /\"actions\": 1/);
+    assert.match(await readFile(join(output, "manifest.json"), "utf8"), /normalized_csv/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("agency-run rejects malformed keyword budget before creating output or running tasks", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-budget-"));
   const output = join(root, "run");
