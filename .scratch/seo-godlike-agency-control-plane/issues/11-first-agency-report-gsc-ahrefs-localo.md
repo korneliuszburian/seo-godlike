@@ -1948,3 +1948,11 @@ auth or schema is unknown.
   units and 13 manifest-bound files verified by hash and byte count. No GSC,
   Ahrefs, SERPROBOT, GA4, or Localo rerun occurred.
 - Fixed point: `53c98f2` (`fix(delivery): localize unavailable source reasons`).
+
+## Client delivery unknown-reason fail-closed guard — 2026-08-04
+
+- Unknown future provider reasons are now rendered as a Polish operator-facing
+  placeholder instead of being copied verbatim into client HTML or draft email.
+  Focused delivery coverage includes known GA4/Semstorm mappings and an
+  unknown Localo reason. No provider request or evidence rerun occurred.
+- Fixed point: `931b9d6` (`fix(delivery): fail closed on unknown source reasons`).
