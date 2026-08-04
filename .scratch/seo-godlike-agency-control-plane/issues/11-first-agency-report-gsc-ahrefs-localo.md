@@ -1804,3 +1804,15 @@ auth or schema is unknown.
   context tests, build, zero high audit vulnerabilities, and `git diff --check`.
 - Fixed point: `e6e83dd`. No provider request, credential read, Ahrefs rerun,
   report regeneration, or publication occurred.
+
+## Unified history confinement — 2026-08-04
+
+- Scoped GSC history now rejects an in-scope manifest that omits `report.json`;
+  unrelated nested output manifests remain ignored.
+- Rank history now follows the same symlink-aware in-root walker as the other
+  history readers and rejects escaping manifest aliases. Focused falsifiers
+  cover both in-root bundle aliases and escaped manifests.
+- Local proof at fixed point `0a266cd`: 192 TypeScript tests + 3 context tests,
+  build, zero high audit vulnerabilities, and `git diff --check`.
+- No provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.
