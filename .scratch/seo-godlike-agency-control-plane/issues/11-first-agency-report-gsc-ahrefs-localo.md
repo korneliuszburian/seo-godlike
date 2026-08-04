@@ -2116,3 +2116,15 @@ auth or schema is unknown.
   local proof for the slice remains authoritative. No provider request,
   credential read, Ahrefs rerun, SERPROBOT rerun, report regeneration, or
   publication occurred.
+
+## Keyword bundle/research rerun guard — 2026-08-04
+
+- Monthly schedule generation now rejects a configuration that supplies both
+  an existing Keywords Explorer bundle and `keywordResearch`. This prevents a
+  recurring run from silently issuing a new costed Ahrefs query while an
+  accepted local bundle was also supplied.
+- A focused falsifier covers the conflicting configuration. Full local proof
+  passes with 202 TypeScript tests + 3 context tests, build, zero high audit
+  vulnerabilities, and `git diff --check`. No provider request, credential
+  read, Ahrefs rerun, SERPROBOT rerun, report regeneration, or publication
+  occurred.

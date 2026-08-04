@@ -75,6 +75,7 @@ export interface AgencyScheduleOptions {
 export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   if (options.keywordResearch && !options.keywordInputPath) throw new Error("keyword research scheduling requires keywordInputPath");
+  if (options.keywordResearch && options.keywordBundlePath) throw new Error("keyword research scheduling cannot combine with an existing keyword bundle");
   if (options.keywordResearch && !options.allowEstimatedBudget) throw new Error("keyword research scheduling requires allowEstimatedBudget");
   if (options.rankMonitoringRoot) assertPathWithin(options.artifactsDir, options.rankMonitoringRoot, "rankMonitoringRoot");
   if (options.historyDir) assertNoParentTraversal(options.historyDir, "historyDir");
