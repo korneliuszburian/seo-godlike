@@ -125,6 +125,26 @@ test("rank history does not compare across a missing period", async () => {
   }
 });
 
+test("rank history deduplicates repeated exports of the same period and configuration", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-duplicate-period-"));
+  try {
+    const input = async (path: string, captured_at: string, start: string, end: string, position: number) => {
+      await writeFile(path, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at, date_range: { start, end }, source_config: { project_id: "123", search_engine: "google.pl", location: "Warszawa", device: "desktop" }, rows: [{ keyword: "rehabilitacja", position, previous_position: null, search_engine: "google.pl", location: "Warszawa", device: "desktop", url: null }] }));
+    };
+    await input(join(root, "previous.json"), "2026-06-30T12:00:00.000Z", "2026-06-01", "2026-06-30", 9);
+    await input(join(root, "current.json"), "2026-07-31T12:00:00.000Z", "2026-07-01", "2026-07-31", 7);
+    await input(join(root, "duplicate.json"), "2026-07-30T12:00:00.000Z", "2026-07-01", "2026-07-31", 99);
+    await writeRankMonitoringBundle(join(root, "previous.json"), join(root, "previous"));
+    await writeRankMonitoringBundle(join(root, "current.json"), join(root, "current"));
+    await writeRankMonitoringBundle(join(root, "duplicate.json"), join(root, "duplicate"));
+    const summary = await writeRankHistoryDashboard(root, join(root, "dashboard"), ["bodymove"]);
+    assert.equal(summary.snapshot_count, 2);
+    assert.deepEqual(summary.comparisons.map((entry) => [entry.previous_position, entry.current_position, entry.position_delta]), [[9, 7, -2]]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("rank history follows an in-root bundle symlink", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-symlink-"));
   try {

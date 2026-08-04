@@ -126,6 +126,21 @@ function sameSourceConfiguration(previous: RankHistoryEntry, current: RankHistor
     && (previousConfig.device === null || currentConfig.device === null || previousConfig.device === currentConfig.device);
 }
 
+function sourceConfigurationKey(config: RankHistoryEntry["source_config"]): string {
+  if (!config) return "—";
+  return [config.project_id, config.search_engine, config.location ?? "", config.device ?? ""].join("\u0000");
+}
+
+function deduplicateSnapshots(snapshots: RankHistoryEntry[]): RankHistoryEntry[] {
+  const selected = new Map<string, RankHistoryEntry>();
+  for (const snapshot of snapshots) {
+    const key = [snapshot.client_id, snapshot.date_range.start, snapshot.date_range.end, sourceConfigurationKey(snapshot.source_config)].join("\u0000");
+    const existing = selected.get(key);
+    if (!existing || snapshot.captured_at > existing.captured_at || (snapshot.captured_at === existing.captured_at && snapshot.bundle_path > existing.bundle_path)) selected.set(key, snapshot);
+  }
+  return [...selected.values()].sort((a, b) => a.date_range.start.localeCompare(b.date_range.start) || a.date_range.end.localeCompare(b.date_range.end) || a.client_id.localeCompare(b.client_id) || a.bundle_path.localeCompare(b.bundle_path));
+}
+
 function comparisons(snapshots: RankHistoryEntry[]): RankHistoryComparison[] {
   const byClient = new Map<string, RankHistoryEntry[]>();
   for (const snapshot of snapshots) byClient.set(snapshot.client_id, [...(byClient.get(snapshot.client_id) ?? []), snapshot]);
@@ -157,7 +172,8 @@ export async function readRankHistory(artifactsDir: string, expectedClientIds: r
 }
 
 export function summarizeRankHistory(snapshots: RankHistoryEntry[]): RankHistorySummary {
-  return { schema_version: "1", snapshot_count: snapshots.length, snapshots: [...snapshots], comparisons: comparisons(snapshots) };
+  const uniqueSnapshots = deduplicateSnapshots(snapshots);
+  return { schema_version: "1", snapshot_count: uniqueSnapshots.length, snapshots: uniqueSnapshots, comparisons: comparisons(uniqueSnapshots) };
 }
 
 function markdown(summary: RankHistorySummary): string {

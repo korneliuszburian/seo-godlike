@@ -1898,3 +1898,14 @@ auth or schema is unknown.
   blocker otherwise and is superseded by this repair. No provider request,
   credential read, Ahrefs rerun, SERPROBOT rerun, report regeneration, or
   publication occurred.
+
+## Rank-history duplicate-period guard — 2026-08-04
+
+- Rank-history summaries now deduplicate repeated exports by client, date range,
+  and SERPROBOT configuration, retaining the newest captured snapshot. This
+  prevents retry/merge duplicates from producing phantom position deltas.
+- Client delivery labels each row `Okres porównania` rather than implying that
+  every historical row is the report's current period, and its test verifies
+  rank-history manifest provenance is exposed in delivery output. No provider
+  request, credential read, Ahrefs rerun, SERPROBOT rerun, report regeneration,
+  or publication occurred.

@@ -254,10 +254,13 @@ test("client delivery assigns a multi-client rank bundle to the matching reports
     const acmeHtml = await readFile(join(root, "delivery", "acme", "acme-seo-report.html"), "utf8");
     assert.match(bodymoveHtml, /rehabilitacja/);
     assert.match(bodymoveHtml, /Zmiana pozycji monitorowanych fraz/);
+    assert.match(bodymoveHtml, /Okres porównania/);
     assert.match(bodymoveHtml, />-2</);
     assert.doesNotMatch(bodymoveHtml, /acme-fraza/);
     assert.match(acmeHtml, /acme-fraza/);
     assert.doesNotMatch(acmeHtml, /rehabilitacja/);
+    const deliveryManifest = JSON.parse(await readFile(join(root, "delivery", "manifest.json"), "utf8")) as { rank_history_source_manifest_sha256: string[] };
+    assert.equal(deliveryManifest.rank_history_source_manifest_sha256.length, 2);
     await assert.rejects(writeClientDelivery({ agencyReportPath: agencyPath, artifactsDir: artifacts, outputDir: join(root, "conflict"), rankMonitoringPath: rankBundle, rankMonitoringRoot: artifacts }), /mutually exclusive/);
   } finally {
     await rm(root, { recursive: true, force: true });
