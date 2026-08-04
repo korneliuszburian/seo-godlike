@@ -9,7 +9,7 @@ import { parsePhraseInput, PhraseGroup } from "./ahrefs-keywords.js";
 import { RANK_MONITORING_SOURCE_LABEL, rankMonitoringClientIds, readRankMonitoringBundle, RankMonitoringSnapshot } from "./rank-monitoring.js";
 import { resolveExistingInside } from "./path-confinement.js";
 
-export type AgencyReportSourceReasonCode = "missing_evidence_bundle" | "no_evidence_path" | "stale_snapshot";
+export type AgencyReportSourceReasonCode = "missing_evidence_bundle" | "no_evidence_path" | "stale_snapshot" | "missing_freshness_baseline";
 
 interface AgencyReportSourceStatus {
   source_id?: string;
@@ -578,6 +578,9 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
       if (host) selectedGscPeriodEndsByClientAndHost.set(`${entry.client_id}\u0000${host}`, [...(selectedGscPeriodEndsByClientAndHost.get(`${entry.client_id}\u0000${host}`) ?? []), accepted.period.end]);
     }
   }
+  const readyGscScopeHosts = new Set(scope.entries
+    .filter((entry) => entry.status === "ready" && entry.provider === "google-search-console")
+    .map((entry) => `${entry.client_id}\u0000${propertyHost(entry.property_id) ?? entry.property_id.toLowerCase()}`));
   const propertyStatus = scope.entries.map((entry) => {
     const source: AgencyReportSourceStatus = { client_id: entry.client_id, property_id: entry.property_id, provider: entry.provider, status: entry.status, reason: entry.reason, bundle_path: null };
     if (source.status !== "ready") return source;
@@ -585,6 +588,8 @@ export async function writeAgencyReport(artifactsDir: string, outputDir: string,
     const freshnessPeriods = source.provider === "ahrefs"
       ? selectedGscPeriodEndsByClientAndHost.get(`${source.client_id}\u0000${propertyHost(source.property_id) ?? source.property_id.toLowerCase()}`) ?? selectedGscPeriodEndsByClient.get(source.client_id) ?? []
       : [];
+    const hasMatchingGscScope = source.provider === "ahrefs" && readyGscScopeHosts.has(`${source.client_id}\u0000${propertyHost(source.property_id) ?? source.property_id.toLowerCase()}`);
+    if (accepted && hasMatchingGscScope && freshnessPeriods.length === 0) return { ...source, status: "unavailable" as const, reason: "Ahrefs freshness cannot be verified because the selected Google Search Console baseline is missing", reason_code: "missing_freshness_baseline" as const, bundle_path: null };
     if (accepted && !ahrefsSnapshotFreshForGsc(accepted, freshnessPeriods)) return { ...source, status: "unavailable" as const, reason: "Ahrefs snapshot is older than the selected Google Search Console observation period", reason_code: "stale_snapshot" as const, bundle_path: null };
     if (accepted) return { ...source, status: "ready" as const, reason: null, bundle_path: accepted.bundle_path };
     if (source.status === "ready") return { ...source, status: "unavailable" as const, reason: "No accepted evidence bundle was found for this source", reason_code: "missing_evidence_bundle" as const, bundle_path: null };

@@ -1538,6 +1538,21 @@ auth or schema is unknown.
   vulnerabilities, and `git diff --check`. No Ahrefs rerun, report
   regeneration, or publication occurred.
 
+## Ahrefs freshness baseline gate — 2026-08-04
+
+- Ahrefs is now unavailable with `missing_freshness_baseline` when a matching
+  ready GSC property exists in the scope but no accepted current GSC bundle
+  exists to establish the comparison period. This prevents an old estimated
+  snapshot from being presented as ready merely because the baseline is
+  absent.
+- Delivery renders the condition in Polish as a missing comparison baseline;
+  it remains distinct from a stale snapshot and from missing evidence.
+- A focused falsifier covers an accepted Ahrefs bundle alongside a ready but
+  evidence-missing GSC property. Proof: 174 TypeScript tests + 3 context tests,
+  build, zero high audit vulnerabilities, and `git diff --check`. No provider
+  request, credential read, Ahrefs rerun, report regeneration, or publication
+  occurred.
+
 ## Verified keyword-only evidence status — 2026-08-04
 
 - A final exact-HEAD review found that a verified Keywords Explorer bundle was

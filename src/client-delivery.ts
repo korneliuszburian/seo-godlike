@@ -112,6 +112,7 @@ function providerLabel(provider: string): string {
   } as Record<string, string>)[provider] ?? provider;
 }
 function sourceStatusInterpretation(source: AgencyReportSummary["source_status"][number]): string {
+  if (source.reason_code === "missing_freshness_baseline") return "Brak porównywalnej bazy — nie można zweryfikować świeżości snapshotu Ahrefs";
   if (source.reason_code === "stale_snapshot") return "Dane nieaktualne — snapshot Ahrefs jest starszy niż wybrany okres Google Search Console";
   if (source.reason_code === "missing_evidence_bundle") return "Brak zweryfikowanych danych — nie znaleziono zaakceptowanego pakietu evidence";
   if (source.reason_code === "no_evidence_path") return "Brak ścieżki evidence — źródło nie ma jeszcze obsługiwanej ścieżki importu danych";
@@ -120,6 +121,7 @@ function sourceStatusInterpretation(source: AgencyReportSummary["source_status"]
   return "Zablokowane — wymaga wyjaśnienia";
 }
 function sourceReasonLabel(source: AgencyReportSummary["source_status"][number]): string {
+  if (source.reason_code === "missing_freshness_baseline") return "Nie znaleziono zaakceptowanej bazy Google Search Console dla tej właściwości; świeżość estymacji Ahrefs nie jest weryfikowana.";
   if (source.reason_code === "stale_snapshot") return "Snapshot Ahrefs jest starszy niż wybrany okres Google Search Console; dane nie są używane w tym raporcie.";
   if (source.reason_code === "missing_evidence_bundle") return "Nie znaleziono zaakceptowanego pakietu evidence dla tego źródła; źródło nie jest traktowane jako gotowe ani jako zero.";
   if (source.reason_code === "no_evidence_path") return "Dla tego zewnętrznego źródła nie ma jeszcze obsługiwanej ścieżki importu evidence; nie pokazujemy danych ani wartości zero.";
@@ -127,6 +129,7 @@ function sourceReasonLabel(source: AgencyReportSummary["source_status"][number])
   return source.reason ?? "Brak szczegółowego powodu niedostępności.";
 }
 function sourceHeadlineLabel(source: AgencyReportSummary["source_status"][number]): string {
+  if (source.reason_code === "missing_freshness_baseline") return `${providerLabel(source.provider)} — brak bazy porównawczej`;
   if (source.reason_code === "stale_snapshot") return `${providerLabel(source.provider)} — dane nieaktualne`;
   if (source.reason_code === "no_evidence_path") return `${providerLabel(source.provider)} — brak ścieżki evidence`;
   if (source.reason_code === "missing_evidence_bundle") return `${providerLabel(source.provider)} — brak pakietu evidence`;
