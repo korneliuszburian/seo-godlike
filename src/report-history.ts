@@ -171,7 +171,13 @@ async function readVerifiedBundle(manifestPath: string, artifactsDir: string, sc
   let candidate: AnalyticsReportShape | null = null;
   if (scope) {
     let raw: unknown;
-    try { raw = JSON.parse(await readFile(await resolveExistingInside(bundleDir, "report.json", "history candidate report"), "utf8")) as unknown; } catch { return null; }
+    try { raw = JSON.parse(await readFile(await resolveExistingInside(bundleDir, "report.json", "history candidate report"), "utf8")) as unknown; }
+    catch (error) {
+      if (error instanceof Error && error.message.includes("escapes its root through a symlink")) {
+        throw new Error("history manifest entry escapes its root through a symlink: report.json", { cause: error });
+      }
+      return null;
+    }
     if (isRecord(raw) && typeof raw.client_id === "string" && Array.isArray(raw.property_refs) && typeof raw.property_refs[0] === "string" && raw.provider === "google-search-console") {
       inScopeCandidate = scope.has(JSON.stringify([raw.client_id, raw.property_refs[0], raw.provider]));
     }
@@ -359,6 +365,6 @@ export async function writeHistoryDashboard(artifactsDir: string, outputDir: str
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
   const files = { "executive-summary.json": `${JSON.stringify(summary, null, 2)}\n`, "executive-summary.md": markdown(summary), "executive-summary.html": html(summary) };
   for (const [name, content] of Object.entries(files)) await writeExclusive(join(outputDir, name), content);
-  await writeExclusive(join(outputDir, "manifest.json"), JSON.stringify({ schema_version: "1", source_artifacts_dir: ".", files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: sha256(Buffer.from(content)), bytes: Buffer.byteLength(content) }])) }, null, 2) + "\n");
+  await writeExclusive(join(outputDir, "manifest.json"), JSON.stringify({ schema_version: "1", files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: sha256(Buffer.from(content)), bytes: Buffer.byteLength(content) }])) }, null, 2) + "\n");
   return summary;
 }

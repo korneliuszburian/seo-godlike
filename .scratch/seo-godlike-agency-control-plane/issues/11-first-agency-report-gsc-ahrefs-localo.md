@@ -1435,9 +1435,10 @@ auth or schema is unknown.
 
 - Provider and GSC history candidate reports now use the shared symlink-aware
   confinement helper before parsing bytes. Escaping report symlinks fail closed
-  instead of being silently treated as unrelated unreadable bundles.
-- History dashboard provenance uses a root-independent `source_artifacts_dir`
-  marker, and the skipped-bundle label is Polish in both rendered surfaces.
+  instead of being silently treated as unrelated unreadable bundles, including
+  scoped history reads.
+- History dashboard manifests contain only the hashes and byte counts of their
+  rendered files; the skipped-bundle label is Polish in both rendered surfaces.
 - Local proof at fixed point `26ee61f`: 186 TypeScript tests + 3 context tests,
   build, zero high audit vulnerabilities, and `git diff --check`.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or

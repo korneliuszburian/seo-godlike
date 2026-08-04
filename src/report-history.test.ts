@@ -122,7 +122,7 @@ test("history rejects a manifest file symlink escaping the bundle", async () => 
     await writeFile(outsideReport, await readFile(join(root, "bundle", "report.json")));
     await rm(join(root, "bundle", "report.json"));
     await symlink(outsideReport, join(root, "bundle", "report.json"));
-    await assert.rejects(readAnalyticsHistory(root), /history manifest entry escapes its root through a symlink/);
+    await assert.rejects(readAnalyticsHistory(root, [{ client_id: "bodymove", property_id: "sc-domain:bodymove.pl", provider: "google-search-console" }]), /history manifest entry escapes its root through a symlink/);
   } finally {
     await rm(root, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
