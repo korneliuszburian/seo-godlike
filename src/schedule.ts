@@ -71,7 +71,13 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   const delivery = `${shellQuote(options.deliveryDir)}/client-delivery-${stamp}`;
   const history = options.historyDir ? shellQuote(options.historyDir) : `${shellQuote(options.reportDir)}/history-${stamp}`;
   const rankHistory = options.rankHistoryDir ? shellQuote(options.rankHistoryDir) : `${shellQuote(options.reportDir)}/rank-history-${stamp}`;
-  const prepareRoots = `install -d -m 700 ${shellQuote(options.artifactsDir)} ${shellQuote(options.reportDir)} ${shellQuote(options.deliveryDir)}`;
+  const prepareRoots = `install -d -m 700 ${[
+    options.artifactsDir,
+    options.reportDir,
+    options.deliveryDir,
+    ...(options.historyDir ? [options.historyDir] : []),
+    ...(options.rankHistoryDir ? [options.rankHistoryDir] : []),
+  ].map(shellQuote).join(" ")}`;
   const command = [
     "node", "dist/cli.js", "--agency-run",
     "--registry", shellQuote(options.registryPath), "--capabilities", shellQuote(options.capabilitiesPath),

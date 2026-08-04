@@ -1548,6 +1548,16 @@ auth or schema is unknown.
   vulnerabilities, and `git diff --check`. No Ahrefs rerun, report
   regeneration, or publication occurred.
 
+## Scheduled history-root preparation — 2026-08-04
+
+- Monthly cron generation now prepares explicitly configured history and rank
+  history roots with private directory permissions before the agency run and
+  history writers execute. Default timestamped roots remain created inside the
+  locked shell pipeline.
+- A focused schedule falsifier asserts both explicit roots are included in the
+  `install -d -m 700` preparation command. No cron was installed and no
+  provider request or report rerun occurred.
+
 ## Ahrefs freshness baseline gate — 2026-08-04
 
 - Ahrefs is now unavailable with `missing_freshness_baseline` when a matching

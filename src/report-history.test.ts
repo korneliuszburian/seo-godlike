@@ -440,3 +440,18 @@ test("monthly agency schedule can render rank history from existing snapshots", 
   assert.match(entry, /--rank-history/);
   assert.match(entry, /rank-history/);
 });
+
+test("monthly agency schedule prepares explicit history roots", () => {
+  const entry = buildMonthlyAgencyCron({
+    workingDirectory: "/work/seo-godlike",
+    oauthClientPath: "/secure/oauth-client.json",
+    registryPath: "registry.json",
+    capabilitiesPath: "capabilities.json",
+    artifactsDir: "artifacts",
+    reportDir: "reports",
+    deliveryDir: "delivery",
+    historyDir: "reports/history",
+    rankHistoryDir: "reports/rank-history",
+  });
+  assert.match(entry, /install -d -m 700 'artifacts' 'reports' 'delivery' 'reports\/history' 'reports\/rank-history'/);
+});
