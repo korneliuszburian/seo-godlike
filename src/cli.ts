@@ -23,7 +23,7 @@ import { buildExternalSourceTasks, executeAgencyTasks, writeAgencyRunRecord } fr
 import { verifyKeywordResearchBundle, writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeClientDelivery } from "./client-delivery.js";
-import { validateSourceRegistry } from "./source-registry.js";
+import { addSource, validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 import { writeClientContentBundle, writeClientContentCsvBundle } from "./client-content.js";
 import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringApiBundle, writeRankMonitoringBundle, writeRankMonitoringCsvBundle } from "./rank-monitoring.js";
@@ -554,6 +554,27 @@ async function main(): Promise<void> {
   }
   if (process.argv.includes("--localo-discover")) {
     const result = await discoverLocaloMcp(optionalArgument("--localo-url") ?? LOCALO_MCP_URL);
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--add-source")) {
+    const providerValue = argument("--provider");
+    if (!["localo", "google-analytics", "serprobot", "semstorm"].includes(providerValue)) throw new Error(`unsupported external provider '${providerValue}'`);
+    const status = argument("--status");
+    if (status !== "ready" && status !== "unavailable") throw new Error("--status must be ready or unavailable");
+    const clients = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const result = await addSource({
+      registryPath: argument("--add-source"),
+      source_id: argument("--source-id"),
+      client_id: argument("--client-id"),
+      provider: providerValue as SourceRegistry["sources"][number]["provider"],
+      target: optionalArgument("--target") ?? null,
+      status,
+      reason: optionalArgument("--reason") ?? (status === "ready" ? null : "awaiting operator proof"),
+      search_engine: optionalArgument("--search-engine"),
+      location: optionalArgument("--location"),
+      device: optionalArgument("--device"),
+    }, clients);
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }

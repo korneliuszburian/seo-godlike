@@ -49,6 +49,28 @@ pobieramy PDF-a i nie scrapujemy dashboardu.
 
 ## Wejście do pipeline’u
 
+### Jednorazowe onboardowanie źródła
+
+Źródło można dopisać atomowo do istniejącego rejestru bez ręcznej edycji JSON:
+
+```bash
+node dist/cli.js --add-source /absolute/path/source-registry.json \
+  --registry /absolute/path/client-registry.json \
+  --source-id serprobot.bodymove \
+  --client-id bodymove \
+  --provider serprobot \
+  --target 123456 \
+  --status ready \
+  --search-engine google.pl \
+  --location Warszawa \
+  --device desktop
+```
+
+Operacja odrzuca nieznanego klienta, niepoprawny target, duplikat `source_id`
+oraz nieznany status przed zapisem. Zapis jest atomowy; przy błędzie istniejący
+rejestr pozostaje bez zmian. Dla źródła jeszcze niepotwierdzonego użyj
+`--status unavailable --reason "awaiting operator proof"` i nie podawaj targetu.
+
 Operator przygotowuje lokalny, jednorazowy JSON zgodny z tym kształtem:
 
 ```json

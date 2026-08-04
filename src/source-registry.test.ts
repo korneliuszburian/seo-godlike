@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ClientRegistry, SourceRegistry } from "./domain.js";
 import { validateSourceRegistry } from "./source-registry.js";
+import { addSource } from "./source-registry.js";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const clients: ClientRegistry = { clients: [{ client_id: "bodymove", properties: [] }] };
 
@@ -38,4 +42,28 @@ test("ready SERPROBOT source requires a numeric project id", () => {
   const registry: SourceRegistry = { sources: [{ source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "project-bodymove", status: "ready", reason: null }] };
   assert.throws(() => validateSourceRegistry(registry, clients), /numeric SERPROBOT project target/);
   assert.doesNotThrow(() => validateSourceRegistry({ sources: [{ ...registry.sources[0], target: "12345" }] }, clients));
+});
+
+test("source onboarding writes a validated source atomically", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-source-registry-"));
+  try {
+    const path = join(root, "sources.json");
+    const initial: SourceRegistry = { sources: [] };
+    await writeFile(path, JSON.stringify(initial), "utf8");
+    const result = await addSource({ registryPath: path, source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "123", status: "ready", reason: null, search_engine: "google.pl", location: "Warszawa", device: "desktop" }, clients);
+    assert.equal(result.sources[0]?.target, "123");
+    assert.equal((JSON.parse(await readFile(path, "utf8")) as SourceRegistry).sources.length, 1);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("source onboarding rejects duplicates without mutating the registry", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-source-registry-"));
+  try {
+    const path = join(root, "sources.json");
+    const initial: SourceRegistry = { sources: [{ source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: null, status: "unavailable", reason: "pending" }] };
+    const original = JSON.stringify(initial);
+    await writeFile(path, original, "utf8");
+    await assert.rejects(addSource({ registryPath: path, source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "123", status: "ready", reason: null }, clients), /duplicate source_id/);
+    assert.equal(await readFile(path, "utf8"), original);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });

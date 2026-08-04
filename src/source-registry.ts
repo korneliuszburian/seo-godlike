@@ -1,4 +1,9 @@
+import { randomUUID } from "node:crypto";
+import { readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { ClientRegistry, ExternalProvider, SourceRegistry } from "./domain.js";
+import { canonicalJson } from "./serialize.js";
+import { assertShellSafeSegment } from "./shell.js";
 
 const SUPPORTED_EXTERNAL_PROVIDERS = new Set<ExternalProvider>(["localo", "google-analytics", "serprobot", "semstorm"]);
 
@@ -16,4 +21,49 @@ export function validateSourceRegistry(registry: SourceRegistry, clients: Client
     if (!clients.clients.some((client) => client.client_id === source.client_id)) throw new Error(`source '${source.source_id}' references unknown client '${source.client_id}'`);
     seen.add(source.source_id);
   }
+}
+
+export interface AddSourceInput {
+  registryPath: string;
+  source_id: string;
+  client_id: string;
+  provider: ExternalProvider;
+  target: string | null;
+  status: "ready" | "unavailable";
+  reason: string | null;
+  search_engine?: string;
+  location?: string | null;
+  device?: string | null;
+}
+
+export async function addSource(input: AddSourceInput, clients: ClientRegistry): Promise<SourceRegistry> {
+  assertShellSafeSegment(input.client_id);
+  assertShellSafeSegment(input.source_id);
+  const path = resolve(input.registryPath);
+  const parsed = JSON.parse(await readFile(path, "utf8")) as SourceRegistry;
+  validateSourceRegistry(parsed, clients);
+  if (parsed.sources.some((source) => source.source_id === input.source_id)) throw new Error(`duplicate source_id '${input.source_id}'`);
+  const next: SourceRegistry = {
+    sources: [...parsed.sources, {
+      source_id: input.source_id,
+      client_id: input.client_id,
+      provider: input.provider,
+      target: input.target,
+      status: input.status,
+      reason: input.reason,
+      ...(input.search_engine ? { search_engine: input.search_engine } : {}),
+      ...(input.location !== undefined ? { location: input.location } : {}),
+      ...(input.device !== undefined ? { device: input.device } : {}),
+    }],
+  };
+  validateSourceRegistry(next, clients);
+  const temporaryPath = `${path}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, canonicalJson(next), { encoding: "utf8", flag: "wx", mode: 0o600 });
+    await rename(temporaryPath, path);
+  } catch (error) {
+    await unlink(temporaryPath).catch(() => undefined);
+    throw error;
+  }
+  return next;
 }
