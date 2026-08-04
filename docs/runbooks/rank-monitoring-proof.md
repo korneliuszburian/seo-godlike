@@ -16,7 +16,35 @@ wyszukiwarkę, lokalizację i urządzenie.
 
 Nie zapisujemy klucza API w repozytorium i nie zgadujemy endpointu aplikacyjnego,
 jeżeli dostawca nie przekazał jego stabilnego schematu. Do czasu potwierdzenia
-takiego schematu używamy manifest-bound snapshotu wejściowego.
+takiego schematu używamy manifest-bound snapshotu wejściowego. Adapter API
+przyjmuje endpoint jawnie (domyślnie oficjalny adres API) i waliduje odpowiedź
+przed zapisaniem snapshotu; jeden nieznany kształt odpowiedzi kończy się błędem,
+a nie częściowym raportem.
+
+## Bezpośredni odczyt API
+
+Jeżeli klucz SERPROBOT jest zapisany lokalnie jako
+`keyring:seo-godlike/serprobot-api-key`, można wykonać jeden kontrolowany odczyt
+projektu bez używania Looker Studio:
+
+```bash
+node dist/cli.js --pull-serprobot \
+  --client-id bodymove \
+  --project-id 123456 \
+  --captured-at 2026-08-04T08:00:00.000Z \
+  --date-start 2026-07-01 --date-end 2026-07-31 \
+  --search-engine google.pl --location Warszawa --device desktop \
+  --output /absolute/path/artifacts/analysis/serprobot/bodymove-2026-07
+```
+
+Klucz jest pobierany wyłącznie z keyringa. Bundle zapisuje surową odpowiedź,
+jej hash i znormalizowane wiersze; nie zapisuje klucza. Pole
+`previous_position` pozostaje puste, gdyż porównanie okresów jest liczone z
+osobnych, manifest-bound snapshotów, a nie z niejawnego indeksu dziennej
+historii dostawcy.
+
+Looker Studio pozostaje opcjonalnym podglądem oraz fallbackiem CSV. Nie
+pobieramy PDF-a i nie scrapujemy dashboardu.
 
 ## Wejście do pipeline’u
 

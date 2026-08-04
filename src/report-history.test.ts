@@ -479,6 +479,13 @@ test("monthly agency schedule rejects two rank monitoring sources", () => {
   assert.throws(() => buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts", reportDir: "reports", deliveryDir: "delivery", rankMonitoringPath: "export", rankMonitoringRoot: "exports" }), /mutually exclusive/);
 });
 
+test("monthly agency schedule can enable the read-only SERPROBOT API source", () => {
+  const entry = buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts", reportDir: "reports", deliveryDir: "delivery", serprobotApi: true, serprobotApiEndpoint: "https://serprobot.example/api" });
+  assert.match(entry, /--serprobot-api/);
+  assert.match(entry, /--serprobot-api-endpoint .*serprobot\.example\/api/);
+  assert.throws(() => buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts", reportDir: "reports", deliveryDir: "delivery", rankMonitoringRoot: "artifacts/rank", serprobotApi: true }), /mutually exclusive/);
+});
+
 test("monthly agency schedule rejects a rank root outside artifacts", () => {
   assert.throws(() => buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", rankMonitoringRoot: "artifacts/rank-exports" }), /rankMonitoringRoot must be inside artifactsDir/);
 });

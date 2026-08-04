@@ -6,7 +6,7 @@ import { csvHeaderIndex, parseCsvRows } from "./csv.js";
 
 export interface RankRow { keyword: string; position: number | null; previous_position: number | null; search_engine: string; location: string | null; device: string | null; url: string | null; }
 export interface RankMonitoringSourceConfig { project_id: string; search_engine: string; location: string | null; device: string | null; }
-export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; source_config: RankMonitoringSourceConfig | null; rows: RankRow[]; input_sha256?: string; import_mode?: "normalized_json" | "normalized_csv"; }
+export interface RankMonitoringSnapshot { schema_version: "1"; provider: "serprobot"; client_id: string; captured_at: string; date_range: { start: string; end: string }; source_config: RankMonitoringSourceConfig | null; rows: RankRow[]; input_sha256?: string; import_mode?: "normalized_json" | "normalized_csv" | "api"; }
 export interface RankMonitoringBundle { snapshot: RankMonitoringSnapshot; snapshots: RankMonitoringSnapshot[]; manifest_sha256: string; }
 export const RANK_MONITORING_PROVIDER = "serprobot" as const;
 export const RANK_MONITORING_SOURCE_LABEL = "Observed — SERPROBOT rank snapshot" as const;
@@ -46,7 +46,7 @@ export function parseRankMonitoringSnapshot(value: unknown): RankMonitoringSnaps
   }
   const rows = value.rows.map((row, index) => { if (!record(row) || typeof row.keyword !== "string" || typeof row.search_engine !== "string") throw new Error(`invalid rank row ${index}`); return { keyword: row.keyword, position: nullableRank(row.position, `rank row ${index}.position`), previous_position: nullableRank(row.previous_position, `rank row ${index}.previous_position`), search_engine: row.search_engine, location: nullableString(row.location, `rank row ${index}.location`), device: nullableString(row.device, `rank row ${index}.device`), url: nullableString(row.url, `rank row ${index}.url`) }; }).sort((a, b) => a.keyword.localeCompare(b.keyword) || a.search_engine.localeCompare(b.search_engine) || (a.location ?? "").localeCompare(b.location ?? "") || (a.device ?? "").localeCompare(b.device ?? "") || (a.position ?? Infinity) - (b.position ?? Infinity));
   const input_sha256 = value.input_sha256 === undefined ? undefined : typeof value.input_sha256 === "string" && /^[a-f0-9]{64}$/.test(value.input_sha256) ? value.input_sha256 : (() => { throw new Error("rank monitoring input_sha256 must be a lowercase SHA-256 hash"); })();
-  const import_mode = value.import_mode === undefined ? undefined : value.import_mode === "normalized_json" || value.import_mode === "normalized_csv" ? value.import_mode : (() => { throw new Error("rank monitoring import_mode is unsupported"); })();
+  const import_mode = value.import_mode === undefined ? undefined : value.import_mode === "normalized_json" || value.import_mode === "normalized_csv" || value.import_mode === "api" ? value.import_mode : (() => { throw new Error("rank monitoring import_mode is unsupported"); })();
   return { schema_version: "1", provider: "serprobot", client_id: value.client_id, captured_at: value.captured_at, date_range: { start: value.date_range.start, end: value.date_range.end }, source_config, rows, ...(input_sha256 ? { input_sha256 } : {}), ...(import_mode ? { import_mode } : {}) };
 }
 
@@ -75,6 +75,12 @@ export async function readRankMonitoringBundle(bundleDir: string, expectedClient
   if (!entry || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number") throw new Error("invalid rank monitoring manifest");
   const reportBytes = await readFile(await resolveExistingInside(safeBundleDir, "report.json", "rank monitoring report"));
   if (reportBytes.byteLength !== entry.bytes || sha256(reportBytes.toString("utf8")) !== entry.sha256) throw new Error("rank monitoring manifest hash mismatch");
+  for (const [name, file] of Object.entries(manifest.files ?? {})) {
+    if (name === "report.json") continue;
+    if (typeof file.sha256 !== "string" || typeof file.bytes !== "number" || !Number.isInteger(file.bytes)) throw new Error(`invalid rank monitoring manifest entry '${name}'`);
+    const bytes = await readFile(await resolveExistingInside(safeBundleDir, name, "rank monitoring manifest entry"));
+    if (bytes.byteLength !== file.bytes || sha256(bytes.toString("utf8")) !== file.sha256) throw new Error(`rank monitoring manifest hash mismatch for '${name}'`);
+  }
   const snapshots = parseRankMonitoringCollection(JSON.parse(reportBytes.toString("utf8")) as unknown);
   const foreign = snapshots.filter((snapshot) => !expectedClientIds.includes(snapshot.client_id));
   if (foreign.length && !options.filterForeignClients) throw new Error(`rank monitoring client identity mismatch: ${foreign[0]!.client_id}`);
@@ -150,12 +156,17 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
   return selected.path;
 }
 
-async function writeRankMonitoringSnapshots(snapshots: RankMonitoringSnapshot[], outputDir: string, provenance: { input_sha256: string; import_mode: "normalized_json" | "normalized_csv" }): Promise<RankMonitoringBundle> {
-  const report = canonicalJson(snapshots.length === 1 ? { ...snapshots[0], ...provenance } : { schema_version: "1", provider: RANK_MONITORING_PROVIDER, snapshots: snapshots.map((snapshot) => ({ ...snapshot, ...provenance })), ...provenance });
+async function writeRankMonitoringSnapshots(snapshots: RankMonitoringSnapshot[], outputDir: string, provenance: { input_sha256: string; import_mode: "normalized_json" | "normalized_csv" | "api"; raw_responses?: string[] }): Promise<RankMonitoringBundle> {
+  const reportProvenance = { input_sha256: provenance.input_sha256, import_mode: provenance.import_mode };
+  const report = canonicalJson(snapshots.length === 1 ? { ...snapshots[0], ...reportProvenance } : { schema_version: "1", provider: RANK_MONITORING_PROVIDER, snapshots: snapshots.map((snapshot) => ({ ...snapshot, ...reportProvenance })), ...reportProvenance });
   const snapshot = snapshots[0]!;
+  const rawFiles = provenance.raw_responses?.length === 1
+    ? { "raw-response.json": provenance.raw_responses[0]! }
+    : Object.fromEntries((provenance.raw_responses ?? []).map((raw, index) => [`raw-response.${index}.json`, raw]));
+  const files = { "report.json": report, ...rawFiles };
   await mkdir(outputDir, { recursive: false, mode: 0o700 });
-  const manifest = canonicalJson({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, import_mode: provenance.import_mode, input_sha256: provenance.input_sha256, client_id: snapshots.length === 1 ? snapshot.client_id : "multi-client", client_ids: snapshots.map((item) => item.client_id), files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } });
-  await writeFile(join(outputDir, "report.json"), report, { encoding: "utf8", flag: "wx", mode: 0o600 });
+  const manifest = canonicalJson({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, import_mode: provenance.import_mode, input_sha256: provenance.input_sha256, client_id: snapshots.length === 1 ? snapshot.client_id : "multi-client", client_ids: snapshots.map((item) => item.client_id), files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, { sha256: sha256(content), bytes: Buffer.byteLength(content) }])) });
+  for (const [name, content] of Object.entries(files)) await writeFile(join(outputDir, name), content, { encoding: "utf8", flag: "wx", mode: 0o600 });
   await writeFile(join(outputDir, "manifest.json"), manifest, { encoding: "utf8", flag: "wx", mode: 0o600 });
   return { snapshot, snapshots, manifest_sha256: sha256(manifest) };
 }
@@ -207,4 +218,11 @@ export async function writeRankMonitoringCsvBundle(inputPath: string, outputDir:
     };
   });
   return writeRankMonitoringSnapshots([parseRankMonitoringSnapshot({ schema_version: "1", provider: RANK_MONITORING_PROVIDER, client_id: options.client_id, captured_at: options.captured_at, date_range: options.date_range, source_config: { project_id: options.project_id, search_engine: options.search_engine, location: options.location ?? null, device: options.device ?? null }, rows: rankRows })], outputDir, { input_sha256: sha256(input), import_mode: "normalized_csv" });
+}
+
+export async function writeRankMonitoringApiBundle(snapshots: RankMonitoringSnapshot[], rawResponses: string[], outputDir: string): Promise<RankMonitoringBundle> {
+  if (snapshots.length === 0 || snapshots.length !== rawResponses.length) throw new Error("SERPROBOT API bundle requires matching snapshots and raw responses");
+  const input_sha256 = sha256(rawResponses.join("\n"));
+  const bundle = await writeRankMonitoringSnapshots(snapshots.map((snapshot) => parseRankMonitoringSnapshot({ ...snapshot, input_sha256, import_mode: "api" })), outputDir, { input_sha256, import_mode: "api", raw_responses: rawResponses });
+  return bundle;
 }

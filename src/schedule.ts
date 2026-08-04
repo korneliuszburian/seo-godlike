@@ -60,6 +60,8 @@ export interface AgencyScheduleOptions {
   clientContentRoot?: string;
   rankMonitoringPath?: string;
   rankMonitoringRoot?: string;
+  serprobotApi?: boolean;
+  serprobotApiEndpoint?: string;
   keywordBundlePath?: string;
   keywordInputPath?: string;
   keywordBundleRoot?: string;
@@ -74,7 +76,7 @@ export interface AgencyScheduleOptions {
 }
 
 export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
-  if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
+  if ([options.rankMonitoringPath, options.rankMonitoringRoot, options.serprobotApi ? "true" : undefined].filter(Boolean).length > 1) throw new Error("rank monitoring path, root and SERPROBOT API are mutually exclusive");
   if ([options.clientContentPath, options.clientContentBundlePath, options.clientContentRoot].filter(Boolean).length > 1) throw new Error("client content path, bundle and root are mutually exclusive");
   if (options.keywordResearch && !options.keywordInputPath) throw new Error("keyword research scheduling requires keywordInputPath");
   if (options.keywordResearch && options.keywordBundlePath) throw new Error("keyword research scheduling cannot combine with an existing keyword bundle");
@@ -111,6 +113,8 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     ...(options.clientContentRoot ? ["--client-content-root", shellQuote(options.clientContentRoot)] : []),
     ...(options.rankMonitoringPath ? ["--rank-monitoring", shellQuote(options.rankMonitoringPath)] : []),
     ...(options.rankMonitoringRoot ? ["--rank-monitoring-root", shellQuote(options.rankMonitoringRoot)] : []),
+    ...(options.serprobotApi ? ["--serprobot-api"] : []),
+    ...(options.serprobotApiEndpoint ? ["--serprobot-api-endpoint", shellQuote(options.serprobotApiEndpoint)] : []),
     ...(options.keywordBundlePath ? ["--keyword-bundle", shellQuote(options.keywordBundlePath)] : []),
     ...(options.keywordInputPath ? ["--keyword-input", shellQuote(options.keywordInputPath)] : []),
     ...(options.keywordBundleRoot ? ["--keyword-bundle-root", shellQuote(options.keywordBundleRoot)] : []),

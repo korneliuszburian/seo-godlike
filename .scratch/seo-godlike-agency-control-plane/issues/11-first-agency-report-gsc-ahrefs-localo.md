@@ -2280,3 +2280,23 @@ auth or schema is unknown.
 - Added a focused partial-coverage falsifier. Local proof remains green: full
   suite plus context tests, build, audit and diff checks; no provider request or
   rerun occurred.
+
+## SERPROBOT read-only API seam — 2026-08-04 (working tree)
+
+- Added a configurable, fail-closed SERPROBOT project adapter using the
+  keyring reference `keyring:seo-godlike/serprobot-api-key`. It sends only the
+  documented read operation (`action=project`) with numeric project ID and
+  explicit date range; it never writes to SERPROBOT and never logs the API key.
+- The raw response is retained beside the normalized rank snapshot in a
+  manifest-bound bundle. The normalized snapshot deliberately leaves
+  `previous_position` empty; recurring comparison is derived from separate
+  verified snapshots rather than guessed from provider history fields.
+- Added `--pull-serprobot` for one explicit project and `--agency-run
+  --serprobot-api` for the recurring source path. The monthly schedule can emit
+  the latter, with an optional endpoint override. No live SERPROBOT request,
+  credential read, Ahrefs request or report rerun was performed in this slice.
+- Added parser, date-boundary, raw-evidence, manifest and schedule falsifiers;
+  local proof is green at 218 TypeScript tests + 3 context tests. The adapter
+  remains operationally unavailable until the operator supplies the keyring
+  secret, numeric project IDs and source configuration, then authorizes one
+  bounded smoke test.

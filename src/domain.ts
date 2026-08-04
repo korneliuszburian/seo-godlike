@@ -106,6 +106,9 @@ export interface SourceRegistry {
     target: string | null;
     status: "ready" | "unavailable";
     reason: string | null;
+    search_engine?: string;
+    location?: string | null;
+    device?: string | null;
   }>;
 }
 

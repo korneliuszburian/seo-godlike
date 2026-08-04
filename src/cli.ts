@@ -26,8 +26,9 @@ import { writeClientDelivery } from "./client-delivery.js";
 import { validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 import { writeClientContentBundle, writeClientContentCsvBundle } from "./client-content.js";
-import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringBundle, writeRankMonitoringCsvBundle } from "./rank-monitoring.js";
+import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringApiBundle, writeRankMonitoringBundle, writeRankMonitoringCsvBundle } from "./rank-monitoring.js";
 import { writeRankHistoryDashboard } from "./rank-history.js";
+import { getSerprobotApiKey, querySerprobotProject, SerprobotApiRequest, writeSerprobotApiBundle } from "./serprobot.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -208,6 +209,22 @@ async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  if (process.argv.includes("--pull-serprobot")) {
+    const request: SerprobotApiRequest = {
+      client_id: argument("--client-id"),
+      project_id: argument("--project-id"),
+      captured_at: argument("--captured-at"),
+      date_range: { start: argument("--date-start"), end: argument("--date-end") },
+      search_engine: argument("--search-engine"),
+      location: optionalArgument("--location") ?? null,
+      device: optionalArgument("--device") ?? null,
+      endpoint: optionalArgument("--serprobot-api-endpoint"),
+    };
+    const result = await querySerprobotProject(await getSerprobotApiKey(), request);
+    const bundle = await writeRankMonitoringApiBundle([result.snapshot], [result.raw], argument("--output"));
+    process.stdout.write(`${JSON.stringify({ client_id: bundle.snapshot.client_id, project_id: request.project_id, rows: bundle.snapshot.rows.length, manifest_sha256: bundle.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
+    return;
+  }
   if (process.argv.includes("--pack-client-content")) {
     const result = await writeClientContentBundle(argument("--input"), argument("--output"));
     process.stdout.write(`${JSON.stringify({ client_id: result.content.client_id, client_ids: result.contents.map((content) => content.client_id), manifest_sha256: result.manifest_sha256, output: resolve(argument("--output")) }, null, 2)}\n`);
@@ -282,7 +299,7 @@ async function main(): Promise<void> {
     const readiness = buildAgencyReadiness(buildScopePlan(registry, capabilities, readinessGeneratedAt), sourceRegistry, {
       oauth_client_supplied: hasArgument("--oauth-client"),
       keyword_input_supplied: hasArgument("--keyword-input"),
-      rank_monitoring_supplied: hasArgument("--rank-monitoring") || hasArgument("--rank-monitoring-root"),
+      rank_monitoring_supplied: hasArgument("--rank-monitoring") || hasArgument("--rank-monitoring-root") || hasArgument("--serprobot-api"),
       client_content_supplied: hasArgument("--client-content") || hasArgument("--client-content-bundle") || hasArgument("--client-content-root"),
     }, readinessGeneratedAt);
     process.stdout.write(`${JSON.stringify(readiness, null, 2)}\n`);
@@ -325,11 +342,23 @@ async function main(): Promise<void> {
     const ranges = calculateDateRanges();
     const rankMonitoringPath = optionalArgument("--rank-monitoring");
     const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
-    if (rankMonitoringPath && rankMonitoringRoot) throw new Error("--rank-monitoring and --rank-monitoring-root are mutually exclusive");
+    const serprobotApi = hasArgument("--serprobot-api");
+    if ([rankMonitoringPath, rankMonitoringRoot, serprobotApi ? "true" : undefined].filter(Boolean).length > 1) throw new Error("--rank-monitoring, --rank-monitoring-root and --serprobot-api are mutually exclusive");
     if (rankMonitoringRoot && !artifactsDir) throw new Error("--rank-monitoring-root requires --artifacts-dir");
-    const resolvedRankMonitoringPath = rankMonitoringRoot
+    let resolvedRankMonitoringPath = rankMonitoringRoot
       ? await resolveLatestRankMonitoringBundle(await resolveRankMonitoringRoot(rankMonitoringRoot, artifactsDir!), rankMonitoringClientIds(sourceRegistry.sources))
       : rankMonitoringPath;
+    if (serprobotApi) {
+      if (!artifactsDir) throw new Error("--serprobot-api requires --artifacts-dir");
+      const sources = sourceRegistry.sources.filter((source) => source.provider === "serprobot" && source.status === "ready" && source.target);
+      const expected = rankMonitoringClientIds(sourceRegistry.sources);
+      if (sources.length === 0 || sources.length !== expected.length) throw new Error("--serprobot-api requires every SERPROBOT source to be ready with a numeric project target");
+      const apiOutput = join(resolve(artifactsDir), "serprobot-api", runId);
+      await mkdir(join(resolve(artifactsDir), "serprobot-api"), { recursive: true, mode: 0o700 });
+      const apiRequests: SerprobotApiRequest[] = sources.map((source) => ({ client_id: source.client_id, project_id: source.target!, captured_at: startedAt, date_range: ranges.current, search_engine: source.search_engine ?? "google.pl", location: source.location ?? null, device: source.device ?? null, endpoint: optionalArgument("--serprobot-api-endpoint") }));
+      await writeSerprobotApiBundle(await getSerprobotApiKey(), apiRequests, apiOutput);
+      resolvedRankMonitoringPath = apiOutput;
+    }
     const keywordInputPath = optionalArgument("--keyword-input");
     const existingKeywordBundlePath = optionalArgument("--keyword-bundle");
     const keywordBundleRoot = optionalArgument("--keyword-bundle-root");
@@ -430,6 +459,8 @@ async function main(): Promise<void> {
         clientContentRoot: optionalArgument("--client-content-root"),
         rankMonitoringPath: optionalArgument("--rank-monitoring"),
         rankMonitoringRoot: optionalArgument("--rank-monitoring-root"),
+        serprobotApi: hasArgument("--serprobot-api"),
+        serprobotApiEndpoint: optionalArgument("--serprobot-api-endpoint"),
         keywordBundlePath: optionalArgument("--keyword-bundle"),
         keywordInputPath: optionalArgument("--keyword-input"),
         keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
