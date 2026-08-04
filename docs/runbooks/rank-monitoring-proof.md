@@ -105,7 +105,8 @@ node dist/cli.js --pack-client-content-csv \
 
 Importer waliduje zakres dat oraz słownik typów i statusów, a manifest wiąże
 bundle z SHA-256 pliku CSV i trybem `normalized_csv`. Brak wierszy oznacza
-brak dostarczonego rejestru, nie brak wykonanych działań. Rejestr nie jest
+niepoprawny lub niedostarczony rejestr — importer odrzuca pusty CSV. Brak
+zaakceptowanego bundle nie oznacza braku wykonanych działań. Rejestr nie jest
 automatyczną rekomendacją i nie wykonuje żadnych zmian u dostawcy.
 
 Przed uruchomieniem raportu klienta operator musi również jawnie oznaczyć
