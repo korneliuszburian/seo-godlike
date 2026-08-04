@@ -76,6 +76,17 @@ oraz nieznany status przed zapisem. Zapis jest atomowy; przy błędzie istnieją
 rejestr pozostaje bez zmian. Dla źródła jeszcze niepotwierdzonego użyj
 `--status unavailable --reason "awaiting operator proof"` i nie podawaj targetu.
 
+Dla pełnego onboardingu można dostarczyć jeden plik z tablicą `sources` i
+zastosować atomowy batch intake:
+
+```bash
+node dist/cli.js --add-sources /absolute/path/source-intake.json \
+  --registry /absolute/path/client-registry.json
+```
+
+Batch jest walidowany w całości przed zapisem. Jeden błędny klient, provider,
+target albo duplikat odrzuca wszystkie wpisy i pozostawia rejestr bez zmian.
+
 Operator przygotowuje lokalny, jednorazowy JSON zgodny z tym kształtem:
 
 ```json

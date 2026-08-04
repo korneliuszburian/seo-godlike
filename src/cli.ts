@@ -23,7 +23,7 @@ import { buildExternalSourceTasks, executeAgencyTasks, writeAgencyRunRecord } fr
 import { verifyKeywordResearchBundle, writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeClientDelivery } from "./client-delivery.js";
-import { addSource, validateSourceRegistry } from "./source-registry.js";
+import { addSource, addSources, validateSourceRegistry } from "./source-registry.js";
 import { buildManagerPrompt, createCodexReadonlyRuntime } from "./codex-runtime.js";
 import { writeClientContentBundle, writeClientContentCsvBundle } from "./client-content.js";
 import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringApiBundle, writeRankMonitoringBundle, writeRankMonitoringCsvBundle } from "./rank-monitoring.js";
@@ -555,6 +555,24 @@ async function main(): Promise<void> {
   }
   if (process.argv.includes("--localo-discover")) {
     const result = await discoverLocaloMcp(optionalArgument("--localo-url") ?? LOCALO_MCP_URL);
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--add-sources")) {
+    const clients = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
+    const input = JSON.parse(await readFile(resolve(argument("--add-sources")), "utf8")) as { sources?: unknown };
+    if (!Array.isArray(input.sources)) throw new Error("source batch must contain a sources array");
+    const sources: import("./source-registry.js").AddSourceRecord[] = input.sources.map((source, index) => {
+      if (!source || typeof source !== "object") throw new Error(`source batch entry ${index} must be an object`);
+      const value = source as Record<string, unknown>;
+      const provider = value.provider;
+      const status = value.status;
+      if (typeof provider !== "string" || !["localo", "google-analytics", "serprobot", "semstorm"].includes(provider)) throw new Error(`source batch entry ${index} has an unsupported provider`);
+      if (status !== "ready" && status !== "unavailable") throw new Error(`source batch entry ${index} has an unsupported status`);
+      for (const field of ["source_id", "client_id"] as const) if (typeof value[field] !== "string" || !value[field]) throw new Error(`source batch entry ${index} must declare ${field}`);
+      return { source_id: value.source_id as string, client_id: value.client_id as string, provider: provider as SourceRegistry["sources"][number]["provider"], target: typeof value.target === "string" ? value.target : null, status: status as "ready" | "unavailable", reason: typeof value.reason === "string" ? value.reason : status === "ready" ? null : "awaiting operator proof", search_engine: typeof value.search_engine === "string" ? value.search_engine : undefined, location: typeof value.location === "string" ? value.location : value.location === null ? null : undefined, device: typeof value.device === "string" ? value.device : value.device === null ? null : undefined };
+    });
+    const result = await addSources({ registryPath: argument("--registry"), sources }, clients);
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }

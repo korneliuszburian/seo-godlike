@@ -36,27 +36,24 @@ export interface AddSourceInput {
   device?: string | null;
 }
 
-export async function addSource(input: AddSourceInput, clients: ClientRegistry): Promise<SourceRegistry> {
-  assertShellSafeSegment(input.client_id);
-  assertShellSafeSegment(input.source_id);
-  const path = resolve(input.registryPath);
-  const parsed = JSON.parse(await readFile(path, "utf8")) as SourceRegistry;
-  validateSourceRegistry(parsed, clients);
-  if (parsed.sources.some((source) => source.source_id === input.source_id)) throw new Error(`duplicate source_id '${input.source_id}'`);
-  const next: SourceRegistry = {
-    sources: [...parsed.sources, {
-      source_id: input.source_id,
-      client_id: input.client_id,
-      provider: input.provider,
-      target: input.target,
-      status: input.status,
-      reason: input.reason,
-      ...(input.search_engine ? { search_engine: input.search_engine } : {}),
-      ...(input.location !== undefined ? { location: input.location } : {}),
-      ...(input.device !== undefined ? { device: input.device } : {}),
-    }],
-  };
-  validateSourceRegistry(next, clients);
+export interface AddSourceRecord {
+  source_id: string;
+  client_id: string;
+  provider: ExternalProvider;
+  target: string | null;
+  status: "ready" | "unavailable";
+  reason: string | null;
+  search_engine?: string;
+  location?: string | null;
+  device?: string | null;
+}
+
+export interface AddSourcesInput {
+  registryPath: string;
+  sources: AddSourceRecord[];
+}
+
+async function writeSourceRegistry(path: string, next: SourceRegistry): Promise<void> {
   const temporaryPath = `${path}.${randomUUID()}.tmp`;
   try {
     await writeFile(temporaryPath, canonicalJson(next), { encoding: "utf8", flag: "wx", mode: 0o600 });
@@ -65,5 +62,42 @@ export async function addSource(input: AddSourceInput, clients: ClientRegistry):
     await unlink(temporaryPath).catch(() => undefined);
     throw error;
   }
+}
+
+export async function addSources(input: AddSourcesInput, clients: ClientRegistry): Promise<SourceRegistry> {
+  if (input.sources.length === 0) throw new Error("source batch must contain at least one source");
+  for (const source of input.sources) {
+    assertShellSafeSegment(source.client_id);
+    assertShellSafeSegment(source.source_id);
+  }
+  const path = resolve(input.registryPath);
+  const parsed = JSON.parse(await readFile(path, "utf8")) as SourceRegistry;
+  validateSourceRegistry(parsed, clients);
+  const existing = new Set(parsed.sources.map((source) => source.source_id));
+  const incoming = new Set<string>();
+  for (const source of input.sources) {
+    if (existing.has(source.source_id) || incoming.has(source.source_id)) throw new Error(`duplicate source_id '${source.source_id}'`);
+    incoming.add(source.source_id);
+  }
+  const next: SourceRegistry = {
+    sources: [...parsed.sources, ...input.sources.map((source) => ({
+      source_id: source.source_id,
+      client_id: source.client_id,
+      provider: source.provider,
+      target: source.target,
+      status: source.status,
+      reason: source.reason,
+      ...(source.search_engine ? { search_engine: source.search_engine } : {}),
+      ...(source.location !== undefined ? { location: source.location } : {}),
+      ...(source.device !== undefined ? { device: source.device } : {}),
+    }))],
+  };
+  validateSourceRegistry(next, clients);
+  await writeSourceRegistry(path, next);
   return next;
+}
+
+export async function addSource(input: AddSourceInput, clients: ClientRegistry): Promise<SourceRegistry> {
+  const { registryPath, ...source } = input;
+  return addSources({ registryPath, sources: [source] }, clients);
 }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ClientRegistry, SourceRegistry } from "./domain.js";
 import { validateSourceRegistry } from "./source-registry.js";
-import { addSource } from "./source-registry.js";
+import { addSource, addSources } from "./source-registry.js";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -65,5 +65,34 @@ test("source onboarding rejects duplicates without mutating the registry", async
     await writeFile(path, original, "utf8");
     await assert.rejects(addSource({ registryPath: path, source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "123", status: "ready", reason: null }, clients), /duplicate source_id/);
     assert.equal(await readFile(path, "utf8"), original);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("source batch onboarding is atomic when one entry is invalid", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-source-registry-batch-"));
+  try {
+    const path = join(root, "sources.json");
+    const initial: SourceRegistry = { sources: [] };
+    const original = JSON.stringify(initial);
+    await writeFile(path, original, "utf8");
+    await assert.rejects(addSources({ registryPath: path, sources: [
+      { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/123", status: "ready", reason: null },
+      { source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "not-numeric", status: "ready", reason: null },
+    ] }, clients), /numeric SERPROBOT project target/);
+    assert.equal(await readFile(path, "utf8"), original);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("source batch onboarding commits all valid sources in canonical order", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-source-registry-batch-"));
+  try {
+    const path = join(root, "sources.json");
+    await writeFile(path, JSON.stringify({ sources: [] }), "utf8");
+    const result = await addSources({ registryPath: path, sources: [
+      { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: "properties/123", status: "ready", reason: null },
+      { source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "456", status: "ready", reason: null, search_engine: "google.pl", location: "Warszawa", device: "desktop" },
+    ] }, clients);
+    assert.deepEqual(result.sources.map((source) => source.source_id), ["ga4.bodymove", "serprobot.bodymove"]);
+    assert.equal((JSON.parse(await readFile(path, "utf8")) as SourceRegistry).sources.length, 2);
   } finally { await rm(root, { recursive: true, force: true }); }
 });

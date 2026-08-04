@@ -2328,3 +2328,16 @@ auth or schema is unknown.
 - Added focused falsifiers for missing/non-HTTPS endpoints. Local proof passes
   with 222 TypeScript tests + 3 context tests. No provider request, credential
   read, Ahrefs rerun, SERPROBOT rerun or report regeneration occurred.
+
+## Atomic external-source batch intake — 2026-08-04
+
+- Added `--add-sources <source-intake.json> --registry <client-registry.json>`
+  for one-time onboarding of multiple GA4, Localo, SERPROBOT and Semstorm
+  source entries. The input is validated as a complete batch before one atomic
+  registry replacement.
+- Duplicate source IDs, unknown clients, invalid provider targets and mixed
+  valid/invalid batches are covered by focused falsifiers; a rejected batch
+  leaves the original registry byte-for-byte unchanged.
+- Local proof passes with 224 TypeScript tests + 3 context tests, build, audit
+  with zero high vulnerabilities and `git diff --check`. No provider request,
+  credential read, Ahrefs rerun or report regeneration occurred.
