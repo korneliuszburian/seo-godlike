@@ -28,6 +28,7 @@ test("readiness is deterministic and reports unavailable scope and sources", () 
     "bodymove:serprobot: snapshot not imported",
   ]);
   assert.deepEqual(readiness.operator_requirements.map((item) => item.requirement_id), [
+    "input:bodymove:client-content",
     "scope:bodymove:ahrefs:bodymove.pl",
     "source:serprobot.bodymove",
   ]);
@@ -78,6 +79,7 @@ test("readiness does not block a ready GA4 source handled by the agency scope ex
   );
   assert.equal(readiness.status, "ready");
   assert.doesNotMatch(readiness.blockers.join("\n"), /no agency-run executor/);
+  assert.equal(readiness.operator_requirements[0]?.requirement_id, "input:bodymove:client-content");
 });
 
 test("readiness blocks a ready GA4 source without a matching scope property", () => {

@@ -107,6 +107,11 @@ export function buildAgencyReadiness(
   if (!inputs.oauth_client_supplied && scopeEntries.some((entry) => entry.status === "ready" && (entry.provider === "google-search-console" || entry.provider === "google-analytics"))) {
     addRequirement({ requirement_id: "input:google:oauth-client", client_id: null, provider: "google", target: null, status: "needs_operator_input", next_action: "Dostarcz referencję do bezpiecznego OAuth client/token posture; readiness nie odczytuje sekretu." });
   }
+  if (!inputs.client_content_supplied) {
+    for (const clientId of [...new Set(scopeEntries.map((entry) => entry.client_id).concat(sourceRegistry.sources.map((source) => source.client_id)))].sort()) {
+      addRequirement({ requirement_id: `input:${clientId}:client-content`, client_id: clientId, provider: null, target: null, status: "needs_operator_input", next_action: "Dostarcz operator-managed rejestr działań SEO, kontakt i słownik pojęć dla raportu klientowego." });
+    }
+  }
   if (scopeEntries.length === 0) {
     addRequirement({ requirement_id: "scope:registry", client_id: null, provider: null, target: null, status: "needs_operator_input", next_action: "Dodaj co najmniej jedną jawnie autoryzowaną właściwość klienta." });
   }

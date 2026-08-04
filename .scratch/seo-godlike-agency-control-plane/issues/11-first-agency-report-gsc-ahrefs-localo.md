@@ -2388,8 +2388,8 @@ auth or schema is unknown.
   `needs_operator_input` state and the next safe action.
 - Requirements cover unavailable scope/source evidence, missing Google OAuth,
   missing SERPROBOT input, unsupported external executors, GA4 scope mismatch
-  and an empty scope. The command still does not inspect credentials or call
-  providers.
+  an empty scope and the operator-managed client-content/actions register. The
+  command still does not inspect credentials or call providers.
 - Focused readiness assertions and the full local proof pass with 227
   TypeScript tests + 3 context tests, build, audit with zero high
   vulnerabilities and `git diff --check`. No provider request, credential
