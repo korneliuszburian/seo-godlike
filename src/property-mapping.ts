@@ -1,5 +1,9 @@
 import { ClientRegistry } from "./domain.js";
 
+function compareCodePoint(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 export interface PropertyMappingCandidate {
   candidate_id: string;
   discovered_property_id: string;
@@ -89,5 +93,5 @@ export function materializePropertyMapping(template: PropertyMappingTemplate): C
     }
     clients.set(candidate.client_id, client);
   }
-  return [...clients.values()].sort((left, right) => left.client_id < right.client_id ? -1 : left.client_id > right.client_id ? 1 : 0).map((client) => ({ ...client, properties: client.properties.sort((left, right) => left.provider.localeCompare(right.provider) || (left.property_id < right.property_id ? -1 : left.property_id > right.property_id ? 1 : 0)) }));
+  return [...clients.values()].sort((left, right) => compareCodePoint(left.client_id, right.client_id)).map((client) => ({ ...client, properties: client.properties.sort((left, right) => compareCodePoint(left.provider, right.provider) || compareCodePoint(left.property_id, right.property_id)) }));
 }

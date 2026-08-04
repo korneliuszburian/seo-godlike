@@ -1,5 +1,9 @@
 import { ScopePlan, SourceRegistry } from "./domain.js";
 
+function compareCodePoint(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 export interface AgencyReadinessInputs {
   oauth_client_supplied: boolean;
   keyword_input_supplied: boolean;
@@ -130,7 +134,7 @@ export function buildAgencyReadiness(
   if (scopeEntries.length === 0) {
     addRequirement({ requirement_id: "scope:registry", client_id: null, provider: null, target: null, status: "needs_operator_input", next_action: "Dodaj co najmniej jedną jawnie autoryzowaną właściwość klienta." });
   }
-  operatorRequirements.sort((left, right) => left.requirement_id.localeCompare(right.requirement_id));
+  operatorRequirements.sort((left, right) => compareCodePoint(left.requirement_id, right.requirement_id));
   const status = scopeEntries.length === 0 || scopeEntries.every((entry) => entry.status !== "ready")
     ? "blocked"
     : blockers.length > 0
