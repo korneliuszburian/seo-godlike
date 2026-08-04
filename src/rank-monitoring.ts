@@ -54,7 +54,7 @@ function parseRankMonitoringCollection(value: unknown): RankMonitoringSnapshot[]
   return [parseRankMonitoringSnapshot(value)];
 }
 
-export async function readRankMonitoringBundle(bundleDir: string, expectedClientIds: readonly string[]): Promise<RankMonitoringBundle> {
+export async function readRankMonitoringBundle(bundleDir: string, expectedClientIds: readonly string[], options: { filterForeignClients?: boolean } = {}): Promise<RankMonitoringBundle> {
   const safeBundleDir = await resolveExistingInside(resolve(bundleDir), ".", "rank monitoring bundle");
   const manifestBytes = await readFile(await resolveExistingInside(safeBundleDir, "manifest.json", "rank monitoring manifest"));
   const manifest = JSON.parse(manifestBytes.toString("utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
@@ -63,8 +63,11 @@ export async function readRankMonitoringBundle(bundleDir: string, expectedClient
   const reportBytes = await readFile(await resolveExistingInside(safeBundleDir, "report.json", "rank monitoring report"));
   if (reportBytes.byteLength !== entry.bytes || sha256(reportBytes.toString("utf8")) !== entry.sha256) throw new Error("rank monitoring manifest hash mismatch");
   const snapshots = parseRankMonitoringCollection(JSON.parse(reportBytes.toString("utf8")) as unknown);
-  for (const snapshot of snapshots) if (!expectedClientIds.includes(snapshot.client_id)) throw new Error(`rank monitoring client identity mismatch: ${snapshot.client_id}`);
-  return { snapshot: snapshots[0]!, snapshots, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
+  const foreign = snapshots.filter((snapshot) => !expectedClientIds.includes(snapshot.client_id));
+  if (foreign.length && !options.filterForeignClients) throw new Error(`rank monitoring client identity mismatch: ${foreign[0]!.client_id}`);
+  const scopedSnapshots = options.filterForeignClients ? snapshots.filter((snapshot) => expectedClientIds.includes(snapshot.client_id)) : snapshots;
+  if (scopedSnapshots.length === 0) throw new Error(`rank monitoring client identity mismatch: ${foreign[0]?.client_id ?? "no expected client"}`);
+  return { snapshot: scopedSnapshots[0]!, snapshots: scopedSnapshots, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
 }
 
 export async function resolveLatestRankMonitoringBundle(rootDir: string, expectedClientIds: readonly string[]): Promise<string> {

@@ -104,6 +104,39 @@ test("rank history skips a snapshot outside the registry client scope", async ()
   }
 });
 
+test("rank history keeps scoped snapshots from a mixed-client bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-mixed-scope-"));
+  try {
+    const snapshot = (client_id: string, keyword: string) => ({ schema_version: "1", provider: "serprobot", client_id, captured_at: "2026-07-31T12:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: client_id === "bodymove" ? "123" : "999", search_engine: "google.pl", location: null, device: null }, rows: [{ keyword, position: 7, previous_position: null, search_engine: "google.pl", location: null, device: null, url: null }] });
+    const input = join(root, "mixed.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", snapshots: [snapshot("bodymove", "rehabilitacja"), snapshot("retired-client", "foreign")] }));
+    await writeRankMonitoringBundle(input, join(root, "mixed"));
+    const summary = await writeRankHistoryDashboard(root, join(root, "dashboard"), ["bodymove"]);
+    assert.equal(summary.snapshot_count, 1);
+    assert.equal(summary.snapshots[0]?.client_id, "bodymove");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rank history deduplication compares captured timestamps semantically", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-timestamp-"));
+  try {
+    const input = async (path: string, captured_at: string, position: number) => {
+      await writeFile(path, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at, date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [{ keyword: "rehabilitacja", position, previous_position: null, search_engine: "google.pl", location: null, device: null, url: null }] }));
+    };
+    await input(join(root, "latest.json"), "2026-07-31T12:00:00Z", 7);
+    await input(join(root, "older.json"), "2026-07-31T11:00:00.000Z", 99);
+    await writeRankMonitoringBundle(join(root, "latest.json"), join(root, "latest"));
+    await writeRankMonitoringBundle(join(root, "older.json"), join(root, "older"));
+    const summary = await writeRankHistoryDashboard(root, join(root, "dashboard"), ["bodymove"]);
+    assert.equal(summary.snapshot_count, 1);
+    assert.equal(summary.snapshots[0]?.rows[0]?.position, 7);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("rank history does not compare across a missing period", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-gap-"));
   try {

@@ -94,7 +94,7 @@ async function readRankBundleIfPresent(manifestPath: string, artifactsDir: strin
   if (!isRecord(report) || report.provider !== "serprobot") return [];
   let verified: Awaited<ReturnType<typeof readRankMonitoringBundle>>;
   try {
-    verified = await readRankMonitoringBundle(bundleDir, expectedClientIds);
+    verified = await readRankMonitoringBundle(bundleDir, expectedClientIds, { filterForeignClients: true });
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("rank monitoring client identity mismatch:")) return [];
     throw error;
@@ -136,7 +136,9 @@ function deduplicateSnapshots(snapshots: RankHistoryEntry[]): RankHistoryEntry[]
   for (const snapshot of snapshots) {
     const key = [snapshot.client_id, snapshot.date_range.start, snapshot.date_range.end, sourceConfigurationKey(snapshot.source_config)].join("\u0000");
     const existing = selected.get(key);
-    if (!existing || snapshot.captured_at > existing.captured_at || (snapshot.captured_at === existing.captured_at && snapshot.bundle_path > existing.bundle_path)) selected.set(key, snapshot);
+    const snapshotTime = Date.parse(snapshot.captured_at);
+    const existingTime = existing ? Date.parse(existing.captured_at) : Number.NEGATIVE_INFINITY;
+    if (!existing || snapshotTime > existingTime || (snapshotTime === existingTime && snapshot.bundle_path > existing.bundle_path)) selected.set(key, snapshot);
   }
   return [...selected.values()].sort((a, b) => a.date_range.start.localeCompare(b.date_range.start) || a.date_range.end.localeCompare(b.date_range.end) || a.client_id.localeCompare(b.client_id) || a.bundle_path.localeCompare(b.bundle_path));
 }

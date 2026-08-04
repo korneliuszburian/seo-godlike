@@ -1909,3 +1909,13 @@ auth or schema is unknown.
   rank-history manifest provenance is exposed in delivery output. No provider
   request, credential read, Ahrefs rerun, SERPROBOT rerun, report regeneration,
   or publication occurred.
+
+## Rank-history scope and timestamp hardening — 2026-08-04
+
+- History consumption now filters foreign clients per verified multi-client
+  bundle, preserving in-scope Bodymove snapshots while keeping the public
+  `readRankMonitoringBundle` default fail-closed for identity mismatch.
+- Repeated-period selection compares parsed capture instants rather than raw
+  timestamp strings; focused falsifiers cover mixed-client bundles and ISO
+  timestamp formatting. No provider request, credential read, Ahrefs rerun,
+  SERPROBOT rerun, report regeneration, or publication occurred.
