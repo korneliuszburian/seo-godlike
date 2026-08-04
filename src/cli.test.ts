@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
+import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 
 const execFileAsync = promisify(execFile);
@@ -196,4 +197,43 @@ test("standalone client delivery rejects conflicting rank snapshot inputs before
     ], { cwd: process.cwd() }),
     /--rank-monitoring and --rank-monitoring-root are mutually exclusive/,
   );
+});
+
+test("agency-run resolves a sibling rank root and reaches delivery without provider IO", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-agency-rank-root-"));
+  const artifacts = join(root, "artifacts");
+  const output = join(artifacts, "agency-run");
+  const report = join(root, "reports", "agency-report");
+  const delivery = join(root, "delivery", "client-delivery");
+    const rankRoot = join(artifacts, "rank-exports");
+  try {
+    await mkdir(artifacts, { recursive: true });
+    await mkdir(join(root, "reports"), { recursive: true });
+    await mkdir(join(root, "delivery"), { recursive: true });
+    await mkdir(rankRoot, { recursive: true });
+    await writeFile(join(root, "registry.json"), JSON.stringify({ clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "https://bodymove.pl/", provider: "google-search-console", canonical_property: true }] }] }));
+    await writeFile(join(root, "capabilities.json"), JSON.stringify({ capabilities: [] }));
+    await writeFile(join(root, "source-registry.json"), JSON.stringify({ sources: [{ source_id: "serprobot.bodymove", client_id: "bodymove", provider: "serprobot", target: "123", status: "ready", reason: null }] }));
+    const rankInput = join(root, "rank.json");
+    await writeFile(rankInput, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, source_config: { project_id: "123", search_engine: "google.pl", location: null, device: null }, rows: [] }));
+    await writeRankMonitoringBundle(rankInput, join(rankRoot, "latest"));
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      "dist/cli.js", "--agency-run",
+      "--registry", join(root, "registry.json"),
+      "--capabilities", join(root, "capabilities.json"),
+      "--source-registry", join(root, "source-registry.json"),
+      "--artifacts-dir", artifacts,
+      "--output", output,
+      "--agency-report-output", report,
+      "--delivery-output", delivery,
+      "--rank-monitoring-root", rankRoot,
+    ], { cwd: process.cwd() });
+    const result = JSON.parse(stdout) as { delivery?: string; report_status?: string };
+    assert.equal(result.report_status, "partial");
+    assert.equal(result.delivery, delivery);
+    await access(join(delivery, "bodymove", "bodymove-seo-report.html"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

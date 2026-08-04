@@ -52,6 +52,7 @@ export interface ClientDeliveryOptions {
   clientContentBundlePath?: string;
   rankMonitoringPath?: string;
   rankMonitoringRoot?: string;
+  rankMonitoringArtifactsDir?: string;
   keywordBundleRoot?: string;
   agencyRunRecordPath?: string;
   /** Test seam only; the CLI always uses the isolated renderer below. */
@@ -548,7 +549,7 @@ export async function writeClientDelivery(options: ClientDeliveryOptions): Promi
   const summary = await readAgencyReport(options.agencyReportPath, options.artifactsDir);
   if (options.rankMonitoringPath && options.rankMonitoringRoot) throw new Error("rank monitoring path and root are mutually exclusive");
   const resolvedRankMonitoringRoot = options.rankMonitoringRoot
-    ? await resolveRankMonitoringRoot(options.rankMonitoringRoot, options.artifactsDir)
+    ? await resolveRankMonitoringRoot(options.rankMonitoringRoot, options.rankMonitoringArtifactsDir ?? options.artifactsDir)
     : null;
   const resolvedRankMonitoringPath = resolvedRankMonitoringRoot
     ? await resolveLatestRankMonitoringBundle(resolvedRankMonitoringRoot, rankMonitoringClientIds(summary.source_status))

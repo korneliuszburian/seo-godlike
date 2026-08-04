@@ -1919,3 +1919,18 @@ auth or schema is unknown.
   timestamp strings; focused falsifiers cover mixed-client bundles and ISO
   timestamp formatting. No provider request, credential read, Ahrefs rerun,
   SERPROBOT rerun, report regeneration, or publication occurred.
+
+## Agency-run rank-history wiring repair — 2026-08-04
+
+- Fixed the recurring agency-run handoff so root mode passes only
+  `rankMonitoringRoot` to client delivery; the resolved current bundle is still
+  used by agency-report, but is no longer passed alongside the root and rejected
+  as mutually exclusive. Delivery now validates the rank root against the
+  actual `--artifacts-dir`, which permits the scheduled sibling layout while
+  keeping the root confined. This makes the scheduled
+  `--rank-monitoring-root` → report → delivery path reachable.
+- OpenCode review of `d8ab919` reproduced this as blocker B1. The standalone
+- conflicting-input guard remains unchanged. A CLI falsifier runs the full
+  sibling-root path with a local SERPROBOT bundle and no provider IO. No
+  provider request, credential read, Ahrefs rerun, SERPROBOT rerun, report
+  regeneration, or publication occurred.
