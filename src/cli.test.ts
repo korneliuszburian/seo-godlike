@@ -83,6 +83,24 @@ test("CLI rejects a mixed source batch without mutating the source registry", as
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test("CLI applies a confirmed property mapping atomically without provider IO", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-property-mapping-"));
+  try {
+    const registryPath = join(root, "client-registry.json");
+    const templatePath = join(root, "mapping.json");
+    await writeFile(registryPath, JSON.stringify({ clients: [{ client_id: "bodymove", properties: [] }] }));
+    await writeFile(templatePath, JSON.stringify({
+      schema_version: "1", provider: "google-search-console", source: "operator-confirmed-discovery",
+      generated_at: "2026-08-04T00:00:00.000Z", ownership_inferred: false,
+      candidates: [{ candidate_id: "gsc-001", discovered_property_id: "sc-domain:bodymove.pl", normalized_host: "bodymove.pl", client_id: "bodymove", client_display_name: "Bodymove", canonical_property_id: "sc-domain:bodymove.pl", aliases: ["https://bodymove.pl/"], ahrefs_target: "bodymove.pl", ahrefs_country: "pl", status: "needs_operator_mapping" }],
+    }));
+    await execFileAsync(process.execPath, ["dist/cli.js", "--apply-property-mapping", "--input", templatePath, "--registry", registryPath], { cwd: process.cwd() });
+    const registry = JSON.parse(await readFile(registryPath, "utf8")) as { clients: Array<{ properties: Array<{ property_id: string; provider: string; aliases?: string[] }> }> };
+    assert.deepEqual(registry.clients[0]?.properties.map((property) => property.property_id), ["bodymove.pl", "sc-domain:bodymove.pl"]);
+    assert.deepEqual(registry.clients[0]?.properties[1]?.aliases, ["https://bodymove.pl/"]);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("agency-run rejects malformed keyword budget before creating output or running tasks", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-budget-"));
   const output = join(root, "run");

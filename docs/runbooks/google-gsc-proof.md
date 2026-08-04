@@ -74,6 +74,19 @@ targets empty. Fill those fields only after the operator confirms ownership and
 access, then use the existing atomic registry intake. The template is not a
 registry and does not mutate one.
 
+After confirmation, apply the filled template through the same atomic registry
+path:
+
+```bash
+node dist/cli.js \
+  --apply-property-mapping \
+  --input /absolute/path/property-mapping-template.json \
+  --registry /absolute/path/client-registry.json
+```
+
+This command rejects unconfirmed candidates, conflicting client mappings,
+invalid aliases/countries and duplicate cross-client properties before writing.
+
 ## Bounded report
 
 Create a request containing the discovered `property_id`, the intended

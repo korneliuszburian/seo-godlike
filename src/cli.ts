@@ -29,7 +29,7 @@ import { writeClientContentBundle, writeClientContentCsvBundle } from "./client-
 import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRankMonitoringRoot, writeRankMonitoringApiBundle, writeRankMonitoringBundle, writeRankMonitoringCsvBundle } from "./rank-monitoring.js";
 import { writeRankHistoryDashboard } from "./rank-history.js";
 import { getSerprobotApiKey, querySerprobotProject, SerprobotApiRequest, writeSerprobotApiBundle } from "./serprobot.js";
-import { buildPropertyMappingTemplate } from "./property-mapping.js";
+import { buildPropertyMappingTemplate, materializePropertyMapping } from "./property-mapping.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -648,6 +648,12 @@ async function main(): Promise<void> {
       : Array.isArray(input) ? input : null;
     if (!sites || sites.some((site) => typeof site !== "string")) throw new Error("property mapping input must be a discovery JSON object with a sites string array");
     process.stdout.write(`${JSON.stringify(buildPropertyMappingTemplate(sites), null, 2)}\n`);
+    return;
+  }
+  if (process.argv.includes("--apply-property-mapping")) {
+    const template = JSON.parse(await readFile(resolve(argument("--input")), "utf8")) as import("./property-mapping.js").PropertyMappingTemplate;
+    const result = await addProperties({ registryPath: argument("--registry"), clients: materializePropertyMapping(template) });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--analytics-batch")) {

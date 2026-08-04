@@ -2421,3 +2421,14 @@ auth or schema is unknown.
   registry mutation occurred.
 - The existing Google runbook now documents this local intake command; it is a
   procedure reference, not a second source of mapping state.
+
+## Confirmed property mapping application — 2026-08-04
+
+- `--apply-property-mapping --input <filled-template.json> --registry <path>`
+  now materializes confirmed GSC canonical properties, aliases and optional
+  Ahrefs target/country entries through the existing atomic registry validator.
+- Unconfirmed candidates, conflicting client display names/countries, invalid
+  aliases and cross-client property collisions fail before registry mutation.
+  Focused proof covers materialization and refusal of an unconfirmed template.
+- No provider request, credential read, Ahrefs rerun, report generation or
+  registry mutation occurred during this local implementation proof.
