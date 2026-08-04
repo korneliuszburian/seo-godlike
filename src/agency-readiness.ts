@@ -48,6 +48,21 @@ export interface AgencyOperatorRequirement {
   next_action: string;
 }
 
+function unavailableSourceAction(provider: string, reason: string | null): string {
+  switch (provider) {
+    case "google-analytics":
+      return "Podaj numeryczne ID właściwości GA4 w formacie properties/<id> i potwierdź dostęp analytics.readonly.";
+    case "localo":
+      return "Potwierdź zarządzany profil Body Move w Localo oraz dostarcz bezpieczny dostęp read-only/MCP.";
+    case "serprobot":
+      return "Dostarcz eksport CSV/XLSX historii pozycji albo potwierdzony read-only endpoint API wraz z ID projektów.";
+    case "semstorm":
+      return "Potwierdź, czy źródłem jest Semstorm, i dostarcz eksport widoczności albo zatwierdzony dostęp API read-only.";
+    default:
+      return reason ?? "Dostarcz jawne, zweryfikowane źródło evidence read-only.";
+  }
+}
+
 export function buildAgencyReadiness(
   scope: ScopePlan,
   sourceRegistry: SourceRegistry,
@@ -91,7 +106,7 @@ export function buildAgencyReadiness(
     addRequirement({ requirement_id: `scope:${entry.client_id}:${entry.provider}:${entry.property_id}`, client_id: entry.client_id, provider: entry.provider, target: entry.property_id, status: "needs_operator_input", next_action: entry.reason ?? "Potwierdź właściwość i capability read-only dla tego klienta." });
   }
   for (const source of unavailableSources) {
-    addRequirement({ requirement_id: `source:${source.source_id}`, client_id: source.client_id, provider: source.provider, target: source.target, status: "needs_operator_input", next_action: source.reason ?? "Dostarcz jawne, zweryfikowane źródło evidence." });
+    addRequirement({ requirement_id: `source:${source.source_id}`, client_id: source.client_id, provider: source.provider, target: source.target, status: "needs_operator_input", next_action: unavailableSourceAction(source.provider, source.reason) });
   }
   for (const source of sourceRegistry.sources.filter((item) => item.status === "ready")) {
     if (source.provider === "serprobot" && !inputs.rank_monitoring_supplied) {

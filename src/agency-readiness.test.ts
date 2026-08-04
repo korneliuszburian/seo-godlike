@@ -32,6 +32,19 @@ test("readiness is deterministic and reports unavailable scope and sources", () 
     "scope:bodymove:ahrefs:bodymove.pl",
     "source:serprobot.bodymove",
   ]);
+  assert.equal(readiness.operator_requirements.find((item) => item.requirement_id === "source:serprobot.bodymove")?.next_action, "Dostarcz eksport CSV/XLSX historii pozycji albo potwierdzony read-only endpoint API wraz z ID projektów.");
+});
+
+test("readiness gives Polish access actions for unavailable provider sources", () => {
+  const scope = buildScopePlan(registry, capabilities, "2026-08-03T00:00:00.000Z");
+  const readiness = buildAgencyReadiness(scope, { sources: [
+    { source_id: "ga4.bodymove", client_id: "bodymove", provider: "google-analytics", target: null, status: "unavailable", reason: "missing" },
+    { source_id: "localo.bodymove", client_id: "bodymove", provider: "localo", target: "bodymove.pl", status: "unavailable", reason: "missing" },
+    { source_id: "semstorm.bodymove", client_id: "bodymove", provider: "semstorm", target: null, status: "unavailable", reason: "missing" },
+  ] }, { oauth_client_supplied: true, keyword_input_supplied: false, rank_monitoring_supplied: false, client_content_supplied: true }, "2026-08-03T00:00:00.000Z");
+  assert.equal(readiness.operator_requirements.find((item) => item.provider === "google-analytics")?.next_action, "Podaj numeryczne ID właściwości GA4 w formacie properties/<id> i potwierdź dostęp analytics.readonly.");
+  assert.equal(readiness.operator_requirements.find((item) => item.provider === "localo")?.next_action, "Potwierdź zarządzany profil Body Move w Localo oraz dostarcz bezpieczny dostęp read-only/MCP.");
+  assert.equal(readiness.operator_requirements.find((item) => item.provider === "semstorm")?.next_action, "Potwierdź, czy źródłem jest Semstorm, i dostarcz eksport widoczności albo zatwierdzony dostęp API read-only.");
 });
 
 test("readiness flags a missing OAuth input without reading the credential", () => {

@@ -2432,3 +2432,17 @@ auth or schema is unknown.
   Focused proof covers materialization and refusal of an unconfirmed template.
 - No provider request, credential read, Ahrefs rerun, report generation or
   registry mutation occurred during this local implementation proof.
+
+## Polish operator access checklist — 2026-08-04
+
+- `--agency-readiness` now renders provider-specific `next_action` text in
+  Polish for unavailable GA4, Localo, SERPROBOT and Semstorm sources. The
+  actions distinguish a numeric GA4 property and `analytics.readonly` proof,
+  a managed Localo profile, a SERPROBOT export/API with project IDs, and a
+  confirmed Semstorm export/API source.
+- The readiness output remains read-only and credential-blind. It reports the
+  exact remaining operator inputs for Bodymove without reading a secret or
+  spending Ahrefs units; the current fixture state remains `partial` with GSC
+  and Ahrefs scope ready.
+- Focused and full local proof passes with 234 TypeScript tests + 3 context
+  tests, build, audit with zero high vulnerabilities and `git diff --check`.
