@@ -91,6 +91,14 @@ wewnątrz `--artifacts-dir`); po spakowaniu można go wskazać jako aktualny
 bundle albo pozostawić resolverowi najnowszego kompletnego exportu. Manifest
 zachowuje SHA-256 wejściowego CSV oraz tryb `normalized_csv`.
 
+Przed uruchomieniem raportu klienta operator musi również jawnie oznaczyć
+źródło SERPROBOT jako gotowe w `source-registry.json`, z tym samym numerem
+projektu co w eksporcie, np. `serprobot.bodymove` z `status: "ready"` i
+`target: "123456"`. Samo spakowanie CSV nie zmienia rejestru. Jeżeli źródło
+pozostaje `unavailable`, ranking może być zachowany jako evidence, ale status
+klienta nadal pokaże, że źródło nie zostało zatwierdzone — system nie podnosi
+statusu automatycznie na podstawie samego pliku.
+
 ## Prerequisites for scheduled PDF delivery
 
 The monthly cron invokes `dist/cli.js`, so a fresh checkout must build the

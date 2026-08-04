@@ -2156,3 +2156,19 @@ auth or schema is unknown.
   audit and diff checks are the remaining gates for this slice. No GSC,
   Ahrefs, SERPROBOT, GA4 or Localo request was made and no report rerun was
   performed.
+
+## CSV provenance review follow-up — 2026-08-04
+
+- OpenCode/DeepSeek review of fixed point `9724418` completed with no blocker;
+  it reproduced 206 TypeScript + 3 context tests, build, audit and clean tree.
+- The reviewer found one client-visible status gap: imported rank evidence can
+  render while an intentionally `unavailable` `serprobot.<client>` registry
+  entry still says the source is not approved. This is fail-closed by design,
+  not an evidence leak; the runbook now explicitly requires the operator to
+  set `status: "ready"` and the matching numeric project `target` after
+  verifying the export.
+- Low risks remain deferred: packer output confinement is an operator
+  obligation, the CSV format intentionally rejects multiline fields, and the
+  direct SERPROBOT API/Looker live connector is still not implemented. No
+  provider request, credential read, Ahrefs/SERPROBOT rerun, report
+  regeneration or publication occurred.
