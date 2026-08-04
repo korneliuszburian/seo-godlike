@@ -434,6 +434,7 @@ test("monthly agency schedule runs the complete report and delivery pipeline", (
   assert.match(entry, /^47 3 1 \* \* /);
   assert.match(entry, /install -d -m 700 'artifacts\/analysis' 'artifacts\/reports' 'artifacts\/delivery'/);
   assert.match(entry, /--agency-run/);
+  assert.match(entry, /XDG_RUNTIME_DIR.*systemd-run.*bwrap.*chromium.*qpdf/);
   assert.match(entry, /--artifacts-dir/);
   assert.match(entry, /artifacts\/analysis/);
   assert.match(entry, /flock -n 'artifacts\/analysis\/\.agency-monthly\.lock' sh -c/);

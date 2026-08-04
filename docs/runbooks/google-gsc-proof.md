@@ -197,7 +197,11 @@ bundles; it performs no provider request.
 The generated monthly line prepares the configured analysis, report and
 delivery roots with mode `0700` before starting the run, so a fresh local
 installation does not require manual directory creation. It still only prints
-the cron entry; installing it remains an operator action.
+the cron entry; installing it remains an operator action. Because the monthly
+delivery requests PDF output, the generated line checks `XDG_RUNTIME_DIR` and
+the required `systemd-run`, `bwrap`, Chromium, and qpdf binaries before any
+provider task starts. If that preflight fails, the run exits without provider
+IO rather than producing a report that cannot be delivered.
 
 For recurring Ahrefs Keywords Explorer research, add `--keyword-input` and
 explicitly opt in with `--keyword-research`. The scheduled command then creates

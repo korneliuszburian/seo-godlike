@@ -1975,3 +1975,11 @@ auth or schema is unknown.
   use. Operator-gated mapping, GA4 consent/property, Localo profile,
   SERPROBOT/Looker snapshot authority, action register, retention, and cron
   installation remain outside code-only proof.
+
+## Scheduled PDF preflight — 2026-08-04
+
+- Monthly cron generation now checks `XDG_RUNTIME_DIR` and the required PDF
+  renderer binaries before starting `--agency-run`. A missing renderer no
+  longer allows provider work to start and fail later during client delivery.
+- Focused schedule/history proof passes; this change does not install cron,
+  execute a provider, rerun Ahrefs, or regenerate client evidence.
