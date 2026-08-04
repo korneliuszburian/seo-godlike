@@ -1431,6 +1431,19 @@ auth or schema is unknown.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
 
+## OpenCode second-opinion follow-up — 2026-08-04
+
+- OpenCode/DeepSeek review of `01c1346` found no blocker. Its scoped-read and
+  unused-marker risks were addressed in `ec5cce4`; the focused scoped symlink
+  falsifier and the full local gates pass.
+- The review confirms path confinement, manifest/hash provenance, tenant
+  isolation, unavailable-versus-zero semantics, Polish client delivery, and
+  deterministic local output. It did not verify live provider values or cron
+  installation, by design.
+- Operator-owned external review remains pending for this security/evidence
+  slice. No provider request, credential read, Ahrefs rerun, report
+  regeneration, or publication occurred.
+
 ## Candidate-read confinement follow-up — 2026-08-04
 
 - Provider and GSC history candidate reports now use the shared symlink-aware
@@ -1439,7 +1452,7 @@ auth or schema is unknown.
   scoped history reads.
 - History dashboard manifests contain only the hashes and byte counts of their
   rendered files; the skipped-bundle label is Polish in both rendered surfaces.
-- Local proof at fixed point `26ee61f`: 186 TypeScript tests + 3 context tests,
+- Local proof at fixed point `ec5cce4`: 186 TypeScript tests + 3 context tests,
   build, zero high audit vulnerabilities, and `git diff --check`.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
