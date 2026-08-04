@@ -1431,6 +1431,26 @@ auth or schema is unknown.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
 
+## Client delivery rank-history slice — 2026-08-04
+
+- Client delivery now consumes the explicit `--rank-monitoring-root` source
+  root when supplied, derives only adjacent verified SERPROBOT comparisons, and
+  renders a Polish `HISTORIA MONITORINGU` section with previous/current
+  positions, delta, search configuration and both source manifest hashes.
+- The delivery manifest records every rank-history source manifest and counts
+  it among verified inputs. A dashboard manifest is marked with
+  `artifact_type: rank-history-dashboard`, so recurring source discovery cannot
+  mistake the derived dashboard for a raw snapshot.
+- Focused delivery proof covers a two-period multi-client input and confirms
+  Bodymove history is not leaked into the other client. Local proof: 193
+  TypeScript tests + 3 context tests, build, zero high audit vulnerabilities,
+  and `git diff --check`.
+- OpenCode/DeepSeek reviewed exact HEAD `fefe0bb` read-only and reached the
+  changed delivery seams plus the full test run, but its bounded session ended
+  before a final verdict. This remains partial review evidence, not a PASS. No
+  provider request, credential read, Ahrefs rerun, report regeneration, or
+  publication occurred.
+
 ## Rank-history output provenance — 2026-08-04
 
 - `writeRankHistoryDashboard` now emits a private `manifest.json` binding the
