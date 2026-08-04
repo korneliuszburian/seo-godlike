@@ -1431,6 +1431,21 @@ auth or schema is unknown.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
 
+## Exact-head OpenCode second opinion — 2026-08-04
+
+- OpenCode/DeepSeek reviewed exact HEAD `ef7eb07` read-only in non-interactive
+  mode. It found no blocker in the recurring history/rank-monitoring route.
+- Reproduced gates: 193 TypeScript tests, 3 context tests, strict TypeScript,
+  build, `git diff --check`; the local audit also passed with zero high-severity
+  vulnerabilities. No provider request, credential read, Ahrefs rerun, report
+  regeneration, or publication occurred.
+- Deferred low-risk items: schedule path-policy symmetry, GA4 blocked-task
+  observability, PDF byte-level reproducibility, and the documented realpath/
+  read TOCTOU residual. These do not change the current operator route.
+- Remaining operator gates are unchanged: explicit Bodymove/property mapping,
+  SERPROBOT/Looker source authority, GA4 numeric property plus consent, Localo
+  managed profile, retention/export authority, and observed cron installation.
+
 ## Rank walker dangling-alias follow-up — 2026-08-04
 
 - A final second-opinion review found that a dangling `manifest.json` symlink
