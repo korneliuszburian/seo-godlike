@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { resolveExistingInside } from "./path-confinement.js";
 
 export type HistoryProvider = "google-search-console" | "google-analytics" | "ahrefs";
 export type HistoryMetricUnit = "count" | "ratio" | "position";
@@ -151,8 +152,11 @@ async function readVerifiedManifest(manifestPath: string, artifactsRoot: string,
   const bundleDir = dirname(manifestPath);
   const required = requiredBundlePaths?.has(relative(artifactsRoot, bundleDir)) ?? false;
   let raw: unknown;
-  try { raw = JSON.parse(await readFile(join(bundleDir, "report.json"), "utf8")) as unknown; }
+  try { raw = JSON.parse(await readFile(await resolveExistingInside(bundleDir, "report.json", "provider history candidate report"), "utf8")) as unknown; }
   catch (error) {
+    if (error instanceof Error && error.message.includes("escapes its root through a symlink")) {
+      throw new Error(`provider history manifest entry escapes bundle: report.json`, { cause: error });
+    }
     if (required) throw new Error(`provider history required report is unreadable: ${join(bundleDir, "report.json")}`, { cause: error });
     return null;
   }
