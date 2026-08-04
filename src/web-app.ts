@@ -125,7 +125,7 @@ export async function serveDashboard(options: DashboardServerOptions): Promise<D
       json(response, 200, { units: manifest.units });
       return;
     }
-    if (path === "/app") {
+    if (path === "/" || path === "/app") {
       text(response, 200, dashboardShell(), "text/html; charset=utf-8");
       return;
     }

@@ -31,7 +31,7 @@ test("dashboard serves the manifest-bound delivery package read-only", async () 
 
     const index = await fetch(app.url);
     assert.equal(index.status, 200);
-    assert.match(await index.text(), /dashboard/);
+    assert.match(await index.text(), /SEO Godlike/);
 
     const report = await fetch(`${app.url}bodymove/report.html`);
     assert.equal(report.status, 200);
