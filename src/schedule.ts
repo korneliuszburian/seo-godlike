@@ -77,6 +77,7 @@ export interface AgencyScheduleOptions {
 
 export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
   if ([options.rankMonitoringPath, options.rankMonitoringRoot, options.serprobotApi ? "true" : undefined].filter(Boolean).length > 1) throw new Error("rank monitoring path, root and SERPROBOT API are mutually exclusive");
+  if (options.serprobotApi && !options.serprobotApiEndpoint) throw new Error("SERPROBOT API scheduling requires an operator-confirmed endpoint");
   if ([options.clientContentPath, options.clientContentBundlePath, options.clientContentRoot].filter(Boolean).length > 1) throw new Error("client content path, bundle and root are mutually exclusive");
   if (options.keywordResearch && !options.keywordInputPath) throw new Error("keyword research scheduling requires keywordInputPath");
   if (options.keywordResearch && options.keywordBundlePath) throw new Error("keyword research scheduling cannot combine with an existing keyword bundle");

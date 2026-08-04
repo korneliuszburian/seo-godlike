@@ -486,6 +486,10 @@ test("monthly agency schedule can enable the read-only SERPROBOT API source", ()
   assert.throws(() => buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts", reportDir: "reports", deliveryDir: "delivery", rankMonitoringRoot: "artifacts/rank", serprobotApi: true }), /mutually exclusive/);
 });
 
+test("monthly agency schedule rejects an unconfirmed SERPROBOT endpoint", () => {
+  assert.throws(() => buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts", reportDir: "reports", deliveryDir: "delivery", serprobotApi: true }), /operator-confirmed endpoint/);
+});
+
 test("monthly agency schedule rejects a rank root outside artifacts", () => {
   assert.throws(() => buildMonthlyAgencyCron({ workingDirectory: "/work/seo-godlike", oauthClientPath: "/secure/oauth-client.json", registryPath: "registry.json", capabilitiesPath: "capabilities.json", artifactsDir: "artifacts/analysis", reportDir: "artifacts/reports", deliveryDir: "artifacts/delivery", rankMonitoringRoot: "artifacts/rank-exports" }), /rankMonitoringRoot must be inside artifactsDir/);
 });

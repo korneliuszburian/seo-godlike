@@ -4,7 +4,6 @@ import { RankMonitoringBundle, RankMonitoringSnapshot, writeRankMonitoringApiBun
 
 const execFileAsync = promisify(execFile);
 export const SERPROBOT_API_KEY_REF = "keyring:seo-godlike/serprobot-api-key";
-export const SERPROBOT_API_ENDPOINT = "https://www.serprobot.com/api/v1/api.php";
 
 export interface SerprobotApiRequest {
   client_id: string;
@@ -14,7 +13,8 @@ export interface SerprobotApiRequest {
   search_engine: string;
   location: string | null;
   device: string | null;
-  endpoint?: string;
+  /** Operator-confirmed endpoint; the public connector docs do not define one. */
+  endpoint: string;
 }
 
 export interface SerprobotApiResponse {
@@ -49,7 +49,7 @@ function rowUrl(value: Record<string, unknown>): string | null {
 }
 
 /**
- * Parses the documented SERPROBOT project response shape without treating
+ * Parses an operator-confirmed SERPROBOT project response without treating
  * missing historical data as zero. The provider response is retained by the
  * caller as raw evidence; this function only creates the canonical snapshot.
  */
@@ -87,7 +87,9 @@ export async function querySerprobotProject(apiKey: string, request: SerprobotAp
   if (!apiKey.trim()) throw new Error("SERPROBOT API key is empty");
   if (!/^[1-9]\d*$/.test(request.project_id)) throw new Error("SERPROBOT project_id must be numeric");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(request.date_range.start) || !/^\d{4}-\d{2}-\d{2}$/.test(request.date_range.end) || request.date_range.start > request.date_range.end) throw new Error("SERPROBOT date range must be valid and ordered");
-  const url = new URL(request.endpoint ?? SERPROBOT_API_ENDPOINT);
+  let url: URL;
+  try { url = new URL(request.endpoint); } catch { throw new Error("SERPROBOT API endpoint must be a valid HTTPS URL"); }
+  if (url.protocol !== "https:" || url.username || url.password || url.hash) throw new Error("SERPROBOT API endpoint must be an HTTPS URL without credentials or fragment");
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("action", "project");
   url.searchParams.set("project_id", request.project_id);

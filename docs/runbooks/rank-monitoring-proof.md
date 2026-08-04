@@ -22,6 +22,10 @@ potwierdzić endpoint i wykonać jeden kontrolowany smoke test. Nieznany kształ
 odpowiedzi kończy się błędem, a nie częściowym raportem. Do tego czasu używamy
 manifest-bound snapshotu wejściowego.
 
+Ścieżka API pozostaje eksperymentalna do czasu potwierdzenia kontraktu przez
+operatora; scheduler wymaga jawnego endpointu HTTPS i odrzuca konfigurację bez
+niego.
+
 ## Bezpośredni odczyt API
 
 Jeżeli klucz SERPROBOT jest zapisany lokalnie jako
@@ -35,6 +39,7 @@ node dist/cli.js --pull-serprobot \
   --captured-at 2026-08-04T08:00:00.000Z \
   --date-start 2026-07-01 --date-end 2026-07-31 \
   --search-engine google.pl --location Warszawa --device desktop \
+  --serprobot-api-endpoint https://OPERATOR-CONFIRMED-ENDPOINT \
   --output /absolute/path/artifacts/analysis/serprobot/bodymove-2026-07
 ```
 

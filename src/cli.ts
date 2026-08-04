@@ -218,7 +218,7 @@ async function main(): Promise<void> {
       search_engine: argument("--search-engine"),
       location: optionalArgument("--location") ?? null,
       device: optionalArgument("--device") ?? null,
-      endpoint: optionalArgument("--serprobot-api-endpoint"),
+      endpoint: argument("--serprobot-api-endpoint"),
     };
     const result = await querySerprobotProject(await getSerprobotApiKey(), request);
     const bundle = await writeRankMonitoringApiBundle([result.snapshot], [result.raw], argument("--output"));
@@ -350,12 +350,13 @@ async function main(): Promise<void> {
       : rankMonitoringPath;
     if (serprobotApi) {
       if (!artifactsDir) throw new Error("--serprobot-api requires --artifacts-dir");
+      const serprobotApiEndpoint = argument("--serprobot-api-endpoint");
       const sources = sourceRegistry.sources.filter((source) => source.provider === "serprobot" && source.status === "ready" && source.target);
       const expected = rankMonitoringClientIds(sourceRegistry.sources);
       if (sources.length === 0 || sources.length !== expected.length) throw new Error("--serprobot-api requires every SERPROBOT source to be ready with a numeric project target");
       const apiOutput = join(resolve(artifactsDir), "serprobot-api", runId);
       await mkdir(join(resolve(artifactsDir), "serprobot-api"), { recursive: true, mode: 0o700 });
-      const apiRequests: SerprobotApiRequest[] = sources.map((source) => ({ client_id: source.client_id, project_id: source.target!, captured_at: startedAt, date_range: ranges.current, search_engine: source.search_engine ?? "google.pl", location: source.location ?? null, device: source.device ?? null, endpoint: optionalArgument("--serprobot-api-endpoint") }));
+      const apiRequests: SerprobotApiRequest[] = sources.map((source) => ({ client_id: source.client_id, project_id: source.target!, captured_at: startedAt, date_range: ranges.current, search_engine: source.search_engine ?? "google.pl", location: source.location ?? null, device: source.device ?? null, endpoint: serprobotApiEndpoint }));
       await writeSerprobotApiBundle(await getSerprobotApiKey(), apiRequests, apiOutput);
       resolvedRankMonitoringPath = apiOutput;
     }

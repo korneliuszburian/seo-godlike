@@ -2316,3 +2316,15 @@ auth or schema is unknown.
 - OpenCode/DeepSeek was started for the current fixed point but timed out after
   producing only a partial event trace; no final verdict is accepted from that
   run. Earlier bounded reviews remain advisory evidence only.
+
+## SERPROBOT API endpoint guard — 2026-08-04
+
+- The candidate API path now requires an explicit operator-confirmed endpoint;
+  it no longer falls back to an undocumented default endpoint. Only HTTPS URLs
+  without embedded credentials or fragments are accepted.
+- The monthly scheduler fails before creating a run when SERPROBOT API mode is
+  selected without that endpoint. The manifest-bound SERPROBOT/Looker export
+  path remains the default recurring boundary.
+- Added focused falsifiers for missing/non-HTTPS endpoints. Local proof passes
+  with 222 TypeScript tests + 3 context tests. No provider request, credential
+  read, Ahrefs rerun, SERPROBOT rerun or report regeneration occurred.

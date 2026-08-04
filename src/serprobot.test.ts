@@ -15,6 +15,7 @@ const request = {
   search_engine: "google.pl",
   location: "Warszawa",
   device: "desktop",
+  endpoint: "https://operator-confirmed.example/api",
 };
 
 const response = {
@@ -68,4 +69,9 @@ test("SERPROBOT query rejects an invalid or reversed date range before network I
     querySerprobotProject("secret", { ...request, date_range: { start: "2026-08-05", end: "2026-08-04" } }, async () => { throw new Error("network must not be reached"); }),
     /date range must be valid and ordered/,
   );
+});
+
+test("SERPROBOT query rejects a missing or non-HTTPS endpoint before network IO", async () => {
+  await assert.rejects(querySerprobotProject("secret", { ...request, endpoint: "" }, async () => { throw new Error("network must not be reached"); }), /valid HTTPS URL/);
+  await assert.rejects(querySerprobotProject("secret", { ...request, endpoint: "http://operator-confirmed.example/api" }, async () => { throw new Error("network must not be reached"); }), /HTTPS URL/);
 });
