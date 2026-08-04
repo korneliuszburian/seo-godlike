@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { resolveExistingInside } from "./path-confinement.js";
@@ -56,7 +56,7 @@ function parseRankMonitoringCollection(value: unknown): RankMonitoringSnapshot[]
 
 export async function readRankMonitoringBundle(bundleDir: string, expectedClientIds: readonly string[]): Promise<RankMonitoringBundle> {
   const safeBundleDir = await resolveExistingInside(resolve(bundleDir), ".", "rank monitoring bundle");
-  const manifestBytes = await readFile(join(safeBundleDir, "manifest.json"));
+  const manifestBytes = await readFile(await resolveExistingInside(safeBundleDir, "manifest.json", "rank monitoring manifest"));
   const manifest = JSON.parse(manifestBytes.toString("utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
   const entry = manifest.files?.["report.json"];
   if (!entry || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number") throw new Error("invalid rank monitoring manifest");
@@ -70,15 +70,31 @@ export async function readRankMonitoringBundle(bundleDir: string, expectedClient
 export async function resolveLatestRankMonitoringBundle(rootDir: string, expectedClientIds: readonly string[]): Promise<string> {
   if (expectedClientIds.length === 0) throw new Error("rank monitoring root requires at least one expected client");
   const candidates: Array<{ path: string; bundle: RankMonitoringBundle }> = [];
+  const root = await realpath(resolve(rootDir));
+  const insideRoot = (path: string): boolean => path === root || path.startsWith(`${root}${sep}`);
+  const seenDirectories = new Set<string>();
+  const seenManifests = new Set<string>();
   async function inspect(directory: string): Promise<void> {
+    const realDirectory = await realpath(directory);
+    if (!insideRoot(realDirectory) || seenDirectories.has(realDirectory)) return;
+    seenDirectories.add(realDirectory);
     let entries;
     try { entries = await readdir(directory, { withFileTypes: true }); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
-    const manifestEntry = entries.find((entry) => entry.isFile() && entry.name === "manifest.json");
+    const manifestEntry = entries.find((entry) => entry.isFile() && entry.name === "manifest.json") ?? entries.find((entry) => entry.isSymbolicLink() && entry.name === "manifest.json");
     if (manifestEntry) {
+      const manifestPath = join(directory, manifestEntry.name);
+      const realManifest = await realpath(manifestPath).catch((error: unknown) => {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+        throw error;
+      });
+      if (!realManifest) return;
+      if (!insideRoot(realManifest)) throw new Error(`rank monitoring symlink escapes artifacts root: ${manifestPath}`);
+      if (seenManifests.has(realManifest)) return;
+      seenManifests.add(realManifest);
       let manifestValue: unknown;
-      try { manifestValue = JSON.parse(await readFile(join(directory, manifestEntry.name), "utf8")) as unknown; }
-      catch (error) { throw new Error(`invalid rank monitoring manifest: ${join(directory, manifestEntry.name)}`, { cause: error }); }
+      try { manifestValue = JSON.parse(await readFile(manifestPath, "utf8")) as unknown; }
+      catch (error) { throw new Error(`invalid rank monitoring manifest: ${manifestPath}`, { cause: error }); }
       if (record(manifestValue) && manifestValue.provider === RANK_MONITORING_PROVIDER) {
         try {
           const bundle = await readRankMonitoringBundle(directory, expectedClientIds);
@@ -89,9 +105,23 @@ export async function resolveLatestRankMonitoringBundle(rootDir: string, expecte
         }
       }
     }
-    for (const entry of entries.filter((item) => item.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) await inspect(join(directory, entry.name));
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.name === "manifest.json") continue;
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) await inspect(path);
+      else if (entry.isSymbolicLink()) {
+        const realPath = await realpath(path).catch((error: unknown) => {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+          throw error;
+        });
+        if (!realPath) continue;
+        if (!insideRoot(realPath)) continue;
+        const target = await stat(path);
+        if (target.isDirectory()) await inspect(path);
+      }
+    }
   }
-  await inspect(rootDir);
+  await inspect(root);
   candidates.sort((a, b) => {
     const aCaptured = Math.max(...a.bundle.snapshots.map((snapshot) => Date.parse(snapshot.captured_at)));
     const bCaptured = Math.max(...b.bundle.snapshots.map((snapshot) => Date.parse(snapshot.captured_at)));

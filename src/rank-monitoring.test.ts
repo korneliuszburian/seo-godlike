@@ -34,6 +34,22 @@ test("rank monitoring bundle rejects a manifest report symlink escaping the bund
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test("rank monitoring bundle rejects a manifest symlink escaping the bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-manifest-symlink-"));
+  try {
+    const input = join(root, "input-manifest.json");
+    const outside = join(root, "outside-manifest.json");
+    const bundle = join(root, "bundle");
+    const report = JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [] });
+    await mkdir(bundle);
+    await writeFile(input, report);
+    await writeFile(outside, JSON.stringify({ files: { "report.json": { sha256: sha256(report), bytes: Buffer.byteLength(report) } } }));
+    await writeFile(join(bundle, "report.json"), report);
+    await symlink(outside, join(bundle, "manifest.json"));
+    await assert.rejects(readRankMonitoringBundle(bundle, ["bodymove"]), /rank monitoring manifest escapes its root through a symlink/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test("rank monitoring rejects malformed SERPROBOT source configuration", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-invalid-"));
   try {
@@ -162,4 +178,37 @@ test("rank monitoring root is confined to the artifacts directory", async () => 
     assert.equal(await resolveRankMonitoringRoot(nested, artifacts), nested);
     await assert.rejects(resolveRankMonitoringRoot(outside, artifacts), /escapes artifacts directory/);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("rank monitoring root ignores an escaping directory symlink", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-symlink-"));
+  const outside = await mkdtemp(join(tmpdir(), "seo-godlike-rank-outside-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [] }));
+    await mkdir(join(root, "exports"));
+    await writeRankMonitoringBundle(input, join(root, "exports", "valid"));
+    await writeRankMonitoringBundle(input, join(outside, "foreign"));
+    await symlink(outside, join(root, "exports", "outside"));
+    assert.equal(await resolveLatestRankMonitoringBundle(join(root, "exports"), ["bodymove"]), join(root, "exports", "valid"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
+});
+
+test("rank monitoring root rejects an escaping manifest symlink", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-manifest-symlink-"));
+  const outside = await mkdtemp(join(tmpdir(), "seo-godlike-rank-root-manifest-outside-"));
+  try {
+    const input = join(root, "input.json");
+    await writeFile(input, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: "2026-08-03T00:00:00.000Z", date_range: { start: "2026-07-01", end: "2026-07-31" }, rows: [] }));
+    await mkdir(join(root, "exports", "bundle"), { recursive: true });
+    await writeRankMonitoringBundle(input, join(outside, "foreign"));
+    await symlink(join(outside, "foreign", "manifest.json"), join(root, "exports", "bundle", "manifest.json"));
+    await assert.rejects(resolveLatestRankMonitoringBundle(join(root, "exports"), ["bodymove"]), /rank monitoring symlink escapes artifacts root/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
 });
