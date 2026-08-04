@@ -2331,13 +2331,24 @@ auth or schema is unknown.
 
 ## Atomic external-source batch intake — 2026-08-04
 
-- Added `--add-sources <source-intake.json> --registry <client-registry.json>`
-  for one-time onboarding of multiple GA4, Localo, SERPROBOT and Semstorm
-  source entries. The input is validated as a complete batch before one atomic
-  registry replacement.
+- Added `--add-sources <source-intake.json> --source-registry
+  <source-registry.json> --registry <client-registry.json>` for one-time
+  onboarding of multiple GA4, Localo, SERPROBOT and Semstorm source entries.
+  The input is validated as a complete batch before one atomic registry
+  replacement.
 - Duplicate source IDs, unknown clients, invalid provider targets and mixed
   valid/invalid batches are covered by focused falsifiers; a rejected batch
   leaves the original registry byte-for-byte unchanged.
 - Local proof passes with 225 TypeScript tests + 3 context tests, build, audit
   with zero high vulnerabilities and `git diff --check`. No provider request,
   credential read, Ahrefs rerun or report regeneration occurred.
+
+## Fixture readiness audit — 2026-08-04
+
+- `--agency-readiness` against the current fixture registries reports a
+  read-only partial state with 3/3 registered analytics properties ready:
+  canonical Bodymove GSC, Kraków GSC and Ahrefs.
+- The explicit unavailable blockers remain GA4 numeric property/consent,
+  managed Localo profile, SERPROBOT snapshot/API input and Semstorm input;
+  OAuth input is also intentionally absent. Readiness reports
+  `credential_posture: not_inspected` and performed no provider IO.
