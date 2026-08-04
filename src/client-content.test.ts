@@ -36,7 +36,7 @@ test("client content bundle verifies bytes and client identity before delivery",
   try {
     const content = JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [], glossary: [], contact: null });
     await writeFile(join(root, "client-content.json"), content);
-    const manifest = JSON.stringify({ files: { "client-content.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } });
+    const manifest = JSON.stringify({ schema_version: "1", provider: "operator-managed-content", client_ids: ["bodymove"], input_sha256: sha256(content), import_mode: "normalized_json", files: { "client-content.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } });
     await writeFile(join(root, "manifest.json"), manifest);
     const result = await readClientContentBundle(root, ["bodymove"]);
     assert.equal(result.content.client_id, "bodymove");
@@ -58,11 +58,21 @@ test("client content bundle rejects a manifest file symlink escaping the bundle"
     await mkdir(bundle);
     await writeFile(outside, content);
     await symlink(outside, join(bundle, "client-content.json"));
-    await writeFile(join(bundle, "manifest.json"), JSON.stringify({ files: { "client-content.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } }));
+    await writeFile(join(bundle, "manifest.json"), JSON.stringify({ schema_version: "1", provider: "operator-managed-content", client_ids: ["bodymove"], input_sha256: sha256(content), import_mode: "normalized_json", files: { "client-content.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } }));
     await assert.rejects(readClientContentBundle(bundle, ["bodymove"]), /escapes its root through a symlink/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("client content bundle rejects provenance metadata that does not match the payload", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-client-content-provenance-"));
+  try {
+    const content = JSON.stringify({ schema_version: "1", client_id: "bodymove", actions: [], glossary: [], contact: null });
+    await writeFile(join(root, "client-content.json"), content);
+    await writeFile(join(root, "manifest.json"), JSON.stringify({ schema_version: "1", provider: "wrong-provider", client_ids: ["other"], input_sha256: "0".repeat(64), import_mode: "normalized_csv", files: { "client-content.json": { sha256: sha256(content), bytes: Buffer.byteLength(content) } } }));
+    await assert.rejects(readClientContentBundle(root, ["bodymove"]), /invalid client content manifest/);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test("client content packer writes a deterministic operator bundle", async () => {

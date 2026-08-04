@@ -79,8 +79,15 @@ export function parseClientContentCollection(value: unknown): ClientContent[] {
 export async function readClientContentBundle(bundleDir: string, expectedClientIds: readonly string[]): Promise<ClientContentBundle> {
   const root = resolve(bundleDir);
   const manifestBytes = await readFile(join(root, "manifest.json"));
-  const manifest = JSON.parse(manifestBytes.toString("utf8")) as { files?: Record<string, { sha256?: unknown; bytes?: unknown }> };
-  if (!manifest.files || Object.keys(manifest.files).length === 0) throw new Error("invalid client content manifest");
+  const manifest = JSON.parse(manifestBytes.toString("utf8")) as {
+    schema_version?: unknown;
+    provider?: unknown;
+    client_ids?: unknown;
+    input_sha256?: unknown;
+    import_mode?: unknown;
+    files?: Record<string, { sha256?: unknown; bytes?: unknown }>;
+  };
+  if (manifest.schema_version !== "1" || manifest.provider !== "operator-managed-content" || !Array.isArray(manifest.client_ids) || manifest.client_ids.some((id) => typeof id !== "string") || typeof manifest.input_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(manifest.input_sha256) || !["normalized_json", "normalized_csv"].includes(manifest.import_mode as string) || !manifest.files || Object.keys(manifest.files).length === 0) throw new Error("invalid client content manifest");
   const files = new Map<string, Buffer>();
   for (const [name, entry] of Object.entries(manifest.files)) {
     if (!name || name.startsWith("/") || name.includes("..") || name.includes("\\") || !entry || typeof entry.sha256 !== "string" || typeof entry.bytes !== "number") throw new Error(`unsafe client content manifest entry '${name}'`);
@@ -92,6 +99,9 @@ export async function readClientContentBundle(bundleDir: string, expectedClientI
   const report = files.get("client-content.json") ?? files.get("report.json");
   if (!report) throw new Error("client content bundle must declare client-content.json or report.json");
   const contents = parseClientContentCollection(JSON.parse(report.toString("utf8")) as unknown);
+  const manifestClientIds = [...manifest.client_ids].sort();
+  const payloadClientIds = contents.map((content) => content.client_id).sort();
+  if (JSON.stringify(manifestClientIds) !== JSON.stringify(payloadClientIds)) throw new Error("client content manifest client_ids do not match payload");
   for (const content of contents) if (!expectedClientIds.includes(content.client_id)) throw new Error(`client content identity mismatch: ${content.client_id}`);
   return { content: contents[0]!, contents, manifest_sha256: sha256(manifestBytes.toString("utf8")) };
 }
