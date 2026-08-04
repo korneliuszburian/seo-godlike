@@ -71,6 +71,25 @@ test("rank history keeps search configuration separate for the same keyword", as
   }
 });
 
+test("rank history does not compare adjacent snapshots from different SERPROBOT projects", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-project-"));
+  try {
+    const input = async (path: string, start: string, end: string, project_id: string, position: number) => {
+      await writeFile(path, JSON.stringify({ schema_version: "1", provider: "serprobot", client_id: "bodymove", captured_at: `${end}T12:00:00.000Z`, date_range: { start, end }, source_config: { project_id, search_engine: "google.pl", location: "Warszawa", device: "desktop" }, rows: [{ keyword: "rehabilitacja", position, previous_position: null, search_engine: "google.pl", location: "Warszawa", device: "desktop", url: null }] }));
+    };
+    const oldInput = join(root, "old-input.json");
+    const newInput = join(root, "new-input.json");
+    await input(oldInput, "2026-06-01", "2026-06-30", "123", 9);
+    await input(newInput, "2026-07-01", "2026-07-31", "456", 7);
+    await writeRankMonitoringBundle(oldInput, join(root, "old"));
+    await writeRankMonitoringBundle(newInput, join(root, "new"));
+    const summary = await writeRankHistoryDashboard(root, join(root, "dashboard"), ["bodymove"]);
+    assert.equal(summary.comparisons.length, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("rank history rejects a snapshot outside the registry client scope", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-rank-history-scope-"));
   try {

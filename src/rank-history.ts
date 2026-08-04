@@ -110,6 +110,16 @@ function immediatelyPrecedes(previous: RankHistoryEntry, current: RankHistoryEnt
   return Number.isFinite(previousEnd) && Number.isFinite(currentStart) && currentStart === previousEnd + 24 * 60 * 60 * 1000;
 }
 
+function sameSourceConfiguration(previous: RankHistoryEntry, current: RankHistoryEntry): boolean {
+  const previousConfig = previous.source_config;
+  const currentConfig = current.source_config;
+  if (!previousConfig || !currentConfig) return previousConfig === currentConfig;
+  return previousConfig.project_id === currentConfig.project_id
+    && previousConfig.search_engine === currentConfig.search_engine
+    && (previousConfig.location === null || currentConfig.location === null || previousConfig.location === currentConfig.location)
+    && (previousConfig.device === null || currentConfig.device === null || previousConfig.device === currentConfig.device);
+}
+
 function comparisons(snapshots: RankHistoryEntry[]): RankHistoryComparison[] {
   const byClient = new Map<string, RankHistoryEntry[]>();
   for (const snapshot of snapshots) byClient.set(snapshot.client_id, [...(byClient.get(snapshot.client_id) ?? []), snapshot]);
@@ -117,7 +127,7 @@ function comparisons(snapshots: RankHistoryEntry[]): RankHistoryComparison[] {
   for (const [clientId, entries] of byClient) {
     const ordered = [...entries].sort((a, b) => a.date_range.start.localeCompare(b.date_range.start) || a.date_range.end.localeCompare(b.date_range.end) || a.bundle_path.localeCompare(b.bundle_path));
     for (const current of ordered) {
-      const previous = [...ordered].filter((candidate) => immediatelyPrecedes(candidate, current)).at(-1);
+      const previous = [...ordered].filter((candidate) => immediatelyPrecedes(candidate, current) && sameSourceConfiguration(candidate, current)).at(-1);
       if (!previous) continue;
       const rowKey = (row: RankHistoryEntry["rows"][number], sourceConfig: RankHistoryEntry["source_config"]): string => [row.keyword, row.search_engine, row.location ?? sourceConfig?.location ?? "", row.device ?? sourceConfig?.device ?? ""].join("\u0000");
       const previousRows = new Map(previous.rows.map((row) => [rowKey(row, previous.source_config), row]));

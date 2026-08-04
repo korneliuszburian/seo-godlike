@@ -1875,3 +1875,14 @@ auth or schema is unknown.
   build, zero high audit vulnerabilities, and `git diff --check`.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
+
+## SERPROBOT history configuration guard — 2026-08-04
+
+- Rank-history comparisons now require adjacent snapshots to belong to the same
+  SERPROBOT project and search configuration. A project change is not treated
+  as a position delta; nullable location/device fields remain compatible with
+  row-level configuration supplied by the snapshot.
+- Added a focused falsifier for adjacent snapshots from different project IDs.
+  Existing multi-client delivery and same-keyword configuration tests remain
+  green. No provider request, credential read, Ahrefs rerun, SERPROBOT rerun,
+  report regeneration, or publication occurred.
