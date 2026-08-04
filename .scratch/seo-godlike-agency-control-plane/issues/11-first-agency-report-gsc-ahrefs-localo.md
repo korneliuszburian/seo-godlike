@@ -2222,3 +2222,14 @@ auth or schema is unknown.
 - Review output is retained outside the repository at
   `/tmp/opencode-review-327dbb0-bounded.json`. No provider request, credential
   read, report rerun or publication occurred during review.
+
+## SERPROBOT connector decision follow-up — 2026-08-04
+
+- Official SERPROBOT documentation confirms that the Data Studio connector
+  reads saved data using an API key, numeric project ID and explicit `start` /
+  `end` dates, with connector authorization handled in Google Data Studio.
+- The public documentation does not expose a stable response schema or
+  endpoint contract for a first-party local adapter. Therefore the repository
+  keeps the normalized, hash-bound CSV import as the safe recurring seam and
+  does not guess an API endpoint or spend provider quota. A direct adapter is
+  deferred until SERPROBOT supplies a documented response contract.
