@@ -1956,3 +1956,22 @@ auth or schema is unknown.
   Focused delivery coverage includes known GA4/Semstorm mappings and an
   unknown Localo reason. No provider request or evidence rerun occurred.
 - Fixed point: `931b9d6` (`fix(delivery): fail closed on unknown source reasons`).
+
+## Independent OpenCode review — 2026-08-04
+
+- Fixed point `693d6ae` was reviewed read-only with
+  `opencode-go/deepseek-v4-flash`; the raw packet is retained outside the
+  repository at `/tmp/seo-godlike-review-693d6ae-run2.json`.
+- Verdict: no blockers. The reviewer reproduced the clean tree, path
+  confinement, isolated PDF renderer policy, tenant checks, recurring route,
+  and 201/201 local tests. No credentials, provider calls, or writes occurred.
+- Deferred risks: monthly cron hard-codes `--pdf` and depends on a user-systemd
+  session; CLI and delivery resolve a rank bundle twice; null location/device
+  values act as wildcard configuration matches; `manifests_verified` includes
+  the self-authored delivery manifest in its count. None blocks the current
+  local fixed point; renderer-stack proof remains unverified in this review.
+- Next action: preserve the current fixed point for operator acceptance, then
+  harden scheduled PDF preflight and rank-bundle identity before live recurring
+  use. Operator-gated mapping, GA4 consent/property, Localo profile,
+  SERPROBOT/Looker snapshot authority, action register, retention, and cron
+  installation remain outside code-only proof.
