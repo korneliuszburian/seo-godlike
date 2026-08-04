@@ -1431,6 +1431,20 @@ auth or schema is unknown.
 - No provider request, credential read, Ahrefs rerun, report regeneration, or
   publication occurred.
 
+## Rank-history output provenance — 2026-08-04
+
+- `writeRankHistoryDashboard` now emits a private `manifest.json` binding the
+  JSON, Markdown and HTML dashboard files by SHA-256 and byte count, plus the
+  distinct verified SERPROBOT source-manifest hashes consumed by the summary.
+- A focused falsifier verifies the output hashes, bytes, provider label and
+  `0600` file modes. Local proof: 193 TypeScript tests + 3 context tests,
+  build, zero high audit vulnerabilities, and `git diff --check`.
+- OpenCode/DeepSeek was invoked against exact HEAD `f6fe0f1` in non-interactive
+  read-only mode; the bounded session reached repository/context inspection but
+  ended before a final verdict. Treat it as partial review evidence, not as a
+  PASS. No provider request, credential read, Ahrefs rerun, report regeneration,
+  or publication occurred.
+
 ## Exact-head OpenCode second opinion — 2026-08-04
 
 - OpenCode/DeepSeek reviewed exact HEAD `ef7eb07` read-only in non-interactive
