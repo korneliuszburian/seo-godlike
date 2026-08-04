@@ -2186,3 +2186,23 @@ auth or schema is unknown.
 - The matching hash is the evidence that the existing client-delivery output
   can reuse this phrase input; a new Ahrefs run would be redundant and is not
   authorized by this goal.
+
+## Operator actions CSV intake — 2026-08-04 (`682cf67`)
+
+- Added a local-only `--pack-client-content-csv` seam for the operator-managed
+  Looker/SERPROBOT „Działania dla strony” table. Required columns are
+  `period_start,period_end,type,status,title`; optional columns preserve
+  `action_id,target_url,published_at,notes`.
+- The importer validates calendar dates, ordered periods, supported action
+  types/statuses, duplicate identities and quoted CSV fields. It writes the
+  existing manifest-bound `client-content.json` bundle and records the input
+  SHA-256 plus `import_mode: normalized_csv`; it does not call a provider.
+- The recurring schedule and client delivery already consume the same
+  `--client-content-bundle` seam, so a verified action register will appear in
+  the Polish client HTML/PDF/email output without manual report assembly.
+- Local proof: 209 TypeScript tests + 3 context tests, build, npm audit with
+  zero high vulnerabilities and `git diff --check` pass. No action CSV was
+  supplied in this slice, so no client-facing action output was fabricated.
+- The next operator input is the normalized actions CSV (and, separately, a
+  verified SERPROBOT rank export if rank history is required). Existing Ahrefs
+  evidence remains reusable; no Ahrefs rerun is needed.
