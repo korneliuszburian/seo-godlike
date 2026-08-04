@@ -131,7 +131,7 @@ function localizedSourceReason(reason: string | null | undefined): string {
     "Semstorm visibility export or API source has not been imported": "Nie zaimportowano eksportu widoczności ani źródła API Semstorm.",
     "no catalog metrics": "Brak zdefiniowanych metryk dla tego źródła.",
   };
-  return labels[reason ?? ""] ?? reason ?? "Wymaga wyjaśnienia.";
+  return labels[reason ?? ""] ?? "Szczegóły techniczne wymagają wyjaśnienia przez operatora.";
 }
 function sourceReasonLabel(source: AgencyReportSummary["source_status"][number]): string {
   if (source.reason_code === "missing_freshness_baseline") return "Nie znaleziono zaakceptowanej bazy Google Search Console dla tej właściwości; świeżość estymacji Ahrefs nie jest weryfikowana.";
