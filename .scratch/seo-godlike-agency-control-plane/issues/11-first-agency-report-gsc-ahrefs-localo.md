@@ -2506,3 +2506,14 @@ auth or schema is unknown.
 - External OpenCode review for the dashboard fixed point remains incomplete
   because the non-interactive process stopped without a final verdict; this is
   advisory status, not a claim of review approval.
+
+## Dashboard visual consolidation — 2026-08-06
+
+- The local application keeps one client/domain navigation surface: the
+  floating island owned by `/`. The embedded report's legacy `.client-switcher`
+  is removed after the same-origin iframe loads, preventing duplicated client
+  navigation without changing the underlying client reports or PDFs.
+- The application no longer renders a separate status badge or sidebar. The
+  current proof is visual browser verification against the existing Bodymove
+  delivery package plus focused dashboard tests; no provider request or report
+  rerun occurred.
