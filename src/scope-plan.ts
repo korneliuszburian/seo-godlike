@@ -1,5 +1,6 @@
 import { CapabilityRegistry, ClientRegistry, MetricDefinition, Provider, ScopePlan, ScopePlanEntry } from "./domain.js";
 import { validateClientRegistry } from "./registry.js";
+import { AHREFS_COLLECTION_POLICY, AhrefsCollectionPolicy, ahrefsCollectionBlockReason } from "./provider-collection-policy.js";
 
 const METRIC_CATALOG: Record<Provider, MetricDefinition[]> = {
   "google-search-console": [
@@ -45,7 +46,9 @@ export function validateCapabilityRegistry(capabilities: CapabilityRegistry): vo
   }
 }
 
-function planEntry(clientId: string, displayName: string, propertyId: string, provider: Provider, capabilities: CapabilityRegistry): ScopePlanEntry {
+function planEntry(clientId: string, displayName: string, propertyId: string, provider: Provider, capabilities: CapabilityRegistry, collectionPolicy?: Readonly<AhrefsCollectionPolicy>): ScopePlanEntry {
+  const collectionBlocker = provider === "ahrefs" && collectionPolicy !== undefined ? ahrefsCollectionBlockReason(collectionPolicy) : null;
+  if (collectionBlocker !== null) return { client_id: clientId, client_display_name: displayName, property_id: propertyId, provider, status: "unavailable", reason: collectionBlocker, metrics: [] };
   const capability = capabilities.capabilities.find((item) => item.provider === provider && supportedMetrics(provider, item.operation_id).length > 0);
   if (!capability) return { client_id: clientId, client_display_name: displayName, property_id: propertyId, provider, status: "unavailable", reason: `no read-only capability registered for provider '${provider}'`, metrics: [] };
   const catalogMetrics = supportedMetrics(provider, capability.operation_id);
@@ -56,9 +59,17 @@ function planEntry(clientId: string, displayName: string, propertyId: string, pr
   return { client_id: clientId, client_display_name: displayName, property_id: propertyId, provider, status: "ready", reason: null, metrics };
 }
 
-export function buildScopePlan(registry: ClientRegistry, capabilities: CapabilityRegistry, generatedAt = new Date().toISOString()): ScopePlan {
+function buildPlan(registry: ClientRegistry, capabilities: CapabilityRegistry, generatedAt: string, collectionPolicy?: Readonly<AhrefsCollectionPolicy>): ScopePlan {
   validateClientRegistry(registry);
   validateCapabilityRegistry(capabilities);
-  const entries = registry.clients.flatMap((client) => client.properties.map((property) => planEntry(client.client_id, client.display_name ?? client.client_id, property.property_id, property.provider, capabilities)));
+  const entries = registry.clients.flatMap((client) => client.properties.map((property) => planEntry(client.client_id, client.display_name ?? client.client_id, property.property_id, property.provider, capabilities, collectionPolicy)));
   return { schema_version: "1", generated_at: generatedAt, status: entries.length === 0 ? "empty" : entries.every((entry) => entry.status === "ready") ? "ready" : "partial", entries };
+}
+
+export function buildScopePlan(registry: ClientRegistry, capabilities: CapabilityRegistry, generatedAt = new Date().toISOString()): ScopePlan {
+  return buildPlan(registry, capabilities, generatedAt);
+}
+
+export function buildCollectionScopePlan(registry: ClientRegistry, capabilities: CapabilityRegistry, generatedAt = new Date().toISOString(), collectionPolicy: Readonly<AhrefsCollectionPolicy> = AHREFS_COLLECTION_POLICY): ScopePlan {
+  return buildPlan(registry, capabilities, generatedAt, collectionPolicy);
 }

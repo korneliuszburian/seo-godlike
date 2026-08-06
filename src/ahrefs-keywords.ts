@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { getAhrefsApiKey } from "./ahrefs.js";
 import { CapabilityRegistry, PolicyError } from "./domain.js";
+import { AhrefsCollectionPolicy, assertAhrefsCollectionEnabled } from "./provider-collection-policy.js";
 
 export const AHREFS_KEYWORDS_OVERVIEW_URL = "https://api.ahrefs.com/v3/keywords-explorer/overview";
 export const AHREFS_KEYWORDS_SELECT = "keyword,volume,volume_monthly,global_volume,clicks,cpc,cps,difficulty,traffic_potential,parent_topic,parent_volume,intents,serp_features,serp_last_update";
@@ -32,6 +33,7 @@ export interface KeywordResearchOptions {
   capabilities: CapabilityRegistry;
   apiKey?: string;
   fetchImpl?: typeof fetch;
+  collectionPolicy?: Readonly<AhrefsCollectionPolicy>;
 }
 
 interface AhrefsKeywordResponse {
@@ -109,10 +111,12 @@ export async function queryAhrefsKeywordOverview(
   phrases: string[],
   country = DEFAULT_KEYWORD_COUNTRY,
   fetchImpl: typeof fetch = fetch,
+  collectionPolicy?: Readonly<AhrefsCollectionPolicy>,
 ): Promise<string> {
   assertCountry(country);
   if (phrases.length === 0 || phrases.length > MAX_PHRASES_PER_REQUEST) throw new Error(`invalid phrase count: ${phrases.length}`);
   if (phrases.some((phrase) => phrase.includes(","))) throw new Error("phrases must not contain commas");
+  assertAhrefsCollectionEnabled(collectionPolicy);
   const url = new URL(AHREFS_KEYWORDS_OVERVIEW_URL);
   url.searchParams.set("country", country);
   url.searchParams.set("keywords", phrases.join(","));
@@ -135,6 +139,7 @@ async function writeExclusive(path: string, content: string): Promise<void> {
 }
 
 export async function writeAhrefsKeywordResearch(options: KeywordResearchOptions): Promise<KeywordResearchReport> {
+  assertAhrefsCollectionEnabled(options.collectionPolicy);
   assertAhrefsKeywordCapability(options.capabilities);
   const inputText = await readFile(resolve(options.inputPath), "utf8");
   const input = parsePhraseInput(inputText);
@@ -146,12 +151,12 @@ export async function writeAhrefsKeywordResearch(options: KeywordResearchOptions
   if (!options.allowEstimatedBudget) {
     throw new Error("Ahrefs keyword research requires explicit --allow-estimated-budget because provider unit cost depends on returned rows and selected fields");
   }
-  const apiKey = options.apiKey ?? await getAhrefsApiKey();
+  const apiKey = options.apiKey ?? await getAhrefsApiKey(options.collectionPolicy);
   const fetchImpl = options.fetchImpl ?? fetch;
   const results: KeywordResearchReport["groups"] = [];
   const rawResponses: Array<{ host: string; phrases: string[]; content: string }> = [];
   for (const group of groups) {
-    const raw = await queryAhrefsKeywordOverview(apiKey, group.phrases, country, fetchImpl);
+    const raw = await queryAhrefsKeywordOverview(apiKey, group.phrases, country, fetchImpl, options.collectionPolicy);
     const parsed = JSON.parse(raw) as AhrefsKeywordResponse;
     results.push({ host: group.host, phrases: group.phrases, rows: parsed.keywords });
     rawResponses.push({ host: group.host, phrases: group.phrases, content: raw });

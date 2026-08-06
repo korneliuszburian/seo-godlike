@@ -7,6 +7,9 @@ import { test } from "node:test";
 import { runAhrefsAnalytics, queryAhrefsMetrics, runAhrefsProfile } from "./ahrefs.js";
 import { AhrefsAnalyticsRequest, AhrefsProfileRequest, CapabilityRegistry, ClientRegistry } from "./domain.js";
 import { writeReportPackage } from "./report-package.js";
+import { AhrefsCollectionPolicy } from "./provider-collection-policy.js";
+
+const enabledCollectionPolicy: AhrefsCollectionPolicy = { provider: "ahrefs", collection: "enabled", reason: null };
 
 const registry: ClientRegistry = { clients: [{ client_id: "bodymove", display_name: "Bodymove", properties: [{ property_id: "bodymove.pl", provider: "ahrefs", canonical_property: true }] }] };
 const capabilities: CapabilityRegistry = { capabilities: [{ capability_id: "ahrefs.site-explorer.metrics", provider: "ahrefs", operation_id: "site-explorer.metrics", api_version: "v3", read_write: "read", state: "schema_verified" }] };
@@ -47,10 +50,28 @@ test("Ahrefs transport uses the read-only metrics endpoint", async () => {
     return new Response(JSON.stringify({ metrics: { org_traffic: 1 } }), { status: 200 });
   }) as typeof fetch;
   try {
-    await queryAhrefsMetrics("redacted-test-key", "ahrefs.com", "2026-07-28");
+    await queryAhrefsMetrics("redacted-test-key", "ahrefs.com", "2026-07-28", enabledCollectionPolicy);
     assert.match(observedUrl, /https:\/\/api\.ahrefs\.com\/v3\/site-explorer\/metrics/);
     assert.match(observedUrl, /target=ahrefs\.com/);
     assert.equal(observedAuth, "Bearer redacted-test-key");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Ahrefs transport is globally paused before network IO", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ metrics: { org_traffic: 1 } }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      queryAhrefsMetrics("redacted-test-key", "ahrefs.com", "2026-07-28"),
+      /Ahrefs collection is globally disabled by budget policy/,
+    );
+    assert.equal(calls, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }

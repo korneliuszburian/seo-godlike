@@ -2585,3 +2585,30 @@ auth or schema is unknown.
   a confirmed Semstorm source, a managed Localo profile, and explicit
   source/action mapping. Until supplied, recurring collection for those sources
   remains unavailable rather than inferred.
+
+## Global Ahrefs budget pause — 2026-08-06
+
+- New Ahrefs collection is globally disabled by the runtime budget policy.
+  The guard applies before keyring access and before every Site Explorer or
+  Keywords Explorer transport call; recurring scope/readiness surfaces expose
+  the source as unavailable with the budget-policy reason instead of attempting
+  a request.
+- The pause is intentionally separate from capability and evidence validity.
+  Existing manifest-verified Ahrefs profile and keyword snapshots remain
+  readable by report composition, history and delivery without provider IO.
+  The recurring runner uses a collection scope for tasks and a separate
+  evidence scope for composition, so a budget-blocked Ahrefs task does not
+  remove the latest verified snapshot from the generated client report.
+- Re-enabling collection requires an explicit code-level policy change and the
+  usual provider-boundary proof/review; capability registration or a CLI budget
+  flag alone cannot bypass the pause.
+- Focused zero-fetch falsifiers cover Site Explorer and Keywords Explorer. A
+  public CLI agency-run falsifier succeeds with no credential executable in
+  `PATH`, records Ahrefs as blocked rather than failed, and persists the exact
+  reason. A second falsifier proves that the same run reuses prior Ahrefs
+  evidence in both report composition and client delivery. Full local proof
+  passes with 254 TypeScript tests plus 3 context tests. A bounded OpenCode pass
+  exposed the initial collection/composition scope conflation; the separate
+  scope APIs and recurring-run falsifier close that finding. No provider
+  request, credential read, persisted client-report regeneration or evidence
+  rewrite occurred in this slice.

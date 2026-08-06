@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { AhrefsAnalyticsRequest, AhrefsProfileRequest, CapabilityRegistry, Claim, ClientRegistry, CompanyLogEvent, MetricObservation, PolicyError, Report, SourceRecord } from "./domain.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 import { resolveRegisteredProperty } from "./registry.js";
+import { AhrefsCollectionPolicy, assertAhrefsCollectionEnabled } from "./provider-collection-policy.js";
 import { assertCanonicalIsoDateTime } from "./timestamps.js";
 
 const execFileAsync = promisify(execFile);
@@ -81,7 +82,8 @@ function assertRequest(request: AhrefsAnalyticsRequest, registry: ClientRegistry
   return resolved.canonical_property_id;
 }
 
-export async function getAhrefsApiKey(): Promise<string> {
+export async function getAhrefsApiKey(collectionPolicy?: Readonly<AhrefsCollectionPolicy>): Promise<string> {
+  assertAhrefsCollectionEnabled(collectionPolicy);
   try {
     const result = await execFileAsync("secret-tool", ["lookup", "service", "seo-godlike", "account", "ahrefs-api-key"], { encoding: "utf8" });
     if (result.stdout.trim()) return result.stdout.trim();
@@ -89,7 +91,8 @@ export async function getAhrefsApiKey(): Promise<string> {
   throw new PolicyError("policy", `policy: missing secret reference '${AHREFS_API_KEY_REF}'`);
 }
 
-export async function queryAhrefsMetrics(apiKey: string, target: string, date: string): Promise<string> {
+export async function queryAhrefsMetrics(apiKey: string, target: string, date: string, collectionPolicy?: Readonly<AhrefsCollectionPolicy>): Promise<string> {
+  assertAhrefsCollectionEnabled(collectionPolicy);
   const url = new URL("https://api.ahrefs.com/v3/site-explorer/metrics");
   url.searchParams.set("target", target);
   url.searchParams.set("date", date);
@@ -107,7 +110,8 @@ const PROFILE_SELECTS = {
   competitors: "competitor_domain,domain_rating,keywords_common,keywords_target,keywords_competitor,share,traffic,traffic_diff,value",
 } as const;
 
-async function queryAhrefsEndpoint(apiKey: string, endpoint: string, target: string, date: string, parameters: Record<string, string>): Promise<string> {
+async function queryAhrefsEndpoint(apiKey: string, endpoint: string, target: string, date: string, parameters: Record<string, string>, collectionPolicy?: Readonly<AhrefsCollectionPolicy>): Promise<string> {
+  assertAhrefsCollectionEnabled(collectionPolicy);
   const url = new URL(`https://api.ahrefs.com/v3/site-explorer/${endpoint}`);
   url.searchParams.set("target", target);
   url.searchParams.set("date", date);
@@ -120,11 +124,11 @@ async function queryAhrefsEndpoint(apiKey: string, endpoint: string, target: str
   return `${JSON.stringify(await response.json())}\n`;
 }
 
-export async function queryAhrefsProfile(apiKey: string, target: string, date: string, comparisonDate: string, country: string): Promise<{ metrics: string; topPages: string; organicKeywords: string; competitors: string }> {
-  const metrics = await queryAhrefsMetrics(apiKey, target, date);
-  const topPages = await queryAhrefsEndpoint(apiKey, "top-pages", target, date, { date_compared: comparisonDate, limit: "100", order_by: "sum_traffic:desc", select: PROFILE_SELECTS.topPages });
-  const organicKeywords = await queryAhrefsEndpoint(apiKey, "organic-keywords", target, date, { date_compared: comparisonDate, limit: "500", order_by: "sum_traffic:desc", select: PROFILE_SELECTS.organicKeywords });
-  const competitors = await queryAhrefsEndpoint(apiKey, "organic-competitors", target, date, { country, date_compared: comparisonDate, limit: "20", order_by: "traffic:desc", select: PROFILE_SELECTS.competitors });
+export async function queryAhrefsProfile(apiKey: string, target: string, date: string, comparisonDate: string, country: string, collectionPolicy?: Readonly<AhrefsCollectionPolicy>): Promise<{ metrics: string; topPages: string; organicKeywords: string; competitors: string }> {
+  const metrics = await queryAhrefsMetrics(apiKey, target, date, collectionPolicy);
+  const topPages = await queryAhrefsEndpoint(apiKey, "top-pages", target, date, { date_compared: comparisonDate, limit: "100", order_by: "sum_traffic:desc", select: PROFILE_SELECTS.topPages }, collectionPolicy);
+  const organicKeywords = await queryAhrefsEndpoint(apiKey, "organic-keywords", target, date, { date_compared: comparisonDate, limit: "500", order_by: "sum_traffic:desc", select: PROFILE_SELECTS.organicKeywords }, collectionPolicy);
+  const competitors = await queryAhrefsEndpoint(apiKey, "organic-competitors", target, date, { country, date_compared: comparisonDate, limit: "20", order_by: "traffic:desc", select: PROFILE_SELECTS.competitors }, collectionPolicy);
   return { metrics, topPages, organicKeywords, competitors };
 }
 

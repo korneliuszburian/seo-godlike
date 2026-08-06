@@ -8,10 +8,14 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
+import { runAhrefsAnalytics } from "./ahrefs.js";
+import { AhrefsAnalyticsRequest, CapabilityRegistry, ClientRegistry } from "./domain.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { canonicalJson, sha256 } from "./serialize.js";
+import { AhrefsCollectionPolicy } from "./provider-collection-policy.js";
 
 const execFileAsync = promisify(execFile);
+const enabledAhrefsCollection: AhrefsCollectionPolicy = { provider: "ahrefs", collection: "enabled", reason: null };
 
 test("dashboard delivery root fails closed when no verified recurring delivery exists", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-dashboard-root-"));
@@ -73,6 +77,101 @@ test("daily schedule fails closed without an OAuth client path", async () => {
     execFileAsync(process.execPath, ["dist/cli.js", "--schedule"], { cwd: process.cwd() }),
     /--schedule requires --oauth-client for daily analytics schedule/,
   );
+});
+
+test("agency-run records Ahrefs as budget-blocked without reading credentials", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-ahrefs-paused-"));
+  try {
+    const registryPath = join(root, "client-registry.json");
+    const capabilitiesPath = join(root, "capability-registry.json");
+    const output = join(root, "run");
+    await writeFile(registryPath, JSON.stringify({ clients: [{
+      client_id: "bodymove",
+      properties: [{ property_id: "bodymove.pl", provider: "ahrefs", canonical_property: true, country: "pl" }],
+    }] }));
+    await writeFile(capabilitiesPath, JSON.stringify({ capabilities: [{
+      capability_id: "ahrefs.site-explorer.profile",
+      provider: "ahrefs",
+      operation_id: "site-explorer.profile",
+      api_version: "v3",
+      metric_ids: ["ahrefs.top_pages", "ahrefs.org_keywords_detail", "ahrefs.org_competitors"],
+      read_write: "read",
+      state: "schema_verified",
+    }] }));
+    const result = await execFileAsync(process.execPath, [
+      "dist/cli.js", "--agency-run",
+      "--registry", registryPath,
+      "--capabilities", capabilitiesPath,
+      "--output", output,
+    ], { cwd: process.cwd(), env: { ...process.env, PATH: root } });
+    const summary = JSON.parse(result.stdout) as { status: string; failed: unknown[]; blocked: Array<{ id: string; reason: string }> };
+    assert.equal(summary.status, "blocked");
+    assert.deepEqual(summary.failed, []);
+    assert.deepEqual(summary.blocked, [{
+      id: "bodymove:ahrefs:bodymove.pl",
+      reason: "Ahrefs collection is globally disabled by budget policy; existing verified evidence remains readable",
+    }]);
+    assert.match(await readFile(join(output, "agency-run.json"), "utf8"), /globally disabled by budget policy/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("agency-run reuses verified Ahrefs evidence while collection remains budget-blocked", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-ahrefs-history-"));
+  try {
+    const artifacts = join(root, "artifacts");
+    const output = join(artifacts, "run");
+    const report = join(root, "report");
+    const delivery = join(root, "delivery");
+    const registryPath = join(root, "client-registry.json");
+    const capabilitiesPath = join(root, "capability-registry.json");
+    const registry: ClientRegistry = { clients: [{
+      client_id: "bodymove",
+      display_name: "Bodymove",
+      properties: [{ property_id: "bodymove.pl", provider: "ahrefs", canonical_property: true, country: "pl" }],
+    }] };
+    const capabilities: CapabilityRegistry = { capabilities: [{
+      capability_id: "ahrefs.site-explorer.metrics",
+      provider: "ahrefs",
+      operation_id: "site-explorer.metrics",
+      api_version: "v3",
+      read_write: "read",
+      state: "schema_verified",
+    }] };
+    const request: AhrefsAnalyticsRequest = {
+      schema_version: "1",
+      run_id: "ahrefs-history",
+      client_id: "bodymove",
+      property_id: "bodymove.pl",
+      provider: "ahrefs",
+      operation: "site-explorer.metrics",
+      metric: "org_traffic",
+      date_range: { start: "2026-08-05", end: "2026-08-05" },
+      credential_ref: "keyring:seo-godlike/ahrefs-api-key",
+      policy_mode: "read_only",
+      captured_at: "2026-08-05T12:00:00.000Z",
+    };
+    await mkdir(artifacts);
+    await runAhrefsAnalytics(request, registry, capabilities, JSON.stringify({ metrics: { org_traffic: 123, org_keywords: 45, org_keywords_1_3: 6 } }), join(artifacts, "ahrefs-history"));
+    await writeFile(registryPath, JSON.stringify(registry));
+    await writeFile(capabilitiesPath, JSON.stringify(capabilities));
+
+    const result = await execFileAsync(process.execPath, [
+      "dist/cli.js", "--agency-run",
+      "--registry", registryPath,
+      "--capabilities", capabilitiesPath,
+      "--artifacts-dir", artifacts,
+      "--output", output,
+      "--agency-report-output", report,
+      "--delivery-output", delivery,
+    ], { cwd: process.cwd(), env: { ...process.env, PATH: root } });
+    const run = JSON.parse(result.stdout) as { blocked: Array<{ id: string; reason: string }>; failed: unknown[] };
+    const summary = JSON.parse(await readFile(join(report, "agency-report.json"), "utf8")) as { accepted_bundles: Array<{ provider: string }>; executive: { estimated_ahrefs: Array<{ organic_traffic: number }> } };
+    assert.equal(run.failed.length, 0);
+    assert.match(run.blocked[0]?.reason ?? "", /globally disabled by budget policy/);
+    assert.deepEqual(summary.accepted_bundles.map((bundle) => bundle.provider), ["ahrefs"]);
+    assert.equal(summary.executive.estimated_ahrefs[0]?.organic_traffic, 123);
+    assert.match(await readFile(join(delivery, "bodymove", "bodymove-seo-report.html"), "utf8"), /123/);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test("CLI packs a normalized SERPROBOT CSV without provider IO", async () => {
@@ -197,6 +296,7 @@ test("agency-run rejects a mismatched existing keyword bundle before creating ou
       apiKey: "test-key",
       allowEstimatedBudget: true,
       fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "original phrase" }] }), { status: 200 }),
+      collectionPolicy: enabledAhrefsCollection,
     });
     await assert.rejects(
       execFileAsync(process.execPath, [
@@ -232,6 +332,7 @@ test("agency-report rejects a mismatched keyword bundle before creating output",
       apiKey: "test-key",
       allowEstimatedBudget: true,
       fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "original phrase" }] }), { status: 200 }),
+      collectionPolicy: enabledAhrefsCollection,
     });
     await assert.rejects(
       execFileAsync(process.execPath, [
@@ -265,6 +366,7 @@ test("agency-run rejects a tampered bundle before creating output when no input 
       apiKey: "test-key",
       allowEstimatedBudget: true,
       fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "original phrase" }] }), { status: 200 }),
+      collectionPolicy: enabledAhrefsCollection,
     });
     const requestPath = join(keywordBundle, "request.json");
     const request = JSON.parse(await readFile(requestPath, "utf8")) as { groups: unknown[] };

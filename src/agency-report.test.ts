@@ -12,6 +12,9 @@ import { runGa4Analytics } from "./ga4-analytics.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { canonicalJson, sha256 } from "./serialize.js";
+import { AhrefsCollectionPolicy } from "./provider-collection-policy.js";
+
+const enabledAhrefsCollection: AhrefsCollectionPolicy = { provider: "ahrefs", collection: "enabled", reason: null };
 
 async function writeAgencySelectionBundle(root: string, name: string, generatedAt: string, clicks: number, dateRange = { start: "2026-07-01", end: "2026-07-28" }, clientId = "bodymove", propertyId = "sc-domain:bodymove.pl"): Promise<void> {
   const bundle = join(root, name);
@@ -483,6 +486,7 @@ test("agency report preserves every supplied keyword group and full returned row
       apiKey: "test-key",
       allowEstimatedBudget: true,
       fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "fraza jedna", volume: 12, clicks: 3, difficulty: 7, parent_topic: "a|b\nc", serp_features: ["local_pack"] }] }), { status: 200 }),
+      collectionPolicy: enabledAhrefsCollection,
     });
     const scope: ScopePlan = { schema_version: "1", generated_at: "2026-08-03T00:00:00.000Z", status: "partial", entries: [] };
     const output = join(root, "report");
@@ -527,6 +531,7 @@ test("agency report rejects a keyword manifest entry symlink escaping the bundle
       apiKey: "test-key",
       allowEstimatedBudget: true,
       fetchImpl: async () => new Response(JSON.stringify({ keywords: [{ keyword: "fraza jedna", volume: 12, clicks: 3, difficulty: 7 }] }), { status: 200 }),
+      collectionPolicy: enabledAhrefsCollection,
     });
     const outside = join(root, "outside-report.json");
     const report = await readFile(join(keywordBundle, "report.json"));

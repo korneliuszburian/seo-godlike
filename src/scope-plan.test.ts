@@ -66,10 +66,11 @@ test("scope plan CLI exposes the agency scope contract", async () => {
   const result = await execFileAsync(process.execPath, ["dist/cli.js", "--scope-plan", "--registry", "fixtures/client-registry.json", "--capabilities", "fixtures/capability-registry.json"], { cwd: process.cwd() });
   const plan = JSON.parse(result.stdout) as ReturnType<typeof buildScopePlan>;
   assert.equal(plan.schema_version, "1");
-  assert.equal(plan.status, "ready");
+  assert.equal(plan.status, "partial");
   assert.deepEqual(plan.entries.map((entry) => `${entry.provider}:${entry.status}`), [
     "google-search-console:ready",
-    "ahrefs:ready",
+    "ahrefs:unavailable",
     "google-search-console:ready",
   ]);
+  assert.match(plan.entries[1]?.reason ?? "", /globally disabled by budget policy/);
 });

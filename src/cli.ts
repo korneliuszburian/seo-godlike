@@ -1,5 +1,5 @@
 import { mkdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { GOOGLE_GA4_READ_ONLY_SCOPE, preflightOAuth, validateOAuthClientReference } from "./auth-preflight.js";
 import { calculateDateRanges, GSC_ANALYTICS_DIMENSIONS } from "./analytics.js";
 import { AhrefsAnalyticsRequest, Ga4AnalyticsRequest, GscAnalyticsRequest, Provider } from "./domain.js";
@@ -16,10 +16,11 @@ import { discoverLocaloMcp, LOCALO_MCP_URL } from "./localo-mcp.js";
 import { buildAnalyticsRunId } from "./run-id.js";
 import { buildDailyAnalyticsCron, buildMonthlyAgencyCron } from "./schedule.js";
 import { runSequentialBatch } from "./batch.js";
-import { buildScopePlan } from "./scope-plan.js";
+import { buildCollectionScopePlan, buildScopePlan } from "./scope-plan.js";
 import { buildAgentRunPlan } from "./agent-plan.js";
 import { buildAgencyReadiness } from "./agency-readiness.js";
 import { buildExternalSourceTasks, executeAgencyTasks, writeAgencyRunRecord } from "./agency-run.js";
+import { ahrefsCollectionBlockReason } from "./provider-collection-policy.js";
 import { verifyKeywordResearchBundle, writeAgencyReport } from "./agency-report.js";
 import { writeAhrefsKeywordResearch } from "./ahrefs-keywords.js";
 import { writeClientDelivery } from "./client-delivery.js";
@@ -31,6 +32,7 @@ import { writeRankHistoryDashboard } from "./rank-history.js";
 import { getSerprobotApiKey, querySerprobotProject, SerprobotApiRequest, writeSerprobotApiBundle } from "./serprobot.js";
 import { buildPropertyMappingTemplate, materializePropertyMapping } from "./property-mapping.js";
 import { resolveLatestDashboardDelivery, serveDashboard } from "./web-app.js";
+import { resolveInside } from "./path-confinement.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -294,7 +296,7 @@ async function main(): Promise<void> {
     const sourceRegistryPath = optionalArgument("--source-registry");
     const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
     validateSourceRegistry(sourceRegistry, registry);
-    const scope = buildScopePlan(registry, capabilities);
+    const scope = buildCollectionScopePlan(registry, capabilities);
     const runtime = createCodexReadonlyRuntime({ workingDirectory: process.cwd() });
     const threadId = optionalArgument("--codex-thread-id");
     const thread = threadId ? runtime.resumeThread(threadId) : runtime.startThread();
@@ -331,7 +333,7 @@ async function main(): Promise<void> {
     const sourceRegistry = sourceRegistryPath ? JSON.parse(await readFile(resolve(sourceRegistryPath), "utf8")) as SourceRegistry : { sources: [] };
     validateSourceRegistry(sourceRegistry, registry);
     const readinessGeneratedAt = new Date().toISOString();
-    const readiness = buildAgencyReadiness(buildScopePlan(registry, capabilities, readinessGeneratedAt), sourceRegistry, {
+    const readiness = buildAgencyReadiness(buildCollectionScopePlan(registry, capabilities, readinessGeneratedAt), sourceRegistry, {
       oauth_client_supplied: hasArgument("--oauth-client"),
       keyword_input_supplied: hasArgument("--keyword-input"),
       rank_monitoring_supplied: hasArgument("--rank-monitoring") || hasArgument("--rank-monitoring-root") || hasArgument("--serprobot-api"),
@@ -370,11 +372,15 @@ async function main(): Promise<void> {
     const outputRoot = resolve(argument("--output"));
     const oauthClientPath = optionalArgument("--oauth-client");
     const artifactsDir = optionalArgument("--artifacts-dir");
+    const agencyReportOutput = optionalArgument("--agency-report-output");
+    const deliveryOutput = optionalArgument("--delivery-output");
+    if (deliveryOutput && !agencyReportOutput) throw new Error("--delivery-output requires --agency-report-output");
+    if (agencyReportOutput && artifactsDir) resolveInside(artifactsDir, relative(resolve(artifactsDir), outputRoot) || ".", "agency run output");
     const ahrefsDate = optionalArgument("--ahrefs-date") ?? new Date().toISOString().slice(0, 10);
     const ahrefsCountry = optionalArgument("--ahrefs-country");
     const runId = optionalArgument("--run-id") ?? `agency-run-${new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14)}`;
     const startedAt = new Date().toISOString();
-    const scope = buildScopePlan(registry, capabilities);
+    const collectionScope = buildCollectionScopePlan(registry, capabilities, startedAt);
     const ranges = calculateDateRanges();
     const rankMonitoringPath = optionalArgument("--rank-monitoring");
     const rankMonitoringRoot = optionalArgument("--rank-monitoring-root");
@@ -412,7 +418,7 @@ async function main(): Promise<void> {
       await verifyKeywordResearchBundle(existingKeywordBundlePath, existingKeywordBundleRoot, keywordInputPath);
     }
     await mkdir(outputRoot, { recursive: false, mode: 0o700 });
-    const propertyTasks = scope.entries.map((entry) => {
+    const propertyTasks = collectionScope.entries.map((entry) => {
       const id = `${entry.client_id}:${entry.provider}:${entry.property_id}`;
       if (entry.status !== "ready") return { id, status: "blocked" as const, reason: entry.reason };
       const outputDir = join(outputRoot, buildAnalyticsRunId({ clientId: entry.client_id, propertyId: entry.property_id, provider: entry.provider, start: entry.provider === "ahrefs" ? ahrefsDate : ranges.current.start, end: entry.provider === "ahrefs" ? ahrefsDate : ranges.current.end }));
@@ -420,10 +426,12 @@ async function main(): Promise<void> {
       if (entry.provider === "google-analytics") return { id, status: "ready" as const, run: async () => { if (!oauthClientPath) throw new Error("missing --oauth-client for Google Analytics"); await runSingleGa4Analytics({ oauthClientPath, propertyId: entry.property_id, clientId: entry.client_id, registry, capabilities, outputDir }); } };
       return { id, status: "ready" as const, run: async () => runSingleAhrefsAnalytics({ clientId: entry.client_id, propertyId: entry.property_id, date: ahrefsDate, country: ahrefsCountry, registry, capabilities, outputDir }) };
     });
-    const sourceTasks = buildExternalSourceTasks(sourceRegistry, resolvedRankMonitoringPath, scope.entries);
+    const sourceTasks = buildExternalSourceTasks(sourceRegistry, resolvedRankMonitoringPath, collectionScope.entries);
+    const keywordCollectionBlocker = ahrefsCollectionBlockReason();
     const keywordTasks = keywordResearchOutputPath && keywordInputPath ? [{
       id: keywordResearchTaskId as string,
-      status: "ready" as const,
+      status: keywordCollectionBlocker === null ? "ready" as const : "blocked" as const,
+      reason: keywordCollectionBlocker,
       run: async () => {
         await writeAhrefsKeywordResearch({
           inputPath: keywordInputPath,
@@ -439,26 +447,25 @@ async function main(): Promise<void> {
     const result = await executeAgencyTasks([...propertyTasks, ...sourceTasks, ...keywordTasks]);
     const finishedAt = new Date().toISOString();
     await writeAgencyRunRecord(outputRoot, { schema_version: "1", run_id: runId, started_at: startedAt, finished_at: finishedAt, policy_mode: "read_only", approval_boundary: "no_external_write_operations", retention_mode: "operator_managed", deletion_authority: "operator_only", result });
-    const agencyReportOutput = optionalArgument("--agency-report-output");
-    const deliveryOutput = optionalArgument("--delivery-output");
-    if (deliveryOutput && !agencyReportOutput) throw new Error("--delivery-output requires --agency-report-output");
     const clientContentPath = optionalArgument("--client-content");
     const clientContentBundlePath = optionalArgument("--client-content-bundle");
     const clientContentRoot = optionalArgument("--client-content-root");
     let generatedReport: string | undefined;
     let generatedDelivery: string | undefined;
     if (agencyReportOutput) {
+      const reportScope = buildScopePlan(registry, capabilities, finishedAt);
+      const reportArtifactsDir = artifactsDir ?? outputRoot;
       const keywordBundlePath = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? keywordResearchOutputPath : existingKeywordBundlePath;
       const reportKeywordBundleRoot = keywordResearchTaskId && result.completed.includes(keywordResearchTaskId) ? outputRoot : existingKeywordBundleRoot;
-      const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath, reportKeywordBundleRoot);
+      const summary = await writeAgencyReport(reportArtifactsDir, resolve(agencyReportOutput), reportScope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath, reportKeywordBundleRoot);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
-        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, clientContentRoot, rankMonitoringPath: rankMonitoringRoot ? undefined : resolvedRankMonitoringPath, rankMonitoringRoot, rankMonitoringResolvedPath: rankMonitoringRoot ? resolvedRankMonitoringPath : undefined, rankMonitoringArtifactsDir: rankMonitoringRoot ? artifactsDir : undefined, keywordBundleRoot: reportKeywordBundleRoot, confirmedKeywordClients: repeatedArguments("--confirmed-keyword-client"), agencyRunRecordPath: join(outputRoot, "agency-run.json") });
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: reportArtifactsDir, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, clientContentRoot, rankMonitoringPath: rankMonitoringRoot ? undefined : resolvedRankMonitoringPath, rankMonitoringRoot, rankMonitoringResolvedPath: rankMonitoringRoot ? resolvedRankMonitoringPath : undefined, rankMonitoringArtifactsDir: rankMonitoringRoot ? artifactsDir : undefined, keywordBundleRoot: reportKeywordBundleRoot, confirmedKeywordClients: repeatedArguments("--confirmed-keyword-client"), agencyRunRecordPath: join(outputRoot, "agency-run.json") });
         generatedDelivery = resolve(deliveryOutput);
       }
-      process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);
+      process.stdout.write(`${JSON.stringify({ scope_status: collectionScope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);
     } else {
-      process.stdout.write(`${JSON.stringify({ scope_status: scope.status, ...result }, null, 2)}\n`);
+      process.stdout.write(`${JSON.stringify({ scope_status: collectionScope.status, ...result }, null, 2)}\n`);
     }
     if (result.failed.length > 0) process.exitCode = 1;
     return;
@@ -466,7 +473,7 @@ async function main(): Promise<void> {
   if (process.argv.includes("--agent-plan")) {
     const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
     const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
-    const scope = buildScopePlan(registry, capabilities);
+    const scope = buildCollectionScopePlan(registry, capabilities);
     const runId = optionalArgument("--run-id") ?? `agent-run-${scope.generated_at.replace(/[^0-9]/g, "").slice(0, 14)}`;
     process.stdout.write(`${JSON.stringify(buildAgentRunPlan(scope, runId), null, 2)}\n`);
     return;
@@ -474,7 +481,7 @@ async function main(): Promise<void> {
   if (process.argv.includes("--scope-plan")) {
     const registry = JSON.parse(await readFile(resolve(argument("--registry")), "utf8")) as ClientRegistry;
     const capabilities = JSON.parse(await readFile(resolve(argument("--capabilities")), "utf8")) as CapabilityRegistry;
-    process.stdout.write(`${JSON.stringify(buildScopePlan(registry, capabilities), null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(buildCollectionScopePlan(registry, capabilities), null, 2)}\n`);
     return;
   }
   if (process.argv.includes("--schedule")) {
