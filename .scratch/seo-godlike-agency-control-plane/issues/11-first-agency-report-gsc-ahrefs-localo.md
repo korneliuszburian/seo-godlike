@@ -2510,10 +2510,20 @@ auth or schema is unknown.
 ## Dashboard visual consolidation — 2026-08-06
 
 - The local application keeps one client/domain navigation surface: the
-  floating island owned by `/`. The embedded report's legacy `.client-switcher`
-  is removed after the same-origin iframe loads, preventing duplicated client
-  navigation without changing the underlying client reports or PDFs.
+  floating island owned by `/`. A manifest-verified, in-memory embed view hides
+  the embedded report's legacy `.client-switcher`, preventing duplicated client
+  navigation without changing the underlying client reports or PDFs and
+  without depending on JavaScript for this visual invariant.
 - The application no longer renders a separate status badge or sidebar. The
-  current proof is visual browser verification against the existing Bodymove
-  delivery package plus focused dashboard tests; no provider request or report
-  rerun occurred.
+  island is now server-rendered from runtime-validated delivery units, uses
+  stable client initials and preserves ordinary link/iframe navigation when
+  JavaScript enhancement is unavailable.
+- Desktop and 390 px browser readback against the existing Bodymove delivery
+  package confirms one floating island, responsive controls and the active
+  unit state. A focused falsifier rejects an HTML unit path escaping the
+  delivery root before the server binds.
+- Full local proof passes with 243 TypeScript tests + 3 context tests, build,
+  zero high audit vulnerabilities and `git diff --check`. The optional stricter
+  `noUnused*` check remains red only on the pre-existing unused `readFile`
+  import in `src/provider-history.test.ts`, outside this UI slice. No provider
+  request, credential read, Ahrefs spend or report rerun occurred.
