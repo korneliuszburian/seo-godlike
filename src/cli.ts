@@ -30,7 +30,7 @@ import { rankMonitoringClientIds, resolveLatestRankMonitoringBundle, resolveRank
 import { writeRankHistoryDashboard } from "./rank-history.js";
 import { getSerprobotApiKey, querySerprobotProject, SerprobotApiRequest, writeSerprobotApiBundle } from "./serprobot.js";
 import { buildPropertyMappingTemplate, materializePropertyMapping } from "./property-mapping.js";
-import { serveDashboard } from "./web-app.js";
+import { resolveLatestDashboardDelivery, serveDashboard } from "./web-app.js";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(name);
@@ -212,12 +212,26 @@ async function runSingleAhrefsAnalytics(options: AhrefsOptions): Promise<void> {
 
 async function main(): Promise<void> {
   if (process.argv.includes("--serve-dashboard")) {
+    const explicitDelivery = optionalArgument("--delivery");
+    const deliveryRoot = optionalArgument("--delivery-root");
+    if ((explicitDelivery === undefined) === (deliveryRoot === undefined)) {
+      throw new Error("--serve-dashboard requires exactly one of --delivery or --delivery-root");
+    }
+    let deliveryDir: string;
+    if (explicitDelivery !== undefined) deliveryDir = resolve(explicitDelivery);
+    else if (deliveryRoot !== undefined) deliveryDir = await resolveLatestDashboardDelivery(resolve(deliveryRoot));
+    else throw new Error("--serve-dashboard requires exactly one of --delivery or --delivery-root");
     const app = await serveDashboard({
-      deliveryDir: resolve(argument("--delivery")),
+      deliveryDir,
       host: optionalArgument("--host") ?? "127.0.0.1",
       port: optionalPositiveIntegerArgument("--port") ?? 4173,
     });
-    process.stdout.write(`${JSON.stringify({ url: app.url, read_only: true, delivery_dir: resolve(argument("--delivery")) })}\n`);
+    process.stdout.write(`${JSON.stringify({
+      url: app.url,
+      read_only: true,
+      delivery_dir: deliveryDir,
+      delivery_selection: explicitDelivery === undefined ? "latest_verified" : "explicit",
+    })}\n`);
     await new Promise<void>((resolveShutdown) => {
       const shutdown = async (): Promise<void> => {
         process.off("SIGINT", shutdown);
@@ -342,6 +356,7 @@ async function main(): Promise<void> {
       rankMonitoringPath,
       rankMonitoringRoot,
       keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
+      confirmedKeywordClients: repeatedArguments("--confirmed-keyword-client"),
     });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
@@ -438,7 +453,7 @@ async function main(): Promise<void> {
       const summary = await writeAgencyReport(outputRoot, resolve(agencyReportOutput), scope, finishedAt, sourceRegistry, keywordBundlePath, keywordInputPath, resolvedRankMonitoringPath, reportKeywordBundleRoot);
       generatedReport = resolve(agencyReportOutput);
       if (deliveryOutput) {
-        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, clientContentRoot, rankMonitoringPath: rankMonitoringRoot ? undefined : resolvedRankMonitoringPath, rankMonitoringRoot, rankMonitoringResolvedPath: rankMonitoringRoot ? resolvedRankMonitoringPath : undefined, rankMonitoringArtifactsDir: rankMonitoringRoot ? artifactsDir : undefined, keywordBundleRoot: reportKeywordBundleRoot, agencyRunRecordPath: join(outputRoot, "agency-run.json") });
+        await writeClientDelivery({ agencyReportPath: join(resolve(agencyReportOutput), "agency-report.json"), artifactsDir: outputRoot, outputDir: resolve(deliveryOutput), renderPdf: process.argv.includes("--pdf"), clientContentPath, clientContentBundlePath, clientContentRoot, rankMonitoringPath: rankMonitoringRoot ? undefined : resolvedRankMonitoringPath, rankMonitoringRoot, rankMonitoringResolvedPath: rankMonitoringRoot ? resolvedRankMonitoringPath : undefined, rankMonitoringArtifactsDir: rankMonitoringRoot ? artifactsDir : undefined, keywordBundleRoot: reportKeywordBundleRoot, confirmedKeywordClients: repeatedArguments("--confirmed-keyword-client"), agencyRunRecordPath: join(outputRoot, "agency-run.json") });
         generatedDelivery = resolve(deliveryOutput);
       }
       process.stdout.write(`${JSON.stringify({ scope_status: scope.status, agency_report: generatedReport, delivery: generatedDelivery, report_status: summary.report_status, ...result }, null, 2)}\n`);
@@ -486,6 +501,7 @@ async function main(): Promise<void> {
         keywordBundlePath: optionalArgument("--keyword-bundle"),
         keywordInputPath: optionalArgument("--keyword-input"),
         keywordBundleRoot: optionalArgument("--keyword-bundle-root"),
+        confirmedKeywordClients: repeatedArguments("--confirmed-keyword-client"),
         keywordResearch: process.argv.includes("--keyword-research"),
         allowEstimatedBudget: process.argv.includes("--allow-estimated-budget"),
         keywordCountry: optionalArgument("--keyword-country"),

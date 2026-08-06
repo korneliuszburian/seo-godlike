@@ -2527,3 +2527,61 @@ auth or schema is unknown.
   `noUnused*` check remains red only on the pre-existing unused `readFile`
   import in `src/provider-history.test.ts`, outside this UI slice. No provider
   request, credential read, Ahrefs spend or report rerun occurred.
+
+## Isolated client reports and recurring dashboard proof — 2026-08-06
+
+- This ticket remains the canonical owner of current delivery status. Runtime
+  behavior and report data stay owned by code, tests and manifest-bound local
+  evidence; no parallel status or architecture page was created.
+- Client delivery now treats Bodymove, Babka Medica, CMR Ostrołęka, Karty SIM
+  USA, Wilmed and Goldenmed as six separately isolated clients. Every client
+  receives its own Polish HTML, PDF, email draft and operator appendix; no
+  client-facing report links to or switches into another client's report.
+- The client-facing layer uses the self-contained Manrope variable font under
+  the bundled SIL Open Font License and a
+  single editorial layout instead of raw evidence tables. Bodymove is a
+  four-page narrative brief; each keyword-only client is a bounded one-page
+  brief. Complete verified evidence remains in the corresponding local
+  operator appendix.
+- Bodymove keeps the domain property and Krakow URL-prefix property separate,
+  distinguishes observed GSC data from estimated Ahrefs context, and renders
+  unavailable providers without substituting zeroes.
+- Local delivery `artifacts/analysis/client-delivery-editorial-20260806-v20`
+  was generated only from the existing verified source bundles. It contains
+  six isolated client units and 25 manifest entries; all
+  hashes and byte counts verify, all six A4 PDFs pass `qpdf --check`, PDF files
+  use mode `0600`, provider calls remain zero and the renderer policy remains
+  network-isolated. No credential was read and no GSC, Ahrefs, GA4, Localo,
+  SERPROBOT or Semstorm collection was rerun.
+- The visual condensation keeps the same bounded page composition while adding
+  useful context: each GSC property shows clicks, impressions, CTR and average
+  position; leading GSC pages include impressions, CTR and position; and each
+  keyword brief shows returned-row coverage plus the summed estimated search
+  volume of the explicitly supplied phrase set. These figures remain visibly
+  provider-scoped and are not merged into a synthetic traffic total.
+- The five keyword-only units are accepted only through the explicit
+  `confirmed_keyword_clients` manifest boundary. An unconfirmed or surplus
+  host fails before delivery output is created; the local dashboard likewise
+  refuses any bind other than `127.0.0.1`.
+- The loopback operator dashboard owns the only cross-client navigation: one
+  floating client island around a manifest-verified report frame. Client HTML
+  and PDFs contain no island or cross-client links. Real CLI and HTTP success
+  coverage complements fail-closed selector, manifest, confinement, tamper and
+  symlink falsifiers. Desktop and 390 px browser readback show one dashboard
+  island, zero embedded islands and no horizontal overflow.
+- Full local proof passes with 250 TypeScript tests + 3 context tests, strict
+  TypeScript `noUnusedLocals` and `noUnusedParameters`, zero high audit
+  vulnerabilities and `git diff --check`.
+- A bounded OpenCode second opinion over the working-tree fingerprint confirmed
+  path confinement, tenant isolation, source semantics and network-isolated
+  rendering. Its actionable findings are closed here:
+  keyword-only clients now require explicit confirmation, the dashboard is
+  loopback-only, and the previous unlicensed font input was replaced by the
+  bundled Manrope/OFL pair. Client-facing ordering now uses an explicit
+  code-point comparator rather than locale-dependent sorting. A committed
+  fixed-point handoff remains the final operator-owned external review input.
+- Remaining operator inputs are unchanged: numeric GA4 property plus
+  `analytics.readonly` consent, an explicit SERPROBOT project/export source,
+  a confirmed Semstorm source, a managed Localo profile, and explicit
+  source/action mapping. Until supplied, recurring collection for those sources
+  remains unavailable rather than inferred.

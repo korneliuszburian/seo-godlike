@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { once } from "node:events";
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -10,6 +12,61 @@ import { writeRankMonitoringBundle } from "./rank-monitoring.js";
 import { canonicalJson, sha256 } from "./serialize.js";
 
 const execFileAsync = promisify(execFile);
+
+test("dashboard delivery root fails closed when no verified recurring delivery exists", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-dashboard-root-"));
+  try {
+    await assert.rejects(
+      execFileAsync(process.execPath, ["dist/cli.js", "--serve-dashboard", "--delivery-root", root], { cwd: process.cwd() }),
+      /no verified client delivery found/,
+    );
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("dashboard requires exactly one explicit delivery selector", async () => {
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      "dist/cli.js", "--serve-dashboard", "--delivery", "delivery", "--delivery-root", "deliveries",
+    ], { cwd: process.cwd() }),
+    /requires exactly one of --delivery or --delivery-root/,
+  );
+});
+
+test("dashboard CLI serves the newest verified recurring delivery", { timeout: 10_000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-godlike-cli-dashboard-success-"));
+  const delivery = join(root, "client-delivery-20260806T030000");
+  const reportHtml = "<!doctype html><html><body>verified recurring report</body></html>";
+  await mkdir(join(delivery, "bodymove"), { recursive: true });
+  await writeFile(join(delivery, "bodymove", "report.html"), reportHtml);
+  await writeFile(join(delivery, "manifest.json"), JSON.stringify({
+    schema_version: "1",
+    source: "agency-report.json",
+    execution: { provider_calls: 0 },
+    files: { "bodymove/report.html": { sha256: sha256(reportHtml), bytes: Buffer.byteLength(reportHtml) } },
+    units: [{ id: "bodymove", kind: "client", html: "bodymove/report.html", pdf: null, email: "bodymove/report.eml" }],
+  }));
+  const probe = createServer();
+  probe.listen(0, "127.0.0.1");
+  await once(probe, "listening");
+  const address = probe.address();
+  assert.ok(address && typeof address === "object");
+  const port = address.port;
+  await new Promise<void>((resolveClose, rejectClose) => probe.close((error) => error ? rejectClose(error) : resolveClose()));
+  const child = spawn(process.execPath, ["dist/cli.js", "--serve-dashboard", "--delivery-root", root, "--port", String(port)], { cwd: process.cwd() });
+  try {
+    const [stdout] = await once(child.stdout, "data") as [Buffer];
+    const ready = JSON.parse(stdout.toString("utf8")) as { url: string; delivery_selection: string; delivery_dir: string };
+    assert.equal(ready.delivery_selection, "latest_verified");
+    assert.equal(ready.delivery_dir, delivery);
+    const response = await fetch(ready.url);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /Bodymove — SEO intelligence/);
+  } finally {
+    child.kill("SIGTERM");
+    if (child.exitCode === null) await once(child, "exit");
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test("daily schedule fails closed without an OAuth client path", async () => {
   await assert.rejects(

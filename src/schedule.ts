@@ -65,6 +65,7 @@ export interface AgencyScheduleOptions {
   keywordBundlePath?: string;
   keywordInputPath?: string;
   keywordBundleRoot?: string;
+  confirmedKeywordClients?: string[];
   keywordResearch?: boolean;
   allowEstimatedBudget?: boolean;
   keywordCountry?: string;
@@ -119,6 +120,7 @@ export function buildMonthlyAgencyCron(options: AgencyScheduleOptions): string {
     ...(options.keywordBundlePath ? ["--keyword-bundle", shellQuote(options.keywordBundlePath)] : []),
     ...(options.keywordInputPath ? ["--keyword-input", shellQuote(options.keywordInputPath)] : []),
     ...(options.keywordBundleRoot ? ["--keyword-bundle-root", shellQuote(options.keywordBundleRoot)] : []),
+    ...(options.confirmedKeywordClients ?? []).flatMap((clientId) => ["--confirmed-keyword-client", shellQuote(clientId)]),
     ...(options.keywordResearch ? ["--keyword-research", "--keyword-research-output", `${output}/keyword-research`, ...(options.allowEstimatedBudget ? ["--allow-estimated-budget"] : [])] : []),
     ...(options.keywordCountry ? ["--keyword-country", shellQuote(options.keywordCountry)] : []),
     ...(options.keywordMaxRequests ? ["--keyword-max-requests", shellQuote(options.keywordMaxRequests)] : []),
